@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+@keyframes startButtonFloat {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.85;
+    filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  }
+
+  50% {
+    transform: translateY(-6px) scale(1.05);
+    opacity: 1;
+    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.6));
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.85;
+    filter: drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  }
+}
+
+.start-button-animated {
+  animation: startButtonFloat 2.8s ease-in-out infinite;
+  will-change: transform, opacity, filter;
+}
+@keyframes battleGlow {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+    filter: brightness(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.animate-battleGlow {
+  animation: battleGlow 2.5s ease-in-out infinite;
+}
+
+.perspective {
+  perspective: 1000px;
+}
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+@keyframes cardBackGlow {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  50% {
+    transform: scale(1.04);
+    filter: brightness(1.25);
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+.animate-cardBackGlow {
+  animation: cardBackGlow 1.8s ease-in-out infinite;
+}
+
+@keyframes pressDepth {
+  0% {
+    transform: perspective(900px)
+      scale(1)
+      rotateX(0deg)
+      rotateY(0deg)
+      translateX(0px)
+      translateY(0px);
+
+    filter: brightness(1);
+  }
+
+  8% {
+    transform: perspective(900px)
+      scale(0.93)
+      rotateX(8deg)
+      rotateY(-8deg)
+      translateX(-12px)
+      translateY(8px);
+
+    filter: brightness(1.45);
+  }
+
+  16% {
+    transform: perspective(900px)
+      scale(0.95)
+      rotateX(-7deg)
+      rotateY(7deg)
+      translateX(10px)
+      translateY(-8px);
+  }
+
+  24% {
+    transform: perspective(900px)
+      scale(0.92)
+      rotateX(9deg)
+      rotateY(-9deg)
+      translateX(-14px)
+      translateY(10px);
+  }
+
+  32% {
+    transform: perspective(900px)
+      scale(0.96)
+      rotateX(-8deg)
+      rotateY(8deg)
+      translateX(12px)
+      translateY(-10px);
+  }
+
+  40% {
+    transform: perspective(900px)
+      scale(0.91)
+      rotateX(10deg)
+      rotateY(-10deg)
+      translateX(-15px)
+      translateY(12px);
+
+    filter: brightness(1.6);
+  }
+
+  48% {
+    transform: perspective(900px)
+      scale(0.95)
+      rotateX(-8deg)
+      rotateY(8deg)
+      translateX(12px)
+      translateY(-10px);
+  }
+
+  56% {
+    transform: perspective(900px)
+      scale(0.92)
+      rotateX(7deg)
+      rotateY(-7deg)
+      translateX(-10px)
+      translateY(8px);
+  }
+
+  64% {
+    transform: perspective(900px)
+      scale(0.97)
+      rotateX(-5deg)
+      rotateY(5deg)
+      translateX(8px)
+      translateY(-6px);
+  }
+
+  100% {
+    transform: perspective(900px)
+      scale(1)
+      rotateX(0deg)
+      rotateY(0deg)
+      translateX(0px)
+      translateY(0px);
+
+    filter: brightness(1);
+  }
+}
+
+.press-depth-effect {
+  animation: pressDepth 1s linear;
+}
