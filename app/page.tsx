@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { playBgm } from "@/lib/audio/bgmStore";
+
+import { TitleNewsPanel } from "@/components/TitleNewsPanel";
 
 export default function HomePage() {
   const router = useRouter();
@@ -24,16 +25,12 @@ export default function HomePage() {
   }, []);
 
   const handleStart = async () => {
-  await playBgm();
+ 
 
   if (loggedIn) {
     router.push("/menu");
   } else {
     setLoginOpen(true);
-
-    setTimeout(() => {
-      playBgm();
-    }, 100);
   }
 };
 
@@ -49,30 +46,32 @@ export default function HomePage() {
       <div className="absolute inset-0 bg-black/40" />
 
       {/* CENTER */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex flex-col items-center justify-center">
-          {/* TITLE */}
-          <img
-            src="/images/title.png"
-            alt="Title"
-            style={{ width: "760px", height: "auto" }}
-            className="object-contain mb-4"
-          />
+      <div className="absolute inset-0 flex items-center justify-center px-6">
+  <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+    <div className="flex flex-col items-center justify-center">
+      <img
+        src="/images/title.png"
+        alt="Title"
+        style={{ width: "860px", height: "auto" }}
+        className="object-contain mb-4"
+      />
 
-          {/* START */}
-          <button
-            onClick={handleStart}
-            className="transition-transform duration-300 hover:scale-105 active:scale-95"
-          >
-            <img
-              src="/images/START.png"
-              alt="Start"
-              style={{ width: "320px", height: "auto" }}
-              className="start-button-animated object-contain cursor-pointer hover:[animation-play-state:paused]"
-            />
-          </button>
-        </div>
-      </div>
+      <button
+        onClick={handleStart}
+        className="transition-transform duration-300 hover:scale-105 active:scale-95"
+      >
+        <img
+          src="/images/START.png"
+          alt="Start"
+          style={{ width: "220px", height: "auto" }}
+          className="start-button-animated object-contain cursor-pointer hover:[animation-play-state:paused]"
+        />
+      </button>
+    </div>
+
+    <TitleNewsPanel />
+  </div>
+</div>
 
       {/* LOGIN POPUP */}
       {loginOpen && (

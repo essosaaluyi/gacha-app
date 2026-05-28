@@ -24,6 +24,8 @@ export default function TopBar() {
   const [muted, setMuted] = useState(false);
 const [volume, setVolume] = useState(0.5);
 const [needsResumeBgm, setNeedsResumeBgm] = useState(false);
+const [welcomeGiftOpen, setWelcomeGiftOpen] = useState(false);
+const [welcomeGiftAmount, setWelcomeGiftAmount] = useState(0);
 
   useEffect(() => {
     setMuted(getBgmMuted());
@@ -87,9 +89,30 @@ setVolume(getBgmVolume());
       setEmail("Guest");
 
       const guestPoints = Number(localStorage.getItem("guest_points") ?? 0);
+      const giftClaimed =
+  localStorage.getItem("guest_welcome_gift_claimed") === "true";
+
+let finalGuestPoints = guestPoints;
+
+if (!giftClaimed) {
+  finalGuestPoints += 1000;
+
+  localStorage.setItem(
+    "guest_points",
+    String(finalGuestPoints)
+  );
+
+  localStorage.setItem(
+    "guest_welcome_gift_claimed",
+    "true"
+  );
+
+  setWelcomeGiftAmount(1000);
+setWelcomeGiftOpen(true);
+}
       const guestLastClaim = localStorage.getItem("guest_last_daily_claim");
 
-      setPoints(guestPoints);
+      setPoints(finalGuestPoints);
       setCooldownText(formatCooldown(guestLastClaim));
 
       const reward = await getPointSetting("guest_daily_points", 100);
@@ -297,7 +320,9 @@ setVolume(getBgmVolume());
             </h2>
 
             <p className="text-zinc-300 mb-6">
-              Current progress will remain saved.
+              {isGuest
+  ? "Guest data will be reset if you return to the title screen."
+  : "Current progress will remain saved."}
             </p>
 
             <div className="flex gap-3">
@@ -310,8 +335,17 @@ setVolume(getBgmVolume());
 
               <button
                 onClick={() => {
-                  window.location.href = "/";
-                }}
+  if (isGuest) {
+    localStorage.removeItem("guest_mode");
+    localStorage.removeItem("guest_points");
+    localStorage.removeItem("guest_inventory");
+    localStorage.removeItem("guest_history");
+    localStorage.removeItem("guest_last_daily_claim");
+    localStorage.removeItem("guest_welcome_gift_claimed");
+  }
+
+  window.location.href = "/";
+}}
                 className="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
               >
                 Return
@@ -339,6 +373,30 @@ setVolume(getBgmVolume());
           </div>
         </div>
       )}
+      {welcomeGiftOpen && (
+  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md text-white text-center">
+      <h2 className="text-2xl font-bold mb-4">
+        Thank You for Playing!
+      </h2>
+
+      <p className="text-zinc-300 mb-4">
+        You received a welcome gift.
+      </p>
+
+      <p className="text-emerald-400 text-2xl font-bold mb-6">
+        +{welcomeGiftAmount} Points
+      </p>
+
+      <button
+        onClick={() => setWelcomeGiftOpen(false)}
+        className="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-semibold"
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
     </>
   );
 }

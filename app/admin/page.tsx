@@ -14,6 +14,7 @@ export default function AdminPage() {
   const [isAllowed, setIsAllowed] = useState(false);
 
   const settingKeys = [
+    "welcome_gift_points",
     "single_pull_cost",
     "ten_pull_cost",
     "return_R",
