@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gacha Battle App
+
+A web-based gacha battle game with a slot/pachislot-style presentation. Players pull cards, watch dramatic reveals, arrange their battle deck, and fight through animated battle rounds to earn rewards.
+
+The core flow: **start → gacha pull → card reveal/flip → battle deck order → battle opening → battle rounds → results/rewards**.
+
+## Tech Stack
+
+- [Next.js](https://nextjs.org) with React — app shell and UI
+- [PixiJS](https://pixijs.com) — canvas battle layers and effects
+- [Supabase](https://supabase.com) — backend
+- CSS/React overlays with lazy image/video inserts for dramatic effects
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies and run the development server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the development server |
+| `npm run build` | Build for production |
+| `npm run start` | Serve the production build |
+| `npm run lint` | Run ESLint |
+| `npm run sync:game-config` | Sync game config from `game-config/game-config.xlsx` |
 
-## Learn More
+## Game Configuration
 
-To learn more about Next.js, take a look at the following resources:
+Game numbers (card pool, rarity probabilities, enemies, rewards, and more) are managed in a spreadsheet at `game-config/game-config.xlsx`. After editing it, run `npm run sync:game-config` to regenerate `lib/game-config/generated.ts`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key Documentation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `PROJECT_BIBLE.md` — the main product source of truth
+- `AGENTS.md` — instructions for AI coding assistants
+- `CLAUDE.md` — project handoff and current work state
