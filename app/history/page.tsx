@@ -1,6 +1,5 @@
 "use client";
 import TopBar from "@/components/TopBar";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -17,13 +16,7 @@ export default function HistoryPage() {
   const [message, setMessage] = useState("Loading...");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  const [points, setPoints] = useState(0);
-
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  const loadHistory = async () => {
+  async function loadHistory() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -32,16 +25,6 @@ export default function HistoryPage() {
       setMessage("Please log in first.");
       return;
     }
-
-  
-
-    const { data: pointRow } = await supabase
-      .from("user_points")
-      .select("points")
-      .eq("user_id", user.id)
-      .single();
-
-    setPoints(pointRow?.points ?? 0);
 
     const { data, error } = await supabase
       .from("pull_results")
@@ -56,7 +39,15 @@ export default function HistoryPage() {
 
     setResults(data || []);
     setMessage("");
-  };
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadHistory();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
 
 

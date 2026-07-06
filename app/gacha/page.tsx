@@ -4,23 +4,28 @@ import PullSelection from "@/components/gacha/PullSelection";
 import ResultGrid from "@/components/gacha/ResultGrid";
 import RevealPlayer from "@/components/gacha/RevealPlayer";
 import TopBar from "@/components/TopBar";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ResultActions from "@/components/gacha/ResultActions";
 import { type Card, pullMany } from "@/lib/gacha/pullLogic";
-import {
-  chooseRevealVideo,
-  getFreezeSettings,
-} from "@/lib/gacha/revealLogic";
+import { chooseRevealPlan } from "@/lib/gacha/revealLogic";
+import { preloadRevealVideos } from "@/lib/gacha/revealPreload";
 import {
   saveGuestResults,
   saveUserResults,
 } from "@/lib/gacha/saveResults";
 import { setBgmMuted } from "@/lib/audio/bgmStore";
+import {
+  getWalletState,
+  initializeWallet,
+  spendPoints,
+  subscribeWallet,
+} from "@/lib/wallet/walletStore";
 
 
 export default function GachaPage() {
+  const router = useRouter();
   const [results, setResults] = useState<Card[]>([]);
   const [pendingResults, setPendingResults] = useState<Card[]>([]);
   const [message, setMessage] = useState("");
@@ -28,9 +33,11 @@ export default function GachaPage() {
   const [pullCount, setPullCount] = useState(1);
   const [revealVideo, setRevealVideo] = useState("/videos/standard.mp4");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [points, setPoints] = useState<number>(0);
-  const [email, setEmail] = useState<string | null>(null);
+  const [, setPoints] = useState<number>(0);
+  const [, setEmail] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [revealPreparing, setRevealPreparing] = useState(false);
+  const [battleConfirmOpen, setBattleConfirmOpen] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmCount, setConfirmCount] = useState(1);
@@ -42,11 +49,7 @@ export default function GachaPage() {
   const [mainRevealStopped, setMainRevealStopped] = useState(false);
   const [revealFinished, setRevealFinished] = useState(false);
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
+  async function loadUserData() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -54,106 +57,82 @@ export default function GachaPage() {
     if (user) {
       setIsGuest(false);
       setEmail(`User ${user.id.slice(0, 8)}`);
-
-      const { data } = await supabase
-        .from("user_points")
-        .select("points")
-        .eq("user_id", user.id)
-        .single();
-
-      setPoints(data?.points ?? 0);
-      return;
-    }
-
-    const guestMode = localStorage.getItem("guest_mode");
-
-    if (guestMode === "true") {
+    } else if (localStorage.getItem("guest_mode") === "true") {
       setIsGuest(true);
       setEmail("Guest");
-
-      const guestPoints = Number(localStorage.getItem("guest_points") ?? 0);
-      setPoints(guestPoints);
-      return;
+    } else {
+      setEmail(null);
     }
 
-    setEmail(null);
-    setPoints(0);
-  };
+    await initializeWallet();
+  }
 
-  const askPullConfirm = async (count: number) => {
+  useEffect(() => {
+    preloadRevealVideos();
+
+    const timer = window.setTimeout(() => {
+      void loadUserData();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // Unified wallet: mirror the shared balance into this page's display.
+  useEffect(() => {
+    const syncPoints = () => setPoints(getWalletState().points);
+    syncPoints();
+    return subscribeWallet(syncPoints);
+  }, []);
+
+  const askPullConfirm = (count: number) => {
     const costKey = count === 10 ? "ten_pull_cost" : "single_pull_cost";
+    const fallbackCost = count === 10 ? 1000 : 100;
 
-    const { data: costData } = await supabase
+    setConfirmCount(count);
+    setConfirmCost(fallbackCost);
+    setConfirmOpen(true);
+
+    void supabase
       .from("point_settings")
       .select("setting_value")
       .eq("setting_key", costKey)
-      .single();
-
-    const cost = costData?.setting_value ?? (count === 10 ? 1000 : 100);
-
-    setConfirmCount(count);
-    setConfirmCost(cost);
-    setConfirmOpen(true);
+      .single()
+      .then(({ data: costData }) => {
+        setConfirmCost(costData?.setting_value ?? fallbackCost);
+      });
   };
 
   const startPull = async (count: number, cost: number) => {
     setConfirmOpen(false);
+    setRevealPreparing(true);
     setMessage("Pulling...");
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    let currentPoints = 0;
-
-    if (user) {
-      const { data: pointData } = await supabase
-        .from("user_points")
-        .select("points")
-        .eq("user_id", user.id)
-        .single();
-
-      currentPoints = pointData?.points ?? 0;
-
-      if (currentPoints < cost) {
-        setMessage("Not enough points.");
-        return;
-      }
-
-      const newPoints = currentPoints - cost;
-
-      await supabase
-        .from("user_points")
-        .update({ points: newPoints })
-        .eq("user_id", user.id);
-
-      setPoints(newPoints);
-    } else if (isGuest) {
-      currentPoints = Number(localStorage.getItem("guest_points") ?? 0);
-
-      if (currentPoints < cost) {
-        setMessage("Not enough points.");
-        return;
-      }
-
-      const newPoints = currentPoints - cost;
-      localStorage.setItem("guest_points", String(newPoints));
-      setPoints(newPoints);
-    } else {
+    if (!user && !isGuest) {
+      setRevealPreparing(false);
       setMessage("Please log in first.");
+      return;
+    }
+
+    const paid = await spendPoints(cost, "gacha_pull");
+
+    if (!paid) {
+      setRevealPreparing(false);
+      setMessage("Not enough points.");
       return;
     }
 
     const pulled = pullMany(count);
   
-    const selectedVideo = await chooseRevealVideo(pulled);
+    const revealPlan = await chooseRevealPlan(pulled);
 
     const hasUR = pulled.some((card) => card.rarity === "UR");
-    const { freezeChance } =
-  await getFreezeSettings();
     
 
-    if (hasUR && Math.random() * 100 < freezeChance) {
+    if (hasUR && Math.random() * 100 < revealPlan.freezeChance) {
       const randomFreezeTime = 6 + Math.random() * 10;
       setFreezeTime(randomFreezeTime);
     } else {
@@ -164,11 +143,12 @@ export default function GachaPage() {
     setFreezeActive(false);
     setMainRevealStopped(false);
     setRevealFinished(false);
-    setRevealVideo(selectedVideo);
+    setRevealVideo(revealPlan.video);
     setPullCount(count);
     setPendingResults(pulled);
     setResults([]);
     setBgmMuted(true);
+    setRevealPreparing(false);
     setIsRevealing(true);
   };
 
@@ -203,9 +183,15 @@ return;
   );
 
   setMessage("Pull saved.");
-} catch (error: any) {
-  setMessage(error.message);
+} catch (error: unknown) {
+  setMessage(error instanceof Error ? error.message : "Failed to save pull.");
 }
+  };
+
+  const continueToBattleOrder = () => {
+    localStorage.setItem("pending_battle_cards", JSON.stringify(results));
+    setBattleConfirmOpen(false);
+    router.push("/battle-order");
   };
 
   return (
@@ -214,18 +200,28 @@ return;
         <TopBar />
 
         <img
-          src="/images/widebanner.png"
+          src="/images/widebanner.webp"
           alt="Gacha Banner"
           className="w-full max-w-5xl mx-auto object-contain rounded-2xl mb-6"
         />
 
-        {!isRevealing && results.length === 0 && (
+        {!revealPreparing && !isRevealing && results.length === 0 && (
   <PullSelection
     askPullConfirm={askPullConfirm}
   />
 )}
 
         {message && <p className="text-zinc-300 mb-6 text-center">{message}</p>}
+
+        {revealPreparing && (
+          <div className="reveal-loading-layer mb-8">
+            <div className="reveal-loading-stage">
+              <div className="reveal-loading-ring" />
+              <div className="reveal-loading-core" />
+              <p className="reveal-loading-text">REVEAL STANDBY</p>
+            </div>
+          </div>
+        )}
 
         <RevealPlayer
   isRevealing={isRevealing}
@@ -250,6 +246,20 @@ return;
   results={results}
   setSelectedImage={setSelectedImage}
 />
+
+            <button
+              onClick={() => setBattleConfirmOpen(true)}
+              className="group mt-8 animate-battleGlow hover:scale-105 active:scale-95 transition-transform duration-200 w-full flex flex-col items-center gap-2"
+            >
+              <span className="text-sm font-black tracking-[0.3em] text-blue-200">
+                CONTINUE TO BATTLE
+              </span>
+              <img
+                src="/images/beginbattle.webp"
+                alt="Continue to Battle"
+                className="w-full max-w-[760px] object-contain drop-shadow-[0_0_25px_rgba(59,130,246,0.7)] group-hover:drop-shadow-[0_0_42px_rgba(96,165,250,1)] transition-all duration-300"
+              />
+            </button>
 
             <ResultActions
   resetPull={() => {
@@ -283,6 +293,34 @@ return;
 
               <button
                 onClick={() => startPull(confirmCount, confirmCost)}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {battleConfirmOpen && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
+            <h2 className="text-2xl font-bold mb-3">Enter Battle?</h2>
+
+            <p className="text-zinc-300 mb-6">
+              Move these pull results into battle deck order.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBattleConfirmOpen(false)}
+                className="flex-1 bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-xl font-semibold"
+              >
+                No
+              </button>
+
+              <button
+                onClick={continueToBattleOrder}
                 className="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
               >
                 Yes
