@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 type Props = {
   isRevealing: boolean;
   revealVideo: string;
@@ -27,42 +29,78 @@ export default function RevealPlayer({
   setMainRevealStopped,
   finishReveal,
 }: Props) {
+  const [readyVideoSrc, setReadyVideoSrc] = useState<string | null>(null);
+  const [freezeVideoReady, setFreezeVideoReady] = useState(false);
+  const mainVideoReady = readyVideoSrc === revealVideo;
+
   if (!isRevealing) return null;
 
   return (
     <div className="mb-8 relative">
       {!mainRevealStopped && (
-        <video
-          key={revealVideo}
-          src={revealVideo}
-          autoPlay
-          playsInline
-          onTimeUpdate={(e) => {
-            const current = e.currentTarget.currentTime;
+        <>
+          {!mainVideoReady && (
+            <div className="reveal-loading-layer mb-4">
+              <div className="reveal-loading-stage">
+                <div className="reveal-loading-ring" />
+                <div className="reveal-loading-core" />
+                <p className="reveal-loading-text">LOADING REVEAL</p>
+              </div>
+            </div>
+          )}
 
-            if (
-              freezeTime !== null &&
-              !freezeTriggered &&
-              current >= freezeTime
-            ) {
-              setFreezeTriggered(true);
-              setMainRevealStopped(true);
-              setFreezeActive(true);
-            }
-          }}
-          onEnded={finishReveal}
-          className="w-full h-[70vh] md:h-auto object-cover rounded-2xl mb-4"
-        />
+          <video
+            key={revealVideo}
+            src={revealVideo}
+            autoPlay
+            playsInline
+            preload="auto"
+            onCanPlay={() => setReadyVideoSrc(revealVideo)}
+            onTimeUpdate={(e) => {
+              const current = e.currentTarget.currentTime;
+
+              if (
+                freezeTime !== null &&
+                !freezeTriggered &&
+                current >= freezeTime
+              ) {
+                setFreezeTriggered(true);
+                setMainRevealStopped(true);
+                setFreezeActive(true);
+              }
+            }}
+            onEnded={finishReveal}
+            className={`w-full h-[70vh] md:h-auto object-cover rounded-2xl mb-4 ${
+              mainVideoReady ? "block" : "hidden"
+            }`}
+          />
+        </>
       )}
 
       {freezeActive && (
-        <video
-          src="/videos/freeze.mp4"
-          autoPlay
-          playsInline
-          onEnded={finishReveal}
-          className="w-full h-[70vh] md:h-auto object-cover rounded-2xl mb-4"
-        />
+        <>
+          {!freezeVideoReady && (
+            <div className="reveal-loading-layer mb-4">
+              <div className="reveal-loading-stage">
+                <div className="reveal-loading-ring" />
+                <div className="reveal-loading-core" />
+                <p className="reveal-loading-text">FREEZE LOADING</p>
+              </div>
+            </div>
+          )}
+
+          <video
+            src="/videos/freeze.mp4"
+            autoPlay
+            playsInline
+            preload="auto"
+            onCanPlay={() => setFreezeVideoReady(true)}
+            onEnded={finishReveal}
+            className={`w-full h-[70vh] md:h-auto object-cover rounded-2xl mb-4 ${
+              freezeVideoReady ? "block" : "hidden"
+            }`}
+          />
+        </>
       )}
 
       <button

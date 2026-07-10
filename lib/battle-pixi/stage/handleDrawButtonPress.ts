@@ -17,8 +17,10 @@ import {
 import { hideRoundInsert } from "@/lib/battle-pixi/state/roundInsertStore";
 
 import { isBonusModeActive } from "@/lib/battle-pixi/state/bonusModeStore";
+import { isNestedBonusActive } from "@/lib/battle-pixi/state/nestedBonusStore";
 
 import { handleBonusDraw } from "@/lib/battle-pixi/stage/handleBonusDraw";
+import { handleNestedBonusDraw } from "@/lib/battle-pixi/stage/handleNestedBonusDraw";
 import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
 import { getNextDrawCost } from "@/lib/battle-pixi/state/drawCostStore";
 import { getWalletState, spendPoints } from "@/lib/wallet/walletStore";
@@ -90,6 +92,22 @@ if (isBonusModeActive()) {
   setCurrentBattleResult,
   onBonusFinished,
 });
+
+  return;
+}
+
+if (isNestedBonusActive()) {
+  handleNestedBonusDraw({
+    setCardsAreOut,
+    drawButton,
+    drawCards,
+    stage,
+    startNewDraw,
+    resetCardsToGroup,
+    drawCardsFromHolder,
+    setCurrentBattleResult,
+    onBonusFinished,
+  });
 
   return;
 }

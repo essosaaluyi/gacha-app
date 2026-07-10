@@ -1,37 +1,39 @@
+import {
+  cards as configuredCards,
+  rarityRates,
+} from "@/lib/game-config/generated";
+import { patchConfig } from "@/lib/game-config/patchConfig";
+
 export type Card = {
   name: string;
   rarity: string;
   image: string;
 };
 
-export const cards: Card[] = [
-  { name: "R1", rarity: "R", image: "/images/R1.png" },
-  { name: "R2", rarity: "R", image: "/images/R2.png" },
-  { name: "R3", rarity: "R", image: "/images/R3.png" },
-  { name: "R4", rarity: "R", image: "/images/R4.png" },
-  { name: "SR1", rarity: "SR", image: "/images/SR1.png" },
-  { name: "SR2", rarity: "SR", image: "/images/SR2.png" },
-  { name: "SR3", rarity: "SR", image: "/images/SR3.png" },
-  { name: "SR4", rarity: "SR", image: "/images/SR4.png" },
-  { name: "SSR1", rarity: "SSR", image: "/images/SSR1.png" },
-  { name: "SSR2", rarity: "SSR", image: "/images/SSR2.png" },
-  { name: "SSR3", rarity: "SSR", image: "/images/SSR3.png" },
-  { name: "SSR4", rarity: "SSR", image: "/images/SSR4.png" },
-  { name: "UR1", rarity: "UR", image: "/images/UR1.png" },
-  { name: "UR2", rarity: "UR", image: "/images/UR2.png" },
-  { name: "UR3", rarity: "UR", image: "/images/UR3.png" },
-];
+export const cards: Card[] = configuredCards.map((card) => ({ ...card }));
 
 export function rollRarity() {
+  // Admin-editable gacha odds override the spreadsheet rates when present.
+  const rates: Record<string, number> = {
+    ...rarityRates,
+    ...patchConfig.gachaOdds,
+  };
+
   const rand = Math.random() * 100;
-  if (rand < 60) return "R";
-  if (rand < 85) return "SR";
-  if (rand < 95) return "SSR";
-  return "UR";
+  let cumulative = 0;
+
+  for (const [rarity, rate] of Object.entries(rates)) {
+    cumulative += rate;
+    if (rand < cumulative) return rarity;
+  }
+
+  return Object.keys(rates).at(-1) ?? "R";
 }
 
 export function pullOne() {
   const rarity = rollRarity();
+  // Feature 9 note: the daily lineup (lib/gacha/dailyRotation.ts) is
+  // display-only for now; pulls still draw from the full pool.
   const pool = cards.filter((card) => card.rarity === rarity);
   return pool[Math.floor(Math.random() * pool.length)];
 }

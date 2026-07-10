@@ -28,6 +28,17 @@ import {
 } from "@/lib/battle-pixi/state/enemyAttackCounterStore";
 
 import { rollAttackAttempt } from "@/lib/battle-pixi/core/attackAttemptSystem";
+import { rollFakeoutVariant } from "@/lib/battle-pixi/core/fakeoutVariantLottery";
+import {
+  armResurrection,
+  clearResurrection,
+  isResurrectionArmed,
+  isResurrectionGlitchPending,
+  promoteResurrectionToGlitchPending,
+  triggerResurrectionReveal,
+} from "@/lib/battle-pixi/state/resurrectionStore";
+import { logEvent } from "@/lib/events/gameEventStore";
+import { patchConfig } from "@/lib/game-config/patchConfig";
 
 import {
   getAttackFakeoutState,
@@ -72,8 +83,13 @@ import { handleDrawButtonPress } from "@/lib/battle-pixi/stage/handleDrawButtonP
 
 import { playPendingBonusRevealVideo } from "@/lib/battle-pixi/state/bonusPresentationStore";
 import { getBonusModeState } from "@/lib/battle-pixi/state/bonusModeStore";
+import {
+  isNestedBonusActive,
+  getNestedBonusState,
+} from "@/lib/battle-pixi/state/nestedBonusStore";
 import { initializePlayerBattleCards } from "@/lib/battle-pixi/state/playerBattleCardStore";
 import {
+  armMagicCircleChanceText,
   hideMagicCircle,
   startEmptyMagicCircleChance,
 } from "@/lib/battle-pixi/state/magicCircleStore";
@@ -376,7 +392,10 @@ cardGroup.y = UI.CARD_START_Y;
         }
         rollChanceIconOverlay(currentBattleResult.cards.includes("Chance"));
 
-        const evaluation = evaluateResult(currentBattleResult);
+        const evaluation = evaluateResult(
+          currentBattleResult,
+          getCurrentPlayerBattleCard()?.rarity
+        );
 
         addBattleLog(
           `Draw / Target Slot: ${currentBattleResult.targetSlot + 1}`,
@@ -385,31 +404,66 @@ cardGroup.y = UI.CARD_START_Y;
 
         let shouldStopBattleEvaluation = false;
 
-        const fakeoutTurn = consumeFakeoutTurn();
+        // v-Next patch (feature 3): a hidden win is armed — this game must
+        // look 100% ordinary; the crack/glitch fires after the cards reveal.
+        if (isResurrectionArmed()) {
+          promoteResurrectionToGlitchPending();
+          addBattleLog(`Cards: ${currentBattleResult.cards.join(" | ")}`);
+          addBattleLog("No attack triggered.");
+          shouldStopBattleEvaluation = true;
+        }
+
+        const fakeoutTurn = shouldStopBattleEvaluation
+          ? null
+          : consumeFakeoutTurn();
 
         if (fakeoutTurn) {
           const isFinalFakeout = fakeoutTurn.finished;
+          const isDelayed = fakeoutTurn.variant === "delayed3";
 
-          if (!isFinalFakeout && fakeoutTurn.fakeoutNumber === 1) {
-            showPlayerAttackFakeoutInsert({
-              card: getCurrentPlayerBattleCard(),
-              predeterminedSuccess: fakeoutTurn.predeterminedSuccess,
-            });
+          if (isDelayed && !isFinalFakeout) {
+            // Feature 2 "delayed3": games 1-2 of the cycle show NOTHING —
+            // the player must believe nothing is coming.
+            addBattleLog(`Cards: ${currentBattleResult.cards.join(" | ")}`);
+            addBattleLog("No attack triggered.");
+          } else {
+            if (!isDelayed && !isFinalFakeout && fakeoutTurn.fakeoutNumber === 1) {
+              showPlayerAttackFakeoutInsert({
+                card: getCurrentPlayerBattleCard(),
+                predeterminedSuccess: fakeoutTurn.predeterminedSuccess,
+              });
+            }
+
+            if (!isDelayed && !isFinalFakeout && fakeoutTurn.fakeoutNumber === 2) {
+              showEnemyAttackFakeoutInsert({
+                enemy: getCurrentEnemy(),
+                predeterminedSuccess: fakeoutTurn.predeterminedSuccess,
+              });
+            }
+
+            if (isDelayed && isFinalFakeout) {
+              // Game 3: the sudden-excitement payoff insert.
+              showPlayerAttackFakeoutInsert({
+                card: getCurrentPlayerBattleCard(),
+                predeterminedSuccess: fakeoutTurn.predeterminedSuccess,
+              });
+            }
+
+            addBattleLog(`Fakeout ${fakeoutTurn.fakeoutNumber}`, "fakeout");
+            addBattleLog(`Cards: ${currentBattleResult.cards.join(" | ")}`);
           }
-
-          if (!isFinalFakeout && fakeoutTurn.fakeoutNumber === 2) {
-            showEnemyAttackFakeoutInsert({
-              enemy: getCurrentEnemy(),
-              predeterminedSuccess: fakeoutTurn.predeterminedSuccess,
-            });
-          }
-
-          addBattleLog(`Fakeout ${fakeoutTurn.fakeoutNumber}`, "fakeout");
-          addBattleLog(`Cards: ${currentBattleResult.cards.join(" | ")}`);
 
           shouldStopBattleEvaluation = true;
 
           if (fakeoutTurn.finished) {
+            logEvent({
+              kind: "fakeoutReveal",
+              detail: {
+                variant: fakeoutTurn.variant,
+                success: fakeoutTurn.predeterminedSuccess,
+              },
+            });
+
             if (fakeoutTurn.predeterminedSuccess) {
               addBattleLog("Attack Success Revealed!", "success");
               clearAttackFakeout();
@@ -491,6 +545,7 @@ cardGroup.y = UI.CARD_START_Y;
              } else {
   addBattleLog("Player Defeated!", "fail");
   clearAttackFakeout();
+  clearResurrection();
 
   const loadedNextCard = loadNextPlayerBattleCard();
 
@@ -549,12 +604,14 @@ cardGroup.y = UI.CARD_START_Y;
           addBattleLog(`Cards: ${currentBattleResult.cards.join(" | ")}`);
 
           let attackAttemptSuccess = false;
+          let attackRollSource = "";
 
           if (evaluation.attackOnTarget) {
             addBattleLog("Attack Attempt!");
 
             const attackResult = rollAttackAttempt(100);
             attackAttemptSuccess = attackResult.success;
+            attackRollSource = "attackCard";
           }
 
           if (evaluation.chanceAttack) {
@@ -567,29 +624,90 @@ cardGroup.y = UI.CARD_START_Y;
 
             const attackResult = rollAttackAttempt(evaluation.chanceAttackRate);
             attackAttemptSuccess = attackResult.success;
+            attackRollSource = "chance";
           }
 
-          if (evaluation.attackAttempt) {
+          // v-Next patch (feature 1): an Empty target slot rolls for an
+          // attack attempt at the active card's tier rate (R10/SR20/SSR30/UR40).
+          if (evaluation.emptySlotAttack) {
+            const attackResult = rollAttackAttempt(
+              evaluation.emptySlotAttackRate
+            );
+            attackAttemptSuccess = attackResult.success;
+            attackRollSource = "emptySlot";
+
+            if (attackAttemptSuccess) {
+              armMagicCircleChanceText();
+              addBattleLog("Attack Attempt!");
+            }
+          }
+
+          if (attackRollSource) {
+            logEvent({
+              kind: "attackRoll",
+              detail: {
+                source: attackRollSource,
+                success: attackAttemptSuccess,
+                tier: getCurrentPlayerBattleCard()?.rarity ?? "R",
+                rate:
+                  attackRollSource === "emptySlot"
+                    ? evaluation.emptySlotAttackRate
+                    : attackRollSource === "chance"
+                      ? evaluation.chanceAttackRate
+                      : 100,
+              },
+            });
+          }
+
+          // Empty-slot FAILS stay silent (the roll is invisible); everything
+          // else feeds the presentation lottery below.
+          const presentAttempt =
+            evaluation.attackAttempt &&
+            !(attackRollSource === "emptySlot" && !attackAttemptSuccess);
+
+          if (presentAttempt) {
             const currentFakeout = getAttackFakeoutState();
 
             if (currentFakeout.active && attackAttemptSuccess) {
               addBattleLog("Success Override!", "success");
               overrideFakeoutToSuccess();
             } else {
-              const enemyCounter = getEnemyAttackCounter();
+              // v-Next patch (feature 2): how does this attempt present?
+              const variant = rollFakeoutVariant();
 
-              clearAttackFakeoutInserts();
-              startAttackFakeout(attackAttemptSuccess, enemyCounter);
+              if (variant === "none") {
+                if (attackAttemptSuccess && patchConfig.resurrection.enabled) {
+                  // Feature 3: hidden win — present as total failure now,
+                  // reveal via the crack/glitch next game.
+                  addBattleLog("Attack Failed.", "fail");
+                  armResurrection();
+                } else if (attackAttemptSuccess) {
+                  addBattleLog("Attack Success!", "success");
+                  startFatalMode();
+                  addBattleLog("Player Fatal Mode Started!", "success");
+                } else {
+                  addBattleLog("Attack Failed.", "fail");
+                }
+              } else {
+                const enemyCounter = getEnemyAttackCounter();
 
-              addBattleLog(
-                attackAttemptSuccess
-                  ? "Attack predetermined: SUCCESS"
-                  : "Attack predetermined: FAIL"
-              );
+                clearAttackFakeoutInserts();
+                startAttackFakeout(
+                  attackAttemptSuccess,
+                  enemyCounter,
+                  variant === "delayed3" ? "delayed3" : "classic"
+                );
+
+                addBattleLog(
+                  attackAttemptSuccess
+                    ? "Attack predetermined: SUCCESS"
+                    : "Attack predetermined: FAIL"
+                );
+              }
             }
           }
 
-          if (!evaluation.attackAttempt) {
+          if (!presentAttempt) {
             addBattleLog("No attack triggered.");
           }
         }
@@ -601,9 +719,23 @@ cardGroup.y = UI.CARD_START_Y;
         revealedCount += 1;
 
         if (revealedCount >= 3) {
+          // v-Next patch (feature 3): the "normal" game has fully revealed —
+          // fire the crack/glitch after a beat of false calm.
+          if (isResurrectionGlitchPending()) {
+            setTimeout(() => {
+              triggerResurrectionReveal();
+            }, patchConfig.resurrection.revealDelayMs);
+          }
+
           const bonusState = getBonusModeState();
 
           if (bonusState.active && bonusState.phase === "bonus") {
+            playPendingBonusRevealVideo();
+          }
+
+          // v-Next patch (feature 4): nested bonus reveals share the same
+          // video pipeline (no-op when nothing is queued).
+          if (isNestedBonusActive()) {
             playPendingBonusRevealVideo();
           }
 
@@ -689,6 +821,7 @@ const globalY = cardGroup.y + card.y;
   if (autoProgressBusy) return;
   if (cardsAreOut) return;
   if (getBonusModeState().waitingForResultConfirm) return;
+  if (getNestedBonusState().waitingForResultConfirm) return;
 
   autoProgressBusy = true;
 

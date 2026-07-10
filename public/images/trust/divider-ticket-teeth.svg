@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 64" role="img" aria-label="Ticket section divider">
+<rect width="960" height="64" fill="none"/>
+<path d="M52 12h856v40H52z" fill="#171b29" stroke="#d6a856" stroke-width="3"/>
+<path d="M92 12v40M868 12v40" stroke="#46e1ff" stroke-opacity="0.4" stroke-width="2"/>
+<path d="M140 32h680" stroke="#495066" stroke-width="2" stroke-dasharray="10 12"/>
+</svg>

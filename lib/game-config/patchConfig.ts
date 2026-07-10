@@ -6,6 +6,10 @@
 export type FakeoutVariant = "none" | "delayed3" | "classic";
 
 export const patchConfig = {
+  // Gacha pull odds (%) by rarity. Editable in /admin; overrides the
+  // spreadsheet-generated rarityRates when present.
+  gachaOdds: { R: 60, SR: 25, SSR: 10, UR: 5 } as Record<string, number>,
+
   economy: {
     // Cost of the NEXT draw, keyed by the PREVIOUS game's outcome.
     drawCosts: {
@@ -67,6 +71,19 @@ export const patchConfig = {
     ],
   },
 
+  // Bonus "BAR" reset mechanic (classic bonus). Each bonus game rolls:
+  //   realResetChance → BAR/BAR/BAR: a genuine reset (games back to 5)
+  //   fakeChance      → BAR/BAR/EMPTY: a fakeout that pays fakePoints instead
+  //   otherwise       → a normal bonus reward (no bar shown)
+  // A left-arrow + BAR indicator animates on both bar events to build the
+  // "reset chance" tension while the cards flip.
+  barReset: {
+    realResetChance: 1 / 9,
+    fakeChance: 1 / 6,
+    fakePoints: 20,
+    resetGamesTo: 5,
+  },
+
   // Feature 6: post-bonus collection (pick-me) phase.
   collection: {
     gridSize: 12,
@@ -75,6 +92,7 @@ export const patchConfig = {
     chanceMultiplier: 2,
     cascadeStep: 0.25,
     replayGrantsExtraFlip: true,
+    initialFlips: 3,
   },
 
   // Feature 9: daily-rotating gacha + simulated community stats.
@@ -108,3 +126,68 @@ export const patchConfig = {
     forceFakeoutVariant: null as FakeoutVariant | null,
   },
 };
+
+// ---------------------------------------------------------------------------
+// Runtime overrides (admin page). The admin panel writes a JSON patch to
+// localStorage; on load we deep-merge it onto the live patchConfig object.
+// Because every consumer imports the same object by reference and reads its
+// fields at call time, edits take effect without a code change.
+// ---------------------------------------------------------------------------
+
+const OVERRIDES_KEY = "patch_config_overrides";
+
+type DeepPartial<T> = { [K in keyof T]?: DeepPartial<T[K]> };
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function deepMerge(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>
+) {
+  for (const key of Object.keys(source)) {
+    const sourceValue = source[key];
+    const targetValue = target[key];
+    if (isPlainObject(sourceValue) && isPlainObject(targetValue)) {
+      deepMerge(targetValue, sourceValue);
+    } else {
+      target[key] = sourceValue;
+    }
+  }
+}
+
+export function getPatchConfigOverrides(): DeepPartial<typeof patchConfig> {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(OVERRIDES_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+/** Merge stored overrides onto the live config. Runs once on module load. */
+export function hydratePatchConfig() {
+  const overrides = getPatchConfigOverrides();
+  deepMerge(patchConfig as Record<string, unknown>, overrides as Record<string, unknown>);
+}
+
+/** Persist overrides and apply them to the live config immediately. */
+export function savePatchConfigOverrides(
+  overrides: DeepPartial<typeof patchConfig>
+) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+  deepMerge(patchConfig as Record<string, unknown>, overrides as Record<string, unknown>);
+}
+
+export function clearPatchConfigOverrides() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(OVERRIDES_KEY);
+}
+
+hydratePatchConfig();

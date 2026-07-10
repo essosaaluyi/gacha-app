@@ -43,9 +43,14 @@ type WorkstationPreset = {
   storageKey: string;
   standFrameCount: number;
   idleFrameCount: number;
+  standFrameMs: number;
+  idleFrameMs: number;
+  standStartFrame: number;
+  idleStartFrame: number;
   standFrameSrc: (frame: number) => string;
   idleFrameSrc: (frame: number) => string;
   defaultLayers: Record<LayerKey, LayerState>;
+  defaultTimeline?: Record<LayerKey, TimelineState>;
 };
 
 const mamiDefaultLayers: Record<LayerKey, LayerState> = {
@@ -88,6 +93,16 @@ const dragonRaiderDefaultLayers: Record<LayerKey, LayerState> = {
   idle: { x: 56.3, y: 284.6, scale: 1, opacity: 1, visible: true },
 };
 
+const youngKnightDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 159.1, y: 531, scale: 1.25, opacity: 0.95, visible: true },
+  stand: { x: 68.03, y: 288.87, scale: 1.09, opacity: 1, visible: true },
+  idle: { x: 68.03, y: 288.87, scale: 1.09, opacity: 1, visible: true },
+};
+
 const workstationPresets = {
   mami: {
     id: "mami",
@@ -100,6 +115,10 @@ const workstationPresets = {
     storageKey: "mami-layer-workstation-timeline-v3",
     standFrameCount: 87,
     idleFrameCount: 90,
+    standFrameMs: 34,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
     standFrameSrc: (frame: number) =>
       `/images/battle-characters/mami/stand/${frame
         .toString()
@@ -121,6 +140,10 @@ const workstationPresets = {
     storageKey: "r1-triplets-baby-dragon-layer-workstation-timeline-v2",
     standFrameCount: 82,
     idleFrameCount: 173,
+    standFrameMs: 36,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 110,
     standFrameSrc: (frame: number) =>
       `/images/battle-characters/r1-triplets-baby-dragon/stand/${frame
         .toString()
@@ -142,6 +165,10 @@ const workstationPresets = {
     storageKey: "green-scale-dragon-layer-workstation-timeline-v3",
     standFrameCount: 90,
     idleFrameCount: 138,
+    standFrameMs: 33,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
     standFrameSrc: (frame: number) =>
       `/images/battle-characters/green-scale-dragon/stand/${frame
         .toString()
@@ -163,6 +190,10 @@ const workstationPresets = {
     storageKey: "dragon-raider-layer-workstation-timeline-v1",
     standFrameCount: 83,
     idleFrameCount: 69,
+    standFrameMs: 36,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
     standFrameSrc: (frame: number) =>
       `/images/battle-characters/dragon-raider/stand/${frame
         .toString()
@@ -173,9 +204,43 @@ const workstationPresets = {
         .padStart(3, "0")}.webp`,
     defaultLayers: dragonRaiderDefaultLayers,
   },
+  youngKnight: {
+    id: "young-knight",
+    name: "Young Knight",
+    cardLabel: "R4 card",
+    cardImage: "/images/cards/player/R4/card.webp",
+    standLabel: "R4 stand",
+    idleLabel: "R4 idle",
+    shadowLabel: "R4 shadow",
+    storageKey: "young-knight-layer-workstation-timeline-v3",
+    standFrameCount: 45,
+    idleFrameCount: 243,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/young-knight/combined/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/young-knight/combined/${(frame + 45)
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: youngKnightDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: 4660 },
+      idle: { startMs: 4661, endMs: DEFAULT_DURATION_MS },
+    },
+  },
 } satisfies Record<string, WorkstationPreset>;
 
-const activePreset = workstationPresets.dragonRaider;
+const activePreset = workstationPresets.youngKnight;
 
 const layerLabels: Record<LayerKey, string> = {
   cardBack: "Card back",
@@ -198,9 +263,10 @@ const defaultTimeline: Record<LayerKey, TimelineState> = {
 };
 
 function getInitialState(preset: WorkstationPreset) {
+  const presetTimeline = preset.defaultTimeline ?? defaultTimeline;
   const fallback = {
     layers: preset.defaultLayers,
-    timeline: defaultTimeline,
+    timeline: presetTimeline,
     durationMs: DEFAULT_DURATION_MS,
   };
 
@@ -213,7 +279,7 @@ function getInitialState(preset: WorkstationPreset) {
     const parsed = JSON.parse(saved) as Partial<typeof fallback>;
     return {
       layers: { ...preset.defaultLayers, ...parsed.layers },
-      timeline: { ...defaultTimeline, ...parsed.timeline },
+      timeline: { ...presetTimeline, ...parsed.timeline },
       durationMs: parsed.durationMs ?? DEFAULT_DURATION_MS,
     };
   } catch {
@@ -245,6 +311,23 @@ function frameFromWindow(
   );
 }
 
+function frameFromRuntimeStep(
+  timeMs: number,
+  timing: TimelineState,
+  frameCount: number,
+  frameMs: number,
+  startFrame: number,
+  loop: boolean
+) {
+  const elapsed = Math.max(0, timeMs - timing.startMs);
+
+  if (loop) {
+    return (startFrame + Math.floor(elapsed / frameMs)) % frameCount;
+  }
+
+  return Math.min(frameCount - 1, startFrame + Math.floor(elapsed / frameMs));
+}
+
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
@@ -266,6 +349,7 @@ export default function AnimationWorkstation() {
   const [idleFrame, setIdleFrame] = useState(0);
   const [particleFrame, setParticleFrame] = useState(0);
   const [showGrid, setShowGrid] = useState(true);
+  const [onionSkin, setOnionSkin] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copy layer values");
 
   useEffect(() => {
@@ -327,10 +411,24 @@ export default function AnimationWorkstation() {
     return timeMs >= timing.startMs && timeMs <= timing.endMs;
   };
   const displayStandFrame = isLayerActive("stand")
-    ? frameFromWindow(timeMs, timeline.stand, activePreset.standFrameCount, false)
+    ? frameFromRuntimeStep(
+        timeMs,
+        timeline.stand,
+        activePreset.standFrameCount,
+        activePreset.standFrameMs,
+        activePreset.standStartFrame,
+        false
+      )
     : standFrame;
   const displayIdleFrame = isLayerActive("idle")
-    ? frameFromWindow(timeMs, timeline.idle, activePreset.idleFrameCount, true)
+    ? frameFromRuntimeStep(
+        timeMs,
+        timeline.idle,
+        activePreset.idleFrameCount,
+        activePreset.idleFrameMs,
+        activePreset.idleStartFrame,
+        true
+      )
     : idleFrame;
   const displayParticleFrame = isLayerActive("particle")
     ? frameFromWindow(timeMs, timeline.particle, PARTICLE_FRAME_COUNT, false)
@@ -460,10 +558,13 @@ export default function AnimationWorkstation() {
   const resetLayer = () =>
     updateLayer(selectedLayer, activePreset.defaultLayers[selectedLayer]);
   const resetTiming = () =>
-    updateTiming(selectedLayer, defaultTimeline[selectedLayer]);
+    updateTiming(
+      selectedLayer,
+      (activePreset.defaultTimeline ?? defaultTimeline)[selectedLayer]
+    );
   const resetAll = () => {
     setLayers(activePreset.defaultLayers);
-    setTimeline(defaultTimeline);
+    setTimeline(activePreset.defaultTimeline ?? defaultTimeline);
     setDurationMs(DEFAULT_DURATION_MS);
     setTimeMs(0);
     setPlaying(false);
@@ -498,10 +599,16 @@ export default function AnimationWorkstation() {
     className?: string,
     extraStyle?: React.CSSProperties,
     previewScale = 1,
-    previewOpacity = 1
+    previewOpacity = 1,
+    forceRender = false,
+    ghost = false
   ) => {
     const layer = layers[key];
-    if (!layer.visible || !isLayerActive(key)) return null;
+    if (!layer.visible || (!isLayerActive(key) && !forceRender)) return null;
+
+    // Onion-skin ghost: dim the non-selected character so it reads as a
+    // reference to align size/position against.
+    const ghostOpacity = ghost ? 0.4 : 1;
 
     return (
       <button
@@ -512,7 +619,7 @@ export default function AnimationWorkstation() {
         style={{
           left: layer.x,
           top: layer.y,
-          opacity: layer.opacity * previewOpacity,
+          opacity: layer.opacity * previewOpacity * ghostOpacity,
           transform: `scale(${layer.scale * previewScale})`,
           ...extraStyle,
         }}
@@ -539,6 +646,9 @@ export default function AnimationWorkstation() {
             </button>
             <button type="button" onClick={() => setShowGrid((value) => !value)}>
               {showGrid ? "Grid on" : "Grid off"}
+            </button>
+            <button type="button" onClick={() => setOnionSkin((value) => !value)}>
+              {onionSkin ? "Onion skin on" : "Onion skin off"}
             </button>
             <button type="button" onClick={resetAll}>
               Reset all
@@ -599,18 +709,29 @@ export default function AnimationWorkstation() {
                 {renderShadowLayer()}
                 {renderImageLayer(
                   "stand",
-                  activePreset.standFrameSrc(displayStandFrame),
+                  activePreset.standFrameSrc(
+                    onionSkin ? standFrame : displayStandFrame
+                  ),
                   styles.characterLayer,
                   {
                     transformOrigin: "50% 82%",
                   },
-                  characterRevealScale,
-                  characterRevealProgress
+                  onionSkin ? 1 : characterRevealScale,
+                  onionSkin ? 1 : characterRevealProgress,
+                  onionSkin,
+                  onionSkin && selectedLayer !== "stand"
                 )}
                 {renderImageLayer(
                   "idle",
-                  activePreset.idleFrameSrc(displayIdleFrame),
-                  styles.characterLayer
+                  activePreset.idleFrameSrc(
+                    onionSkin ? idleFrame : displayIdleFrame
+                  ),
+                  styles.characterLayer,
+                  undefined,
+                  1,
+                  1,
+                  onionSkin,
+                  onionSkin && selectedLayer !== "idle"
                 )}
               </div>
             </section>
@@ -709,6 +830,43 @@ export default function AnimationWorkstation() {
                 />
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className={styles.panel}>
+          <h2>Character Size</h2>
+          <p style={{ margin: "0 0 8px", fontSize: 12, opacity: 0.7 }}>
+            Scales the stand and idle frames together so the reveal stays locked.
+          </p>
+          <div className={styles.fields}>
+            <label>
+              Size
+              <input
+                type="range"
+                min="0.2"
+                max="2"
+                step="0.01"
+                value={layers.stand.scale}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  updateLayer("stand", { scale: value });
+                  updateLayer("idle", { scale: value });
+                }}
+              />
+            </label>
+            <label>
+              Value
+              <input
+                type="number"
+                step="0.01"
+                value={layers.stand.scale}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  updateLayer("stand", { scale: value });
+                  updateLayer("idle", { scale: value });
+                }}
+              />
+            </label>
           </div>
         </section>
 
@@ -814,10 +972,10 @@ export default function AnimationWorkstation() {
               type="range"
               min="0"
               max={activePreset.standFrameCount - 1}
-              value={displayStandFrame}
+              value={onionSkin ? standFrame : displayStandFrame}
               onChange={(event) => setStandFrame(Number(event.target.value))}
             />
-            <span>{displayStandFrame}</span>
+            <span>{onionSkin ? standFrame : displayStandFrame}</span>
           </label>
           <label className={styles.sliderLabel}>
             Idle frame
@@ -825,10 +983,10 @@ export default function AnimationWorkstation() {
               type="range"
               min="0"
               max={activePreset.idleFrameCount - 1}
-              value={displayIdleFrame}
+              value={onionSkin ? idleFrame : displayIdleFrame}
               onChange={(event) => setIdleFrame(Number(event.target.value))}
             />
-            <span>{displayIdleFrame}</span>
+            <span>{onionSkin ? idleFrame : displayIdleFrame}</span>
           </label>
           <label className={styles.sliderLabel}>
             Particle frame

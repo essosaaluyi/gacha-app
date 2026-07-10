@@ -28,9 +28,15 @@ export function getNextDrawCost(): number {
 
 export function recordDrawOutcome(
   outcome: BattleOutcome,
-  detail?: Record<string, unknown>
+  detail?: Record<string, unknown>,
+  options?: { affectsCost?: boolean }
 ) {
-  lastOutcome = outcome;
+  if (options?.affectsCost === false) {
+    // Bonus-mode draws are free and must not discount the next normal draw.
+    lastOutcome = null;
+  } else {
+    lastOutcome = outcome;
+  }
 
   logEvent({
     kind: "draw",

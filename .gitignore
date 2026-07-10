@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.tmp-spreadsheet-build/
+.tmp-*/
+/tmp/
+/output/
+/outputs/
+
+# claude tooling worktrees + local temp
+.claude/worktrees/

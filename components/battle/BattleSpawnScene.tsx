@@ -109,6 +109,22 @@ const dragonRaiderLayers = {
   idle: { x: 56.3, y: 284.6, scale: 1, opacity: 1, visible: true },
 } satisfies RevealPreset["layers"];
 
+const youngKnightLayers = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 159.1, y: 531, scale: 1.25, opacity: 0.95, visible: true },
+  stand: { x: 68.03, y: 288.87, scale: 1.09, opacity: 1, visible: true },
+  idle: { x: 68.03, y: 288.87, scale: 1.09, opacity: 1, visible: true },
+} satisfies RevealPreset["layers"];
+
+const youngKnightTimeline = {
+  ...baseTimeline,
+  stand: { startMs: 2600, endMs: 4660 },
+  idle: { startMs: 4661, endMs: 7600 },
+} satisfies RevealPreset["timeline"];
+
 const revealPresets = {
   mami: {
     id: "mami",
@@ -210,9 +226,34 @@ const revealPresets = {
         .toString()
         .padStart(3, "0")}.webp`,
   },
+  youngKnight: {
+    id: "young-knight",
+    name: "Young Knight",
+    storageKey: "young-knight-layer-workstation-timeline-v3",
+    cardImage: "/images/cards/player/R4/card.webp",
+    standFrameCount: 45,
+    idleFrameCount: 243,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 82%",
+    idleTransformOrigin: "50% 82%",
+    durationMs: 7600,
+    timeline: youngKnightTimeline,
+    layers: youngKnightLayers,
+    standFrameSrc: (index: number) =>
+      `/images/battle-characters/young-knight/combined/${index
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (index: number) =>
+      `/images/battle-characters/young-knight/combined/${(index + 45)
+        .toString()
+        .padStart(4, "0")}.png`,
+  },
 } satisfies Record<string, RevealPreset>;
 
-const activeRevealPreset = revealPresets.dragonRaider;
+const activeRevealPreset = revealPresets.youngKnight;
 
 function loadSavedPreset(preset: RevealPreset) {
   if (typeof window === "undefined") {

@@ -1,5 +1,6 @@
 "use client";
 
+import DailyGachaPanel from "@/components/gacha/DailyGachaPanel";
 import PullSelection from "@/components/gacha/PullSelection";
 import ResultGrid from "@/components/gacha/ResultGrid";
 import RevealPlayer from "@/components/gacha/RevealPlayer";
@@ -206,9 +207,12 @@ return;
         />
 
         {!revealPreparing && !isRevealing && results.length === 0 && (
-  <PullSelection
-    askPullConfirm={askPullConfirm}
-  />
+  <>
+    <DailyGachaPanel />
+    <PullSelection
+      askPullConfirm={askPullConfirm}
+    />
+  </>
 )}
 
         {message && <p className="text-zinc-300 mb-6 text-center">{message}</p>}

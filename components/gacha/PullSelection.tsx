@@ -14,7 +14,7 @@ export default function PullSelection({
         className="bg-zinc-900 border border-zinc-700 hover:border-blue-400 rounded-2xl p-4 transition-transform duration-200 hover:scale-105 active:scale-95"
       >
         <img
-          src="/images/pack-1.png"
+          src="/images/pack-1.webp"
           alt="Single Pull"
           className="w-full aspect-[4/3] object-contain mb-3"
         />
@@ -31,7 +31,7 @@ export default function PullSelection({
         className="bg-zinc-900 border border-zinc-700 hover:border-purple-400 rounded-2xl p-4 transition-transform duration-200 hover:scale-105 active:scale-95"
       >
         <img
-          src="/images/pack-10.png"
+          src="/images/pack-10.webp"
           alt="10 Pull"
           className="w-full aspect-[4/3] object-contain mb-3"
         />
