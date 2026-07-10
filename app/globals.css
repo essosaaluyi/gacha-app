@@ -1250,6 +1250,7 @@ body.page-video-active .trust-page {
 .game-topbar-nav {
   display: flex;
   flex: 1;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
   min-width: 0;
@@ -1260,7 +1261,8 @@ body.page-video-active .trust-page {
   display: inline-flex;
   align-items: center;
   min-height: 42px;
-  padding: 0 9px;
+  padding: 0 7px;
+  white-space: nowrap;
   color: rgba(255, 255, 255, 0.86);
   font-size: 14px;
   font-weight: 800;

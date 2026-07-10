@@ -19,7 +19,8 @@ export type GameEventKind =
   | "pointsDelta"
   | "gachaPull"
   | "dailyClaim"
-  | "giftClaim";
+  | "giftClaim"
+  | "shopRedeem";
 
 export type GameEvent = {
   id: string;

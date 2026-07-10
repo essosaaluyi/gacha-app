@@ -116,6 +116,18 @@ const CONFIG_SECTIONS: Section[] = [
     ],
   },
   {
+    title: "Shop",
+    desc: "Item costs. Enabled: 1 opens redeeming, 0 keeps it in preview.",
+    accent: "text-blue-400",
+    source: "config",
+    fields: [
+      { path: "shop.enabled", label: "Enabled", hint: "0/1" },
+      { path: "shop.items.0.cost", label: "Single ticket", hint: "pts" },
+      { path: "shop.items.1.cost", label: "10-pull ticket", hint: "pts" },
+      { path: "shop.items.2.cost", label: "BGM pack", hint: "pts" },
+    ],
+  },
+  {
     title: "Battle Draw Costs",
     desc: "Points charged for the next draw, based on the previous outcome.",
     accent: "text-rose-400",

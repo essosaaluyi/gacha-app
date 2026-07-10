@@ -116,8 +116,30 @@ export const patchConfig = {
   dailyClaim: { memberDaily: 200, guestDaily: 200 },
 
   // Feature 8: shop foundation. Redeeming stays disabled until the points
-  // economy has been test-run.
-  shop: { enabled: false },
+  // economy has been test-run (admin can flip enabled to 1/true).
+  shop: {
+    enabled: false as boolean | number,
+    items: [
+      {
+        id: "pull-ticket-1",
+        title: "Single Pull Ticket",
+        desc: "One free gacha pull.",
+        cost: 100,
+      },
+      {
+        id: "pull-ticket-10",
+        title: "10 Pull Ticket",
+        desc: "A full 10-pull, at a discount.",
+        cost: 900,
+      },
+      {
+        id: "bgm-pack",
+        title: "Bonus BGM Pack",
+        desc: "Unlocks extra background tracks.",
+        cost: 300,
+      },
+    ],
+  },
 
   eventLog: { maxEvents: 2000 },
 

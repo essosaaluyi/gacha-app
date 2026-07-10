@@ -248,6 +248,7 @@ const [giftClaimable, setGiftClaimable] = useState(0);
           <Link href="/gacha">Gacha</Link>
           <Link href="/inventory">Cards</Link>
           <Link href="/history">History</Link>
+          <Link href="/shop">Shop</Link>
           <Link href="/how-to-play">Game Info</Link>
           <Link href="/rules">Rules</Link>
           <Link href="/support">Support</Link>
