@@ -17,6 +17,8 @@ import {
 } from "@/lib/wallet/walletStore";
 import { logEvent } from "@/lib/events/gameEventStore";
 import { patchConfig } from "@/lib/game-config/patchConfig";
+import GiftBoxOverlay from "@/components/GiftBoxOverlay";
+import { getClaimableCount } from "@/lib/giftbox/giftBoxStore";
 
 function MusicIcon() {
   return (
@@ -56,6 +58,8 @@ const [muted, setMuted] = useState(() => getBgmMuted());
 const [playing, setPlaying] = useState(false);
 const [welcomeGiftOpen, setWelcomeGiftOpen] = useState(false);
 const [welcomeGiftAmount, setWelcomeGiftAmount] = useState(0);
+const [giftBoxOpen, setGiftBoxOpen] = useState(false);
+const [giftClaimable, setGiftClaimable] = useState(0);
 
   const getPointSetting = async (key: string, fallback: number) => {
     const { data } = await supabase
@@ -212,6 +216,11 @@ const [welcomeGiftAmount, setWelcomeGiftAmount] = useState(0);
     return () => window.clearTimeout(timer);
   }, []);
 
+  // Gift box badge: refresh on mount and whenever the overlay closes.
+  useEffect(() => {
+    if (!giftBoxOpen) setGiftClaimable(getClaimableCount());
+  }, [giftBoxOpen]);
+
   // Unified wallet: the points readout always mirrors the shared balance.
   useEffect(() => {
     const syncPoints = () => setPoints(getWalletState().points);
@@ -252,6 +261,18 @@ const [welcomeGiftAmount, setWelcomeGiftAmount] = useState(0);
               className="game-topbar-tool"
             >
               {cooldownText ? cooldownText : "Daily Gift"}
+            </button>
+
+            <button
+              onClick={() => setGiftBoxOpen(true)}
+              className="game-topbar-tool relative"
+            >
+              Gift Box
+              {giftClaimable > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-zinc-950 text-[10px] font-black flex items-center justify-center">
+                  {giftClaimable}
+                </span>
+              )}
             </button>
 
             <button
@@ -383,6 +404,8 @@ const [welcomeGiftAmount, setWelcomeGiftAmount] = useState(0);
           </div>
         </div>
       )}
+      {giftBoxOpen && <GiftBoxOverlay onClose={() => setGiftBoxOpen(false)} />}
+
       {welcomeGiftOpen && (
   <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
     <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md text-white text-center">

@@ -105,6 +105,17 @@ const CONFIG_SECTIONS: Section[] = [
     ],
   },
   {
+    title: "Gift Box",
+    desc: "Ad-view bonus and milestone reward payouts.",
+    accent: "text-violet-400",
+    source: "config",
+    fields: [
+      { path: "giftBox.adRewardPoints", label: "Ad reward", hint: "pts" },
+      { path: "giftBox.milestones.0.points", label: "50 games", hint: "pts" },
+      { path: "giftBox.milestones.1.points", label: "200 games", hint: "pts" },
+    ],
+  },
+  {
     title: "Battle Draw Costs",
     desc: "Points charged for the next draw, based on the previous outcome.",
     accent: "text-rose-400",
