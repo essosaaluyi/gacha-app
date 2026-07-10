@@ -10,8 +10,8 @@ Ability Details:
 7g counter
 
 Visual Identity:
-Fallen angel duelist with smaller teal eyeshield and visible yellow eye.
-Glossy silver armor, purple shoulder plates, torn violet cloak, one white wing.
+Anime cel-shaded fallen angel duelist with smaller teal eyeshield and visible yellow eye.
+Three-tone silver armor, purple shoulder plates, softened torn violet cloak, one white wing.
 Slim rapier fighter with tragic holy-warrior presence.
 
 Character Phrases:
