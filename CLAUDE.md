@@ -17,6 +17,7 @@ Web-based gacha battle game: PixiJS renderer inside a Next.js/React shell. Supab
 - Keep tool output short: builds/tests → report only errors and relevant lines.
 - If `gacha-game-patch-brief.md` exists, it is the source of truth for the current patch. Read only the section relevant to the current task.
 - Dev server: the user runs it on :3000. Never start a second one (shared .next cache breaks).
+- Stale CSS: Turbopack's persistent cache *intermittently* keeps serving an old compiled `globals.css`, so an edit silently does nothing and looks like the CSS is wrong. Before debugging a style that "didn't apply", run `npm run check:css -- <selector>` — it says whether the rule reached the served bundle. If it is in the source but not served, stop the server and `npm run dev:clean`. Don't clear the cache reflexively; a full rebuild is slow and the fault is occasional.
 - At session end, when the user says "write handoff", fill in `session-handoff.md`.
 
 # Compact instructions

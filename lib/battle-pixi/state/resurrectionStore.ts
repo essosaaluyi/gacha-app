@@ -1,4 +1,4 @@
-// Feature 3: resurrection (逆転) reveal.
+// Feature 3: resurrection (reversal) reveal.
 // When the "none" fakeout path hides a predetermined WIN, the win is
 // revealed pachislo-style: the current game reads as a total failure,
 // the next game starts normally, then mid-game the screen cracks and

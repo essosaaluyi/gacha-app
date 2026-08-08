@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import TopBar from "@/components/TopBar";
 import HelpNav from "@/components/trust/HelpNav";
 import LegalFooter from "@/components/trust/LegalFooter";
 
@@ -25,6 +26,7 @@ export default function InfoPageLayout({
   return (
     <main className={`trust-page trust-page-${variant}`}>
       <div className="trust-page-shade" />
+      <TopBar />
       <div className="trust-shell">
         <aside className="trust-sidebar">
           <Link href="/menu" className="trust-back-link">

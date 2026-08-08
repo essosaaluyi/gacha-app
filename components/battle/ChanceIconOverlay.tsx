@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import {
   getChanceIconOverlayState,
@@ -24,14 +25,24 @@ export default function ChanceIconOverlay() {
       {iconIndexes.map((index) => (
         <div
           key={index}
-          className="chance-icon-slot"
-          style={{ animationDelay: `${index * 90}ms` }}
+          className={`chance-icon-slot ${
+            state.dismissed[index] ? "chance-icon-slot-dismissed" : ""
+          }`}
         >
+          {Array.from({ length: 10 }).map((_, particleIndex) => (
+            <span
+              key={particleIndex}
+              className="chance-icon-particle"
+              style={{
+                "--chance-particle-angle": `${particleIndex * 36}deg`,
+                "--chance-particle-distance": `${32 + (particleIndex % 3) * 12}px`,
+              } as CSSProperties}
+            />
+          ))}
           <img
             src="/images/chanceicon.webp"
             alt=""
             className="chance-icon-image"
-            style={{ animationDelay: `${index * 90}ms` }}
           />
         </div>
       ))}

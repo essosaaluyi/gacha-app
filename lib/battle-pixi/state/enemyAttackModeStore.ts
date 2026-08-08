@@ -1,3 +1,5 @@
+import { patchConfig } from "@/lib/game-config/patchConfig";
+
 let enemyAttackModeTurnsLeft = 0;
 let enemyAttackModeTotalTurns = 0;
 let playerCountered = false;
@@ -14,8 +16,12 @@ export function getEnemyAttackModeTurnsLeft() {
 }
 
 export function startEnemyAttackMode() {
-  enemyAttackModeTurnsLeft = 3;
-  enemyAttackModeTotalTurns = 3;
+  // Read at arm time, not module load, so an admin change applies to the next
+  // window without a reload.
+  const turns = Math.max(1, Math.round(patchConfig.fatalMode.enemyWindowTurns));
+
+  enemyAttackModeTurnsLeft = turns;
+  enemyAttackModeTotalTurns = turns;
   playerCountered = false;
   playerResetEnemyAttack = false;
 

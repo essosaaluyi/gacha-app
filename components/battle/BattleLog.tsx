@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   getBattleLogs,
@@ -29,9 +29,16 @@ function getLogColor(type: string) {
   }
 }
 
-export default function BattleLog() {
+type BattleLogProps = {
+  /** "ticker" renders the cabinet LED panel's amber dot-matrix readout. */
+  variant?: "panel" | "ticker";
+};
+
+const TICKER_MAX_LINES = 8;
+const TICKER_SYS_TYPES = new Set(["draw", "success", "chance"]);
+
+export default function BattleLog({ variant = "panel" }: BattleLogProps) {
   const [logs, setLogs] = useState(getBattleLogs());
-  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     return subscribeBattleLogs(() => {
@@ -39,56 +46,49 @@ export default function BattleLog() {
     });
   }, []);
 
-  useEffect(() => {
-    const box = scrollRef.current;
-    if (!box) return;
+  if (variant === "ticker") {
+    const tickerLogs = logs.slice(-TICKER_MAX_LINES);
 
-    box.scrollTop = box.scrollHeight;
-  }, [logs]);
+    return (
+      <div className="bcab-ticker" role="status" aria-live="polite">
+        {tickerLogs.length ? (
+          tickerLogs.map((log, index) => (
+            <div
+              key={`${log.message}-${index}`}
+              className={`bcab-ticker-line ${
+                TICKER_SYS_TYPES.has(log.type) ? "bcab-sys" : ""
+              }`}
+            >
+              &gt; {log.message}
+            </div>
+          ))
+        ) : (
+          <div className="bcab-ticker-line bcab-sys">&gt; SYSTEM READY</div>
+        )}
+      </div>
+    );
+  }
+
+  const recentLogs = logs.slice(-2);
 
   return (
     <div
-      className="bg-zinc-900/85 border border-zinc-700 rounded-xl p-3 text-white overflow-hidden"
-      style={{
-        width: "250px",
-        height: "640px",
-      }}
+      className="battle-log-ticker"
+      role="status"
     >
-      <h2 className="font-bold text-lg text-yellow-400 mb-2">
-        Battle Log
-      </h2>
-
-      <div
-  ref={scrollRef}
-  className="overflow-y-auto overflow-x-hidden text-sm pr-2"
-  style={{
-    height: "585px",
-  }}
->
-        {logs.map((log, index) => {
-          const isDraw = log.type === "draw";
-
-          return (
-            <div
-              key={index}
-              className={`
-                rounded
-                px-2
-                py-[2px]
-                leading-tight
-                whitespace-normal
-                break-words
-                max-w-full
-                ${isDraw ? "mt-2 border-t border-zinc-600 pt-1" : "mt-0"}
-              `}
-              style={{
-                color: getLogColor(log.type),
-              }}
-            >
-              {log.message}
-            </div>
-          );
-        })}
+      <img className="battle-hud-frame" src="/images/battle-ui/production/v1/transparent/event-ticker-frame-v1.png" alt="" />
+      <div className="battle-log-events" aria-live="polite">
+        {recentLogs.length ? recentLogs.map((log, index) => (
+          <div
+            key={`${log.message}-${index}`}
+            className="battle-log-event"
+            style={{ color: getLogColor(log.type) }}
+          >
+            {log.message}
+          </div>
+        )) : (
+          <div className="battle-log-event">Battle initialized</div>
+        )}
       </div>
     </div>
   );

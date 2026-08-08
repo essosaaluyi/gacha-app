@@ -3,7 +3,13 @@
 // this file is safe to edit directly. Values here can be migrated into the
 // spreadsheet + tools/sync-game-config-from-spreadsheet.py later.
 
-export type FakeoutVariant = "none" | "delayed3" | "classic";
+// How a single buildup game of the attack fakeout presents itself. Rolled
+// fresh for every buildup game, so a cycle is a random mix of the two.
+export type FakeoutPresentation = "dialogue" | "chanceReveal";
+
+// Declared here rather than imported from fakeoutChanceRevealStore: that store
+// reads this config, so importing back would close a dependency cycle.
+export type ChanceRevealColorName = "blue" | "green" | "red";
 
 export const patchConfig = {
   // Gacha pull odds (%) by rarity. Editable in /admin; overrides the
@@ -26,21 +32,99 @@ export const patchConfig = {
     ratesByTier: { R: 10, SR: 20, SSR: 30, UR: 40 } as Record<string, number>,
   },
 
-  // Feature 2: how an attack attempt presents. Weighted lottery.
-  // "classic" is the pre-patch enemy-counter fakeout, kept at weight 0 so it
-  // can be tuned back on without a code change.
-  fakeout: {
-    variants: [
-      { variant: "none" as FakeoutVariant, weight: 50 },
-      { variant: "delayed3" as FakeoutVariant, weight: 50 },
-      { variant: "classic" as FakeoutVariant, weight: 0 },
-    ],
-    delayedCycleGames: 3,
+  // The two "fatal" windows, both counted in draws.
+  //
+  // enemyWindowTurns: once the enemy's attack counter empties, the player has
+  //   this many draws to escape. Escaping (counter or reset) means surviving
+  //   and refilling the enemy's counter; failing kills the active card. The
+  //   escape symbols themselves are still read in BattlePixiStage.
+  // playerWindowGames: after the player lands an attack, this many draws to
+  //   hit again and finish the enemy off.
+  fatalMode: {
+    enemyWindowTurns: 3,
+    playerWindowGames: 2,
   },
 
-  // Feature 3: resurrection (逆転) reveal for hidden wins on the "none" path.
+  // Feature 2: the attack fakeout cycle.
+  //
+  // A presented attack attempt always arms the same shape: `buildupGames`
+  // games of tension, then one payoff game. The payoff game starts the
+  // electricity struggle on the draw click and names the winner on the third
+  // flip — so the player has the whole cycle to overturn a predetermined miss.
+  //
+  // There is no longer an outer "which cycle shape" lottery. The only roll is
+  // per buildup game: does this game show dialogue, or the chance reveal
+  // visual. It is re-rolled every game and cleared on the next draw.
+  fakeout: {
+    buildupGames: 3,
+    presentations: [
+      { presentation: "dialogue" as FakeoutPresentation, weight: 50 },
+      { presentation: "chanceReveal" as FakeoutPresentation, weight: 50 },
+    ],
+    chanceRevealColors: {
+      win: { blue: 10, green: 30, red: 60 },
+      lose: { blue: 65, green: 30, red: 5 },
+    },
+
+    // Characters/colours that actually have authored two-layer frames. The
+    // reveal is never attempted outside this list -- without the gate an
+    // unauthored card fires ~180 requests that all 404. There is no fallback
+    // presentation, so an uncovered pair simply shows nothing.
+    // Extend as frame sequences are delivered.
+    chanceRevealComposite: {
+      characters: ["UR3"] as string[],
+      colors: ["blue"] as ChanceRevealColorName[],
+    },
+
+    // Test aid: pins the reveal to the one character/colour pair that has
+    // artwork, so it plays regardless of which card is actually active.
+    // Off by default -- the real card + colour lottery applies. Flip to true
+    // to preview the reveal without needing a UR3 card in hand.
+    chanceRevealTest: {
+      enabled: false,
+      forceCharacter: "UR3",
+      forceColor: "blue" as ChanceRevealColorName,
+    },
+  },
+
+  // Bonus grade. Rolled once, at the opening draw, and it decides both which
+  // opening video plays and what the bonus is:
+  //   regular  -> 5/5 classic bonus
+  //   super    -> 7/7 classic bonus
+  //   superMax -> nested loop bonus, delivered via the freeze
+  //
+  // Drawing a Chance card in the opening hand is the "bonus chance": it takes
+  // the regular bonus off the table, so the player is guaranteed at least a
+  // super. Weights are relative, not percentages.
+  bonusType: {
+    base: { regular: 6, super: 3, superMax: 1 },
+    withBonusChance: { super: 7, superMax: 3 },
+    regularGames: 5,
+    superGames: 7,
+
+    // Freeze: how superMax is delivered. A regular/super opening starts
+    // playing, the freeze cuts in partway through, and the super-max opening
+    // follows it.
+    //
+    // The cut lands at any random point after minMs. There is no fixed upper
+    // bound — the ceiling is whatever the running clip actually allows, which
+    // is its duration minus the tail guard. That matters because the two
+    // openings are different lengths (regular 11.6s, super 15.5s), so a fixed
+    // ceiling would either never fire on the short one or waste the long one.
+    freeze: {
+      minMs: 4000,
+      // Never cut in this close to the end; the freeze needs room to read.
+      tailGuardMs: 1200,
+    },
+  },
+
+  // Feature 3: resurrection (reversal) reveal for hidden wins on the "none" path.
+  // OFF: the glitch visual read as cheap and players could not tell what had
+  // triggered it. With this off a hidden win simply resolves as a normal win
+  // on the spot (Attack Success -> Fatal Mode) instead of being hidden and
+  // revealed a game later. The code is kept so a better version can be built.
   resurrection: {
-    enabled: true,
+    enabled: false,
     revealDelayMs: 1200,
   },
 
@@ -77,21 +161,39 @@ export const patchConfig = {
   //   otherwise       → a normal bonus reward (no bar shown)
   // A left-arrow + BAR indicator animates on both bar events to build the
   // "reset chance" tension while the cards flip.
+  //
+  // There is no resetGamesTo lever any more: a reset restores the bonus to the
+  // length it was won with (7G back to 7/7, 5G back to 5/5). The old fixed 5
+  // quietly shortened every 7G bonus that hit a reset.
   barReset: {
     realResetChance: 1 / 9,
     fakeChance: 1 / 6,
     fakePoints: 20,
-    resetGamesTo: 5,
   },
 
   // Feature 6: post-bonus collection (pick-me) phase.
+  // Picks are finite, so running low is the tension. Cards that pay AND grant a
+  // pick are the relief; the deliberate cost of that generosity is a higher
+  // EMPTY count. `empty` is therefore the main lever for how long a run lasts.
   collection: {
     gridSize: 12,
-    composition: { collect: 1, empty: 1, chance: 1, point: 9 },
+    composition: {
+      collect: 1, // ends the round
+      empty: 3, // duds — the price of the combo cards
+      chance: 1, // x2 the next pick
+      doubleAll: 1, // x2 everything banked so far
+      mystery: 1, // hidden value, settled at deal time
+      pick: 1, // picks only
+      point: 4, // payouts; the first `comboPickCards` also grant a pick
+    },
+    // Point values are drawn from this ladder and allocated to sum to the
+    // bonus total, so the board's MAX is exactly what a perfect run pays.
+    pointLadder: [10, 20, 50, 100, 300, 1000] as number[],
+    comboPickCards: 2,
+    pickCardPicks: 1,
     roundingUnit: 100,
     chanceMultiplier: 2,
     cascadeStep: 0.25,
-    replayGrantsExtraFlip: true,
     initialFlips: 3,
   },
 
@@ -114,6 +216,10 @@ export const patchConfig = {
   // rows member_daily_points / guest_daily_points (editable in /admin);
   // these are the code fallbacks when those rows are absent.
   dailyClaim: { memberDaily: 200, guestDaily: 200 },
+
+  // Starting stake for a battle run. Applied as a floor (top up to this when
+  // below it), never as a repeatable grant -- see resetBattleRun.
+  battleStart: { minimumPoints: 100 },
 
   // Feature 8: shop foundation. Redeeming stays disabled until the points
   // economy has been test-run (admin can flip enabled to 1/true).
@@ -141,11 +247,110 @@ export const patchConfig = {
     ],
   },
 
+  // Battle cabinet (v8 shell): Pixi table layout overrides, applied only in
+  // cabinet mode. Units are Pixi canvas px (1200x500 stage, displayed at
+  // scale .82 inside the table glass). Values are chosen so the card stack
+  // matches the disk exit pocket and cards land on the three recessed bays in
+  // the premium table plate.
+  cabinetTable: {
+    CARD_SCALE: 0.22,
+    CARD_START_X: 132,
+    CARD_START_Y: 189, // aligned with the disk exit gate row
+    CARD_END_X: 313,
+    CARD_END_Y: 189,
+    SLOT1_X: 285,
+    SLOT1_Y: 237,
+    SLOT2_X: 600,
+    SLOT2_Y: 237,
+    SLOT3_X: 915,
+    SLOT3_Y: 237,
+  },
+
+  // Slot-machine reel mechanics layered over the three-card table.
+  // Presentation only — none of this touches the outcome lottery. The hand is
+  // already decided by resultLottery before a single card is flipped; these
+  // rules only change how that decided hand is delivered to the player.
+  reelMechanics: {
+    // Combination flash, fired as the completing card settles.
+    //
+    // The table reads as circuitry that has just electrically detected the
+    // cards. Once all three are down, thin digital traces escape from the
+    // bottom edge of each card and snake outward across the table in
+    // right-angle steps, the way a current runs through a printed board.
+    //
+    // The table is split into three sections, one per card — three reels in
+    // slot terms — and each section's card emits its own traces. Everything is
+    // drawn on the table's perspective plane, so the traces foreshorten with
+    // the table and stay inside the glass.
+    flash: {
+      enabled: true,
+      // Symbols that pay a flash when all three match.
+      tripleSymbols: ["Coin", "Bar", "Defense", "Reply"] as string[],
+      // Attack landing on the target slot flashes too.
+      attackOnTarget: true,
+      // Chance flashes, brightness scaling with how many landed.
+      chance: true,
+      // Total run time of the trace burst.
+      holdMs: 1000,
+      // Fired this long after the last card settles, so it lands together with
+      // the existing shine sweep rather than as a separate beat.
+      startDelayMs: 460,
+
+      trace: {
+        // Traces emitted per card. Three sections x this many.
+        // Read together with widthPx: the burst is meant to look like fine
+        // etched circuitry, so it is many hair-thin lines rather than a few
+        // heavy ones.
+        perCard: 20,
+        // Right-angle turns per trace (min, max).
+        segments: [3, 7] as [number, number],
+        // Step sizes as a fraction of the table, per straight run.
+        stepAcross: [0.04, 0.3] as [number, number],
+        stepToward: [0.05, 0.22] as [number, number],
+        // Line weight in stage px (min, max).
+        widthPx: [0.5, 1.3] as [number, number],
+        // Far limit of the trace field, in normalised table space (v=0 is the
+        // top of the Pixi plane, which sits ABOVE the table artwork -- the
+        // felt does not start until further down). Traces used to be allowed
+        // up to v=0.02 and so ran off the top of the table into the cabinet.
+        // Card bays begin at v≈0.22, so this keeps the field on the felt with
+        // a little room above the cards. Raise it if any still escape.
+        minV: 0.16,
+        // Length of the bright travelling tail, as a fraction of the path.
+        tailFraction: 0.55,
+        // Sideways offset of the red/blue fringe copies, in stage px. This is
+        // what gives the traces the reference's chromatic shimmer.
+        // Scaled down with widthPx: at the old 1.4 the fringe copies were
+        // wider apart than the hairlines themselves and read as three lines.
+        chromaOffsetPx: 0.8,
+      },
+    },
+
+    // Tenpai: two shown cards match, so the one still face down can
+    // complete the line. Raises the REACH text only — the flip is never held
+    // back, and the player can turn the last card whenever they like.
+    tenpai: {
+      enabled: true,
+    },
+  },
+
   eventLog: { maxEvents: 2000 },
 
-  // Testing aids. forceFakeoutVariant overrides the fakeout lottery.
+  // Testing aids. forceFakeoutPresentation pins every buildup game to one
+  // presentation instead of rolling dialogue/chanceReveal per game.
   debug: {
-    forceFakeoutVariant: null as FakeoutVariant | null,
+    forceFakeoutPresentation: null as FakeoutPresentation | null,
+
+    // Pins a battle outcome to a fixed probability (0-1), overriding the
+    // spreadsheet odds. Every other outcome keeps its relative odds and shares
+    // whatever probability is left, so the distribution still sums to 1.
+    // Empty = spreadsheet values. Testing aid only; leave empty for release.
+    // Example: { SingleChance: 0.5 } to exercise the chance reward quickly.
+    //
+    // TEST ONLY — half of all hands are forced to a single Chance so the land
+    // cue, impact wave, and points reveal remain easy to test. Set back to {}
+    // before shipping to restore the spreadsheet odds.
+    forceResultProbability: { SingleChance: 0.5 } as Record<string, number>,
   },
 };
 
@@ -192,10 +397,28 @@ export function getPatchConfigOverrides(): DeepPartial<typeof patchConfig> {
   }
 }
 
+/**
+ * deepMerge can add and change keys but never delete them, which is wrong for
+ * the outcome pins: that object is a dictionary the admin owns wholesale, and
+ * un-pinning an outcome means removing its key. Merging an override that omits
+ * it would silently leave the old pin (or the code default) in place, so the
+ * pins are assigned outright whenever the overrides carry them.
+ */
+function applyOverrides(overrides: DeepPartial<typeof patchConfig>) {
+  deepMerge(patchConfig as Record<string, unknown>, overrides as Record<string, unknown>);
+
+  const pins = overrides?.debug?.forceResultProbability;
+
+  if (pins) {
+    patchConfig.debug.forceResultProbability = {
+      ...(pins as Record<string, number>),
+    };
+  }
+}
+
 /** Merge stored overrides onto the live config. Runs once on module load. */
 export function hydratePatchConfig() {
-  const overrides = getPatchConfigOverrides();
-  deepMerge(patchConfig as Record<string, unknown>, overrides as Record<string, unknown>);
+  applyOverrides(getPatchConfigOverrides());
 }
 
 /** Persist overrides and apply them to the live config immediately. */
@@ -204,7 +427,7 @@ export function savePatchConfigOverrides(
 ) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
-  deepMerge(patchConfig as Record<string, unknown>, overrides as Record<string, unknown>);
+  applyOverrides(overrides);
 }
 
 export function clearPatchConfigOverrides() {

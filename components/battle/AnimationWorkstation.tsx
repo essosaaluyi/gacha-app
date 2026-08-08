@@ -4,28 +4,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import BattleBackground from "./BattleBackground";
 import styles from "./AnimationWorkstation.module.css";
-
-type LayerKey =
-  | "cardBack"
-  | "cardFront"
-  | "particle"
-  | "burst"
-  | "shadow"
-  | "stand"
-  | "idle";
-
-type LayerState = {
-  x: number;
-  y: number;
-  scale: number;
-  opacity: number;
-  visible: boolean;
-};
+import {
+  normalizeSavedRevealLayers,
+  type RevealLayerKey as LayerKey,
+  type RevealLayerMap,
+  type RevealLayerState as LayerState,
+  type SavedRevealLayers,
+} from "./revealPresetSafety";
 
 type TimelineState = {
   startMs: number;
   endMs: number;
 };
+
+type PreviewSide = "player" | "enemy";
 
 const STAGE_WIDTH = 1280;
 const STAGE_HEIGHT = 720;
@@ -37,6 +29,7 @@ type WorkstationPreset = {
   name: string;
   cardLabel: string;
   cardImage: string;
+  characterFrameWidth?: number;
   standLabel: string;
   idleLabel: string;
   shadowLabel: string;
@@ -47,9 +40,11 @@ type WorkstationPreset = {
   idleFrameMs: number;
   standStartFrame: number;
   idleStartFrame: number;
+  standTransformOrigin?: string;
+  idleTransformOrigin?: string;
   standFrameSrc: (frame: number) => string;
   idleFrameSrc: (frame: number) => string;
-  defaultLayers: Record<LayerKey, LayerState>;
+  defaultLayers: RevealLayerMap;
   defaultTimeline?: Record<LayerKey, TimelineState>;
 };
 
@@ -103,7 +98,147 @@ const youngKnightDefaultLayers: Record<LayerKey, LayerState> = {
   idle: { x: 68.03, y: 288.87, scale: 1.09, opacity: 1, visible: true },
 };
 
-const workstationPresets = {
+const necroRunnerDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 159.1, y: 531, scale: 1.25, opacity: 0.95, visible: true },
+  stand: { x: 68.03, y: 288.87, scale: 1.35, opacity: 1, visible: true },
+  idle: { x: 68.03, y: 288.87, scale: 1.35, opacity: 1, visible: true },
+};
+
+const redTornDragonDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 188, y: 542, scale: 1.25, opacity: 0.95, visible: true },
+  stand: { x: 59, y: 362, scale: 1.3, opacity: 1, visible: true },
+  idle: { x: 59, y: 362, scale: 1.3, opacity: 1, visible: false },
+};
+
+const vigilanteDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 158.66, y: 543.34, scale: 1.25, opacity: 0.95, visible: true },
+  stand: { x: -401, y: 70, scale: 0.3893, opacity: 1, visible: true },
+  idle: { x: -401, y: 70, scale: 0.3893, opacity: 1, visible: false },
+};
+
+const thunderDragonDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 185, y: 542, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: -328.13, y: 2.8, scale: 0.6, opacity: 1, visible: true },
+  idle: { x: -328.13, y: 2.8, scale: 0.6, opacity: 1, visible: false },
+};
+
+const bloodManDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 185, y: 542, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: -310, y: 11, scale: 0.42, opacity: 1, visible: true },
+  idle: { x: -310, y: 11, scale: 0.42, opacity: 1, visible: false },
+};
+
+const ghostOfEmperorDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 185, y: 542, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: -310, y: 1, scale: 0.483, opacity: 1, visible: true },
+  idle: { x: -310, y: 1, scale: 0.483, opacity: 1, visible: false },
+};
+
+const whiteKnightDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 147.67, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: -245.27, y: -51.8, scale: 0.45, opacity: 1, visible: true },
+  idle: { x: -225, y: 25, scale: 0.45, opacity: 1, visible: false },
+};
+
+const doubleStrikerDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -82.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 147.67, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: -245.27, y: -51.8, scale: 0.36, opacity: 1, visible: true },
+  idle: { x: -245.27, y: -51.8, scale: 0.36, opacity: 1, visible: false },
+};
+
+const brokenDollDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 142, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 142, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: -29.2, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 132.6, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 147.67, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: -245.27, y: -51.8, scale: 0.306, opacity: 1, visible: true },
+  idle: { x: -245.27, y: -51.8, scale: 0.306, opacity: 1, visible: false },
+};
+
+const enemyOneDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 968, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 968, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: 800.8, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 957.4, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 967.63, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: 850.07, y: 204.2, scale: 1.02, opacity: 1, visible: true },
+  idle: { x: 1045.27, y: -51.8, scale: 1.02, opacity: 1, visible: false },
+};
+
+const enemyTwoDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 968, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 968, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: 800.8, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 957.4, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 967.63, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: 865, y: 220.2, scale: 0.95, opacity: 1, visible: true },
+  idle: { x: 1045.27, y: -51.8, scale: 0.95, opacity: 1, visible: false },
+};
+
+const enemyFourDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 968, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 968, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: 800.8, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 957.4, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 967.63, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: 850.07, y: 204.2, scale: 0.816, opacity: 1, visible: true },
+  idle: { x: 1045.27, y: -51.8, scale: 0.816, opacity: 1, visible: false },
+};
+
+const enemySixDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 968, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 968, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: 800.8, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 957.4, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 967.63, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: 850.07, y: 204.2, scale: 0.816, opacity: 1, visible: true },
+  idle: { x: 1045.27, y: -51.8, scale: 0.816, opacity: 1, visible: false },
+};
+
+const enemySevenDefaultLayers: Record<LayerKey, LayerState> = {
+  cardBack: { x: 968, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 968, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: 800.8, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 957.4, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 967.63, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: 840.47, y: 217, scale: 0.91, opacity: 1, visible: true },
+  idle: { x: 1045.27, y: -51.8, scale: 0.91, opacity: 1, visible: false },
+};
+
+const workstationPresets: Record<string, WorkstationPreset> = {
   mami: {
     id: "mami",
     name: "Mami",
@@ -238,18 +373,509 @@ const workstationPresets = {
       idle: { startMs: 4661, endMs: DEFAULT_DURATION_MS },
     },
   },
-} satisfies Record<string, WorkstationPreset>;
-
-const activePreset = workstationPresets.youngKnight;
-
-const layerLabels: Record<LayerKey, string> = {
-  cardBack: "Card back",
-  cardFront: activePreset.cardLabel,
-  particle: "Reveal particle",
-  burst: "Light burst",
-  shadow: activePreset.shadowLabel,
-  stand: activePreset.standLabel,
-  idle: activePreset.idleLabel,
+  necroRunner: {
+    id: "necro-runner",
+    name: "Necro Runner",
+    cardLabel: "SR1 card",
+    cardImage: "/images/cards/player/SR1/card.webp",
+    standLabel: "SR1 reveal",
+    idleLabel: "SR1 idle",
+    shadowLabel: "SR1 shadow",
+    storageKey: "necro-runner-layer-workstation-timeline-v1",
+    standFrameCount: 74,
+    idleFrameCount: 74,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/necro-runner/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/necro-runner/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    defaultLayers: necroRunnerDefaultLayers,
+  },
+  redTornDragon: {
+    id: "red-torn-dragon",
+    name: "Red Torn Dragon",
+    cardLabel: "SR2 card",
+    cardImage: "/images/cards/player/SR2/card.webp",
+    standLabel: "SR2 stand loop",
+    idleLabel: "SR2 unused idle",
+    shadowLabel: "SR2 shadow",
+    storageKey: "red-torn-dragon-layer-workstation-timeline-v5",
+    standFrameCount: 86,
+    idleFrameCount: 86,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/red-torn-dragon/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/red-torn-dragon/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    defaultLayers: redTornDragonDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  vigilante: {
+    id: "vigilante",
+    name: "Vigilante",
+    cardLabel: "SR3 card",
+    cardImage: "/images/cards/player/SR3/card.webp",
+    characterFrameWidth: 1280,
+    standTransformOrigin: "48.75% 50.28%",
+    idleTransformOrigin: "48.75% 50.28%",
+    standLabel: "SR3 idle-as-stand loop",
+    idleLabel: "SR3 unused idle",
+    shadowLabel: "SR3 shadow",
+    storageKey: "vigilante-layer-workstation-timeline-v9",
+    standFrameCount: 119,
+    idleFrameCount: 119,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 29,
+    idleStartFrame: 0,
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/vigilante/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/vigilante/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: vigilanteDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  thunderDragon: {
+    id: "thunder-dragon",
+    name: "Thunder Dragon",
+    cardLabel: "SSR1 card",
+    cardImage: "/images/cards/player/SSR1/card.webp",
+    characterFrameWidth: 1112,
+    standLabel: "SSR1 idle-as-stand loop",
+    idleLabel: "SSR1 unused idle",
+    shadowLabel: "SSR1 shadow",
+    storageKey: "thunder-dragon-layer-workstation-timeline-v4",
+    standFrameCount: 67,
+    idleFrameCount: 67,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 7,
+    idleStartFrame: 0,
+    standTransformOrigin: "48.11% 48.68%",
+    idleTransformOrigin: "48.11% 48.68%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/thunder-dragon/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/thunder-dragon/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    defaultLayers: thunderDragonDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  bloodMan: {
+    id: "blood-man",
+    name: "Blood Man",
+    cardLabel: "SSR2 card",
+    cardImage: "/images/cards/player/SSR2/card.webp",
+    characterFrameWidth: 1120,
+    standLabel: "SSR2 idle-as-stand loop",
+    idleLabel: "SSR2 unused idle",
+    shadowLabel: "SSR2 shadow",
+    storageKey: "blood-man-layer-workstation-timeline-v3",
+    standFrameCount: 100,
+    idleFrameCount: 100,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/blood-man/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/blood-man/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: bloodManDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  ghostOfEmperor: {
+    id: "ghost-of-emperor",
+    name: "Ghost of Emperor",
+    cardLabel: "SSR3 card",
+    cardImage: "/images/cards/player/SSR3/card.webp",
+    characterFrameWidth: 1120,
+    standLabel: "SSR3 idle-as-stand loop",
+    idleLabel: "SSR3 unused idle",
+    shadowLabel: "SSR3 shadow",
+    storageKey: "ghost-of-emperor-layer-workstation-timeline-v3",
+    standFrameCount: 124,
+    idleFrameCount: 124,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/ghost-of-emperor/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/ghost-of-emperor/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: ghostOfEmperorDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  whiteKnight: {
+    id: "white-knight",
+    name: "White Knight",
+    cardLabel: "SSR4 card",
+    cardImage: "/images/cards/player/SSR4/card.webp",
+    characterFrameWidth: 960,
+    standLabel: "SSR4 idle-as-stand loop",
+    idleLabel: "SSR4 unused idle",
+    shadowLabel: "SSR4 shadow",
+    storageKey: "white-knight-layer-workstation-timeline-v1",
+    standFrameCount: 95,
+    idleFrameCount: 95,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/white-knight/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/white-knight/idle/${frame
+        .toString()
+        .padStart(3, "0")}.png`,
+    defaultLayers: whiteKnightDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  doubleStriker: {
+    id: "double-striker",
+    name: "Double Striker",
+    cardLabel: "UR2 card",
+    cardImage: "/images/cards/player/UR2/card.webp",
+    characterFrameWidth: 960,
+    standLabel: "UR2 idle-as-stand loop",
+    idleLabel: "UR2 unused idle",
+    shadowLabel: "UR2 shadow",
+    storageKey: "double-striker-layer-workstation-timeline-v1",
+    standFrameCount: 124,
+    idleFrameCount: 124,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 25,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/double-striker/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/double-striker/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: doubleStrikerDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  brokenDoll: {
+    id: "broken-doll",
+    name: "Broken Doll",
+    cardLabel: "UR3 card",
+    cardImage: "/images/cards/player/UR3/card.webp",
+    characterFrameWidth: 960,
+    standLabel: "UR3 idle-as-stand loop",
+    idleLabel: "UR3 unused idle",
+    shadowLabel: "UR3 shadow",
+    storageKey: "broken-doll-layer-workstation-timeline-v1",
+    standFrameCount: 124,
+    idleFrameCount: 124,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/broken-doll/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/broken-doll/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: brokenDollDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  enemyOne: {
+    id: "enemy-one",
+    name: "Enemy 1",
+    cardLabel: "Enemy 1 card",
+    cardImage: "/images/cards/enemy/enemy1/card.webp",
+    characterFrameWidth: 430,
+    standLabel: "Enemy 1 idle loop",
+    idleLabel: "Enemy 1 unused idle",
+    shadowLabel: "Enemy 1 shadow",
+    storageKey: "enemy-one-layer-workstation-timeline-v3",
+    standFrameCount: 121,
+    idleFrameCount: 121,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-one/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-one/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: enemyOneDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  enemyTwo: {
+    id: "enemy-two",
+    name: "Enemy 2",
+    cardLabel: "Enemy 2 card",
+    cardImage: "/images/cards/enemy/enemy2/card.webp",
+    characterFrameWidth: 430,
+    standLabel: "Enemy 2 idle loop",
+    idleLabel: "Enemy 2 unused idle",
+    shadowLabel: "Enemy 2 shadow",
+    storageKey: "enemy-two-layer-workstation-timeline-v1",
+    standFrameCount: 120,
+    idleFrameCount: 120,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-two/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-two/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: enemyTwoDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  enemyFour: {
+    id: "enemy-four",
+    name: "Enemy 4",
+    cardLabel: "Enemy 4 card",
+    cardImage: "/images/cards/enemy/enemy4/card.webp",
+    characterFrameWidth: 430,
+    standLabel: "Enemy 4 idle loop",
+    idleLabel: "Enemy 4 unused idle",
+    shadowLabel: "Enemy 4 shadow",
+    storageKey: "enemy-four-layer-workstation-timeline-v1",
+    standFrameCount: 122,
+    idleFrameCount: 122,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-four/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-four/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: enemyFourDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  enemySix: {
+    id: "enemy-six",
+    name: "Enemy 6",
+    cardLabel: "Enemy 6 card",
+    cardImage: "/images/cards/enemy/enemy6/card.webp",
+    characterFrameWidth: 430,
+    standLabel: "Enemy 6 idle loop",
+    idleLabel: "Enemy 6 unused idle",
+    shadowLabel: "Enemy 6 shadow",
+    storageKey: "enemy-six-layer-workstation-timeline-v1",
+    standFrameCount: 122,
+    idleFrameCount: 122,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-six/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-six/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: enemySixDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
+  enemySeven: {
+    id: "enemy-seven",
+    name: "Enemy 7",
+    cardLabel: "Enemy 7 card",
+    cardImage: "/images/cards/enemy/enemy7/card.webp",
+    characterFrameWidth: 430,
+    standLabel: "Enemy 7 idle loop",
+    idleLabel: "Enemy 7 unused idle",
+    shadowLabel: "Enemy 7 shadow",
+    storageKey: "enemy-seven-layer-workstation-timeline-v1",
+    standFrameCount: 119,
+    idleFrameCount: 119,
+    standFrameMs: 40,
+    idleFrameMs: 40,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 50%",
+    idleTransformOrigin: "50% 50%",
+    standFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-seven/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    idleFrameSrc: (frame: number) =>
+      `/images/battle-characters/enemy-seven/idle/${frame
+        .toString()
+        .padStart(4, "0")}.png`,
+    defaultLayers: enemySevenDefaultLayers,
+    defaultTimeline: {
+      cardBack: { startMs: 0, endMs: 1700 },
+      cardFront: { startMs: 1700, endMs: 3150 },
+      particle: { startMs: 2050, endMs: 3950 },
+      burst: { startMs: 2050, endMs: 3550 },
+      shadow: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      stand: { startMs: 2600, endMs: DEFAULT_DURATION_MS },
+      idle: { startMs: DEFAULT_DURATION_MS, endMs: DEFAULT_DURATION_MS },
+    },
+  },
 };
 
 const defaultTimeline: Record<LayerKey, TimelineState> = {
@@ -276,9 +902,16 @@ function getInitialState(preset: WorkstationPreset) {
   if (!saved) return fallback;
 
   try {
-    const parsed = JSON.parse(saved) as Partial<typeof fallback>;
+    const parsed = JSON.parse(saved) as Partial<typeof fallback> & {
+      layers?: SavedRevealLayers;
+    };
+
     return {
-      layers: { ...preset.defaultLayers, ...parsed.layers },
+      layers: normalizeSavedRevealLayers(
+        preset.id,
+        preset.defaultLayers,
+        parsed.layers
+      ),
       timeline: { ...presetTimeline, ...parsed.timeline },
       durationMs: parsed.durationMs ?? DEFAULT_DURATION_MS,
     };
@@ -334,7 +967,24 @@ function clamp01(value: number) {
 
 export default function AnimationWorkstation() {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const initialState = useMemo(() => getInitialState(activePreset), []);
+  const [previewSide, setPreviewSide] = useState<PreviewSide>("player");
+  const activePreset =
+    previewSide === "enemy"
+      ? workstationPresets.enemySeven
+      : workstationPresets.brokenDoll;
+  const layerLabels: Record<LayerKey, string> = {
+    cardBack: "Card back",
+    cardFront: activePreset.cardLabel,
+    particle: "Reveal particle",
+    burst: "Light burst",
+    shadow: activePreset.shadowLabel,
+    stand: activePreset.standLabel,
+    idle: activePreset.idleLabel,
+  };
+  const initialState = useMemo(
+    () => getInitialState(workstationPresets.brokenDoll),
+    []
+  );
   const [layers, setLayers] =
     useState<Record<LayerKey, LayerState>>(initialState.layers);
   const [timeline, setTimeline] =
@@ -350,7 +1000,26 @@ export default function AnimationWorkstation() {
   const [particleFrame, setParticleFrame] = useState(0);
   const [showGrid, setShowGrid] = useState(true);
   const [onionSkin, setOnionSkin] = useState(false);
-  const [copyLabel, setCopyLabel] = useState("Copy layer values");
+  const [copyLabel, setCopyLabel] = useState("Copy battle-safe values");
+  const skipSaveRef = useRef(false);
+  const loadedPresetKeyRef = useRef(activePreset.storageKey);
+
+  useEffect(() => {
+    if (loadedPresetKeyRef.current === activePreset.storageKey) return;
+
+    const nextState = getInitialState(activePreset);
+    loadedPresetKeyRef.current = activePreset.storageKey;
+    skipSaveRef.current = true;
+    setLayers(nextState.layers);
+    setTimeline(nextState.timeline);
+    setDurationMs(nextState.durationMs);
+    setTimeMs(0);
+    setPlaying(false);
+    setSelectedLayer("stand");
+    setStandFrame(activePreset.standStartFrame);
+    setIdleFrame(activePreset.idleStartFrame);
+    setParticleFrame(0);
+  }, [activePreset]);
 
   useEffect(() => {
     const frameSources = [
@@ -373,14 +1042,19 @@ export default function AnimationWorkstation() {
         image.src = "";
       }
     };
-  }, []);
+  }, [activePreset]);
 
   useEffect(() => {
+    if (skipSaveRef.current) {
+      skipSaveRef.current = false;
+      return;
+    }
+
     window.localStorage.setItem(
       activePreset.storageKey,
       JSON.stringify({ layers, timeline, durationMs })
     );
-  }, [durationMs, layers, timeline]);
+  }, [activePreset.storageKey, durationMs, layers, timeline]);
 
   useEffect(() => {
     if (!playing) {
@@ -417,7 +1091,7 @@ export default function AnimationWorkstation() {
         activePreset.standFrameCount,
         activePreset.standFrameMs,
         activePreset.standStartFrame,
-        false
+        !layers.idle.visible
       )
     : standFrame;
   const displayIdleFrame = isLayerActive("idle")
@@ -461,8 +1135,10 @@ export default function AnimationWorkstation() {
     () =>
       JSON.stringify(
         {
+          schemaVersion: 1,
           coordinateSystem: "1280x720 stage, layer top-left X/Y",
-          note: "These are manual layer-placement values. Apply carefully to matching layer wrappers, not mixed anchor/timing systems.",
+          storageKey: activePreset.storageKey,
+          note: "Battle-safe workstation export. The battle page reads this preset from the same storage key; every layer has complete X/Y/scale/opacity/visibility values.",
           preset: {
             id: activePreset.id,
             name: activePreset.name,
@@ -488,8 +1164,32 @@ export default function AnimationWorkstation() {
       durationMs,
       layers,
       timeline,
+      activePreset,
     ]
   );
+
+  const switchPreviewSide = (nextSide: PreviewSide) => {
+    if (nextSide === previewSide) return;
+
+    const nextPreset =
+      nextSide === "enemy"
+        ? workstationPresets.enemySeven
+        : workstationPresets.brokenDoll;
+    const nextState = getInitialState(nextPreset);
+
+    loadedPresetKeyRef.current = nextPreset.storageKey;
+    skipSaveRef.current = true;
+    setPreviewSide(nextSide);
+    setLayers(nextState.layers);
+    setTimeline(nextState.timeline);
+    setDurationMs(nextState.durationMs);
+    setTimeMs(0);
+    setPlaying(false);
+    setSelectedLayer("stand");
+    setStandFrame(nextPreset.standStartFrame);
+    setIdleFrame(nextPreset.idleStartFrame);
+    setParticleFrame(0);
+  };
 
   const updateLayer = (key: LayerKey, patch: Partial<LayerState>) => {
     setLayers((current) => ({
@@ -552,7 +1252,7 @@ export default function AnimationWorkstation() {
   const copyValues = async () => {
     await window.navigator.clipboard.writeText(output);
     setCopyLabel("Copied");
-    window.setTimeout(() => setCopyLabel("Copy layer values"), 1200);
+    window.setTimeout(() => setCopyLabel("Copy battle-safe values"), 1200);
   };
 
   const resetLayer = () =>
@@ -609,6 +1309,10 @@ export default function AnimationWorkstation() {
     // Onion-skin ghost: dim the non-selected character so it reads as a
     // reference to align size/position against.
     const ghostOpacity = ghost ? 0.4 : 1;
+    const characterFrameWidth =
+      className === styles.characterLayer
+        ? activePreset.characterFrameWidth ?? 330
+        : undefined;
 
     return (
       <button
@@ -621,8 +1325,11 @@ export default function AnimationWorkstation() {
           top: layer.y,
           opacity: layer.opacity * previewOpacity * ghostOpacity,
           transform: `scale(${layer.scale * previewScale})`,
+          ...(characterFrameWidth
+            ? { "--workstation-character-width": `${characterFrameWidth}px` }
+            : {}),
           ...extraStyle,
-        }}
+        } as React.CSSProperties}
         onPointerDown={(event) => startDrag(event, key)}
         onClick={() => setSelectedLayer(key)}
         aria-label={`Move ${layerLabels[key]}`}
@@ -639,6 +1346,26 @@ export default function AnimationWorkstation() {
           <div>
             <h1>Layer Placement Workstation</h1>
             <p>Manual 1280x720 placement for {activePreset.name} reveal assets</p>
+          </div>
+          <div className={styles.previewTabs} role="tablist" aria-label="Reveal side">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={previewSide === "player"}
+              className={previewSide === "player" ? styles.previewTabActive : ""}
+              onClick={() => switchPreviewSide("player")}
+            >
+              Player
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={previewSide === "enemy"}
+              className={previewSide === "enemy" ? styles.previewTabActive : ""}
+              onClick={() => switchPreviewSide("enemy")}
+            >
+              Enemy
+            </button>
           </div>
           <div className={styles.stageHeaderActions}>
             <button type="button" onClick={() => setPlaying((value) => !value)}>
@@ -661,11 +1388,10 @@ export default function AnimationWorkstation() {
             <section className={styles.battlePreviewFrame}>
               <div ref={stageRef} className={styles.stage}>
                 <BattleBackground />
-                {showGrid ? <div className={styles.grid} /> : null}
-
+                <div className={styles.gameplayPlane}>
                 {renderImageLayer(
                   "cardBack",
-                  "/images/card-back.webp",
+                  "/images/cards/player/card-back-latest.png",
                   styles.cardLayer,
                   {
                     transform: `scale(${layers.cardBack.scale}) scaleX(${cardBackScaleX})`,
@@ -714,7 +1440,8 @@ export default function AnimationWorkstation() {
                   ),
                   styles.characterLayer,
                   {
-                    transformOrigin: "50% 82%",
+                    transformOrigin:
+                      activePreset.standTransformOrigin ?? "50% 82%",
                   },
                   onionSkin ? 1 : characterRevealScale,
                   onionSkin ? 1 : characterRevealProgress,
@@ -727,12 +1454,17 @@ export default function AnimationWorkstation() {
                     onionSkin ? idleFrame : displayIdleFrame
                   ),
                   styles.characterLayer,
-                  undefined,
+                  {
+                    transformOrigin:
+                      activePreset.idleTransformOrigin ?? "50% 82%",
+                  },
                   1,
                   1,
                   onionSkin,
                   onionSkin && selectedLayer !== "idle"
                 )}
+                </div>
+                {showGrid ? <div className={styles.grid} /> : null}
               </div>
             </section>
 
@@ -1003,6 +1735,10 @@ export default function AnimationWorkstation() {
 
         <section className={styles.panel}>
           <h2>Layer Values</h2>
+          <p className={styles.smallNote}>
+            Saved automatically for this preset. Battle uses the same 1280x720
+            top-left coordinates.
+          </p>
           <pre className={styles.output}>{output}</pre>
           <button type="button" onClick={copyValues} className={styles.copyButton}>
             {copyLabel}

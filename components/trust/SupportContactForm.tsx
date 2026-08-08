@@ -8,8 +8,9 @@ export default function SupportContactForm() {
   if (submitted) {
     return (
       <div className="trust-support-success">
-        Thanks. Your support request has been received. If a reply is needed,
-        we will contact you using the email address provided.
+        Thanks for filling this in. Support delivery is still in progress —
+        nothing was sent yet, so please keep a copy of your message until the
+        form goes live.
       </div>
     );
   }
@@ -22,10 +23,18 @@ export default function SupportContactForm() {
         setSubmitted(true);
       }}
     >
-      <h2>Contact Support</h2>
+      <h2>
+        Contact Support
+        <span className="trust-status-tag">In Progress</span>
+      </h2>
       <p>
         Use this form for login issues, lost points, reward issues, battle bugs,
         guest save problems, privacy requests, and legal questions.
+      </p>
+      <p className="trust-support-wip">
+        Heads up: message delivery is not connected yet, so submissions are not
+        received by anyone. This form is here so the flow can be reviewed while
+        the game is in development.
       </p>
 
       <div className="trust-support-categories" aria-label="Support categories">

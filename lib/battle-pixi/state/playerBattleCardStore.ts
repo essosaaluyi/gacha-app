@@ -42,6 +42,26 @@ export function getRemainingPlayerBattleCards() {
   return Math.max(playerBattleCards.length - currentIndex - 1, 0);
 }
 
+export function getUpcomingPlayerBattleCards(count = 3): Card[] {
+  return playerBattleCards.slice(currentIndex + 1, currentIndex + 1 + count);
+}
+
+export function getPlayerBattleCardIndex() {
+  return currentIndex;
+}
+
+/**
+ * Restores which card in the deck is active. Used when resuming a saved
+ * battle -- without it the deck rewinds to card 1 while the rest of the run
+ * (round, points, enemy) resumes mid-battle.
+ */
+export function setPlayerBattleCardIndex(index: number) {
+  if (!Number.isInteger(index) || index < 0) return;
+
+  currentIndex = Math.min(index, Math.max(playerBattleCards.length - 1, 0));
+  listeners.forEach((listener) => listener());
+}
+
 export function loadNextPlayerBattleCard() {
   if (currentIndex + 1 >= playerBattleCards.length) {
     return false;

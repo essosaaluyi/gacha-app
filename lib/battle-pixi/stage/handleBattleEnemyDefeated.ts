@@ -1,46 +1,59 @@
 import { addBattleLog } from "@/lib/battle-pixi/state/battleLogStore";
 import { clearAttackFakeout } from "@/lib/battle-pixi/state/attackFakeoutStore";
 import { startBonusOpening } from "@/lib/battle-pixi/state/bonusModeStore";
-import { startNestedBonus } from "@/lib/battle-pixi/state/nestedBonusStore";
-import { rollNestedBonusSelected } from "@/lib/battle-pixi/core/nestedBonusLottery";
-import { showBonusOpening, setBonusGameText } from "@/lib/battle-pixi/state/bonusPresentationStore";
 import { triggerEnemyDefeatPresentation } from "@/lib/battle-pixi/state/enemyDefeatPresentationStore";
+import { setBattlePresentationPhase } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import { logEvent } from "@/lib/events/gameEventStore";
-import { patchConfig } from "@/lib/game-config/patchConfig";
 
+// How long the enemy-defeat presentation owns the screen before the player
+// gets the controls back.
+const DEFEAT_PRESENTATION_MS = 3000;
 
 type HandleBattleEnemyDefeatedArgs = {
   setPendingNextRound: (value: boolean) => void;
-  setShowRoundInsertOnNextDraw: (value: boolean) => void;
 };
 
+/**
+ * Enemy defeated on the third flip. The bonus is ARMED here, not played: the
+ * opening video belongs to the next game and fires as that game's cards come
+ * out of the deck, so the player starts the bonus turn themselves.
+ *
+ * This used to run behind a 3s timer that then played the opening on top of
+ * the defeat beat, on a turn the player had not begun. Arming is immediate
+ * instead -- the mode has to be set before the next draw press so that press
+ * routes to the bonus handler, and a fast player could previously beat the
+ * timer and get an ordinary battle draw.
+ */
 export function handleBattleEnemyDefeated({
   setPendingNextRound,
-  setShowRoundInsertOnNextDraw,
 }: HandleBattleEnemyDefeatedArgs) {
   clearAttackFakeout();
   addBattleLog("Enemy Defeated!", "success");
   triggerEnemyDefeatPresentation();
 
-  // Feature 4: roll for the nested loop bonus vs the classic one.
-  if (rollNestedBonusSelected()) {
-    startNestedBonus();
-    showBonusOpening();
-    setBonusGameText(`MAIN ${patchConfig.nestedBonus.mainLoopGames}/${patchConfig.nestedBonus.mainLoopGames}`);
+  // The only place a defeat is actually confirmed, so it is the only honest
+  // place to count one. The end-of-run summary reads these back per battleId
+  // rather than inferring a count from the round number, which would over-count
+  // any round that ends without a kill.
+  logEvent({ kind: "enemyDefeated", detail: {} });
 
-    // Data counter: a bonus start is a "BB" on the slump dashboard.
-    logEvent({ kind: "bonusStart", detail: { mode: "nested" } });
+  // The grade (regular / super / super max) is NOT decided here. It needs the
+  // opening hand, because drawing a Chance card in it is the bonus chance —
+  // so the roll happens at the opening draw, in handleBonusDraw. All this does
+  // is put the machine into the classic bonus opening; a super-max roll
+  // converts it to the nested loop at that point.
+  startBonusOpening();
 
-    addBattleLog("NESTED BONUS Started!", "chance");
-  } else {
-    startBonusOpening();
+  logEvent({ kind: "bonusStart", detail: { mode: "classic" } });
+  addBattleLog("Bonus Opening Started!", "chance");
 
-    // Data counter: a bonus start is a "BB" on the slump dashboard.
-    logEvent({ kind: "bonusStart", detail: { mode: "classic" } });
-
-    addBattleLog("Bonus Opening Started!", "chance");
-  }
+  // The draw stays locked for the defeat beat, then unlocks so the player can
+  // start the bonus turn themselves. Previously the bonus opening video set
+  // this phase when it auto-played here; now that the video waits for the next
+  // deal, the unlock has to happen on its own.
+  window.setTimeout(() => {
+    setBattlePresentationPhase("next_round_ready", "enemy-defeat-complete");
+  }, DEFEAT_PRESENTATION_MS);
 
   setPendingNextRound(false);
-  setShowRoundInsertOnNextDraw(false);
 }

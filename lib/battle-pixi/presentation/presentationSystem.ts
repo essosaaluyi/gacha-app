@@ -21,7 +21,12 @@ export type PresentationEvent =
   | "last_stand_fail";
 
 export function playPresentation(event: PresentationEvent) {
-  console.log("Presentation:", event);
+  // Dev-only: this fires on every presentation beat, so it is noise in a
+  // shipped build. Every other trace in the battle engine is behind a debug
+  // gate; these last two were not.
+  if (process.env.NODE_ENV !== "production") {
+    console.log("Presentation:", event);
+  }
 
   if (event === "draw_start") {
     const holder = PresentationContext.holder;

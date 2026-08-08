@@ -1,3 +1,5 @@
+import { beginBattleTease } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
+
 export type BattleCutInTone =
   | "info"
   | "chance"
@@ -13,6 +15,7 @@ export type BattleCutIn = {
   tone: BattleCutInTone;
   durationMs: number;
   asset?: string;
+  variant?: "reveal" | "title" | "interrupt";
 };
 
 let activeCutIn: BattleCutIn | null = null;
@@ -40,6 +43,7 @@ export function showBattleCutIn(cutIn: Omit<BattleCutIn, "id">) {
     id: nextId,
   };
   nextId += 1;
+  beginBattleTease(cutIn.durationMs, `cut-in:${cutIn.title}`);
   notify();
 
   clearTimer = setTimeout(() => {

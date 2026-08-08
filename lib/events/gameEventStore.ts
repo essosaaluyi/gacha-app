@@ -6,6 +6,7 @@ import { patchConfig } from "@/lib/game-config/patchConfig";
 
 export type GameEventKind =
   | "draw"
+  | "enemyDefeated"
   | "attackRoll"
   | "fakeoutVariant"
   | "fakeoutReveal"

@@ -1,11 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  DEFAULT_COOKIE_PREFERENCES,
+  loadCookiePreferences,
+  saveCookiePreferences,
+} from "@/lib/trust/cookiePreferences";
 
 export default function CookieSettingsPanel() {
   const [essential] = useState(true);
-  const [preferences, setPreferences] = useState(true);
+  const [preferences, setPreferences] = useState(
+    DEFAULT_COOKIE_PREFERENCES.preferences
+  );
   const [savedMessage, setSavedMessage] = useState("");
+
+  // Read on mount rather than in useState so the server and client render the
+  // same markup during hydration.
+  useEffect(() => {
+    setPreferences(loadCookiePreferences().preferences);
+  }, []);
+
+  const handleSave = () => {
+    const stored = saveCookiePreferences(preferences);
+
+    if (!stored) {
+      setSavedMessage(
+        "Your choice could not be stored in this browser, so it will reset when you leave."
+      );
+      return;
+    }
+
+    setSavedMessage(
+      preferences
+        ? "Your cookie settings have been saved."
+        : "Saved. Only necessary cookies and storage will be used."
+    );
+  };
 
   const rows = [
     {
@@ -37,9 +67,9 @@ export default function CookieSettingsPanel() {
     },
     {
       label: "Analytics",
-      status: "Not currently used",
+      status: "Cookieless",
       description:
-        "Analytics tools are not currently enabled. Settings will be updated before analytics cookies are used.",
+        "Vercel Web Analytics counts page visits. It sets no cookie and stores no identifier on your device, so there is no cookie choice to make here.",
       checked: false,
       locked: true,
       onChange: undefined,
@@ -88,13 +118,7 @@ export default function CookieSettingsPanel() {
 
       <button
         className="trust-info-button trust-info-button-primary"
-        onClick={() =>
-          setSavedMessage(
-            preferences
-              ? "Your cookie settings have been saved."
-              : "Only necessary cookies and storage will be used."
-          )
-        }
+        onClick={handleSave}
       >
         Save cookie settings
       </button>

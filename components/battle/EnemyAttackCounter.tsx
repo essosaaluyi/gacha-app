@@ -1,80 +1,66 @@
 "use client";
 
-import {
-  getFatalModeGamesLeft,
-  subscribeFatalMode,
-} from "@/lib/battle-pixi/state/fatalModeStore";
-
 import { useEffect, useState } from "react";
-
-
 
 import {
   getEnemyAttackCounter,
+  getEnemyAttackCounterMax,
   subscribeEnemyAttackCounter,
 } from "@/lib/battle-pixi/state/enemyAttackCounterStore";
 
+const RADIUS = 44;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+// Fuse colour by how much of the counter is left, not by raw count, so the ramp
+// reads the same whether an enemy is armed at 5 draws or 12.
+function gaugeTone(ratio: number) {
+  if (ratio > 0.6) return { key: "safe", color: "#22c55e" };
+  if (ratio > 0.35) return { key: "caution", color: "#eab308" };
+  if (ratio > 0.15) return { key: "danger", color: "#f97316" };
+  return { key: "critical", color: "#ef4444" };
+}
+
 export default function EnemyAttackCounter() {
   const [counter, setCounter] = useState(getEnemyAttackCounter());
-  const [fatalLeft, setFatalLeft] = useState(getFatalModeGamesLeft());
-
-  useEffect(() => {
-  return subscribeFatalMode(() => {
-    setFatalLeft(getFatalModeGamesLeft());
-  });
-}, []);
+  const [max, setMax] = useState(getEnemyAttackCounterMax());
 
   useEffect(() => {
     return subscribeEnemyAttackCounter(() => {
       setCounter(getEnemyAttackCounter());
+      setMax(getEnemyAttackCounterMax());
     });
   }, []);
 
-  
+  const ratio = max > 0 ? Math.max(0, Math.min(1, counter / max)) : 0;
+  const tone = gaugeTone(ratio);
+  const held = counter <= 0;
 
- const isHeld = fatalLeft > 0;
-
-return (
-  <div
-    style={{
-      position: "relative",
-      display: "inline-block",
-      fontSize: "75px",
-      fontWeight: 400,
-      color: isHeld
-        ? "rgba(167, 0, 189, 0.35)"
-        : counter <= 2
-        ? "#ff3333"
-        : "#a700bd",
-      fontFamily: "Impact, Arial Black, sans-serif",
-      textShadow: isHeld
-        ? "none"
-        : counter <= 2
-        ? "0 0 8px rgba(255, 255, 255, 0.9), 0 0 18px rgb(255, 0, 0)"
-        : "0 0 10px rgb(255, 0, 0)",
-      userSelect: "none",
-    }}
-  >
-    {counter}
-
-    {isHeld && (
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "20px",
-          transform: "translateX(-50%) rotate(-10deg)",
-          color: "#dcdcdc",
-          fontSize: "60px",
-          fontWeight: 900,
-          textShadow:
-            "0 0 6px rgba(0, 0, 0, 0.9)",
-          pointerEvents: "none",
-        }}
-      >
-        HOLD
-      </div>
-    )}
-  </div>
-);
+  return (
+    <div
+      className={`enemy-attack-gauge enemy-attack-gauge-${tone.key} ${
+        held ? "enemy-attack-gauge-held" : ""
+      }`}
+      style={{ ["--eag-color" as string]: tone.color }}
+      role="img"
+      aria-label={
+        held
+          ? "Enemy attack imminent"
+          : `Enemy attacks in ${counter} of ${max} draws`
+      }
+    >
+      <svg viewBox="0 0 100 100" className="enemy-attack-gauge-svg">
+        <circle className="enemy-attack-gauge-track" cx="50" cy="50" r={RADIUS} />
+        <circle
+          className="enemy-attack-gauge-fill"
+          cx="50"
+          cy="50"
+          r={RADIUS}
+          style={{
+            strokeDasharray: CIRCUMFERENCE,
+            strokeDashoffset: CIRCUMFERENCE * (1 - ratio),
+          }}
+        />
+      </svg>
+    </div>
+  );
 }

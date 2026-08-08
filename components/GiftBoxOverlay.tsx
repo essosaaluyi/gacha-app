@@ -111,12 +111,20 @@ export default function GiftBoxOverlay({ onClose }: Props) {
         <button
           onClick={watchAd}
           disabled={adCountdown !== null}
-          className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-60 px-4 py-3 rounded-xl font-semibold mb-3"
+          className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-60 px-4 py-3 rounded-xl font-semibold mb-2"
         >
           {adCountdown !== null
             ? `Watching ad… ${adCountdown}s`
             : "Watch Ad (+bonus points)"}
+          <span className="ml-2 text-[10px] font-black uppercase tracking-wide bg-amber-400/25 border border-amber-400/50 text-amber-200 rounded px-1.5 py-0.5">
+            In Progress
+          </span>
         </button>
+
+        <p className="text-[11px] text-zinc-500 text-center mb-3">
+          Real ads are not connected yet — this is a placeholder that still
+          grants the bonus points.
+        </p>
 
         <button
           onClick={onClose}

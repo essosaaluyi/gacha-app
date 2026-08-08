@@ -8,12 +8,29 @@
 
 import { patchConfig } from "@/lib/game-config/patchConfig";
 
+// A drawn-but-not-yet-shown game. The outcome is decided at the press (like a
+// real cabinet's lever-on lottery) but the payout, the loop counter and the
+// reward video are all held here until the three cards have actually revealed.
+// Applying them at press time made the counter and points describe a game the
+// player had not seen yet, which read as the bonus running a game behind.
+export type PendingNestedResolution = {
+  outcome: string;
+  hasChance: boolean;
+  /** True when this game was drawn inside the nested loop. */
+  inNested: boolean;
+  /** Nested games always pay; main-loop games pay nothing. */
+  points: number;
+  /** Main-loop only: this outcome drops play into the nested loop. */
+  isTrigger: boolean;
+};
+
 let active = false;
 let inNested = false;
 let mainGamesRemaining = 0;
 let nestedGamesRemaining = 0;
 let totalPoints = 0;
 let waitingForResultConfirm = false;
+let pendingResolution: PendingNestedResolution | null = null;
 
 let listeners: (() => void)[] = [];
 
@@ -54,6 +71,17 @@ export function consumeNestedGame() {
   notify();
 }
 
+export function setPendingNestedResolution(next: PendingNestedResolution) {
+  pendingResolution = next;
+}
+
+/** Hands over the drawn game so it can be applied as the cards reveal. */
+export function takePendingNestedResolution() {
+  const next = pendingResolution;
+  pendingResolution = null;
+  return next;
+}
+
 export function addNestedPoints(points: number) {
   totalPoints += points;
   notify();
@@ -80,6 +108,7 @@ export function finishNestedBonus() {
   nestedGamesRemaining = 0;
   totalPoints = 0;
   waitingForResultConfirm = false;
+  pendingResolution = null;
   notify();
 }
 

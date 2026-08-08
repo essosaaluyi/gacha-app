@@ -1,6 +1,6 @@
 "use client";
 
-// Feature 5: pachislot data counter (データカウンター) with slump graph.
+// Feature 5: pachislot data counter with slump graph.
 // The DATA tab sits on the right edge; tapping it opens the dashboard as a
 // centered in-page window. Rendered through a portal to <body> so the battle
 // stage's scaling transform can't trap or cover it.
@@ -16,7 +16,12 @@ import {
   type StatsScope,
 } from "@/lib/events/statsSelectors";
 
-export default function StatsGraphPanel() {
+type StatsGraphPanelProps = {
+  /** Render the DATA switch in place (cabinet LED panel) instead of the floating edge tab. */
+  inline?: boolean;
+};
+
+export default function StatsGraphPanel({ inline = false }: StatsGraphPanelProps) {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [scope, setScope] = useState<StatsScope>("battle");
@@ -43,19 +48,32 @@ export default function StatsGraphPanel() {
   const diffClass =
     stats.diffCoins >= 0 ? "data-counter-led-plus" : "data-counter-led-minus";
 
-  return createPortal(
-    <>
-      <button
-        type="button"
-        className={`stats-graph-tab ${open ? "stats-graph-tab-open" : ""}`}
-        onClick={() => setOpen((value) => !value)}
-        aria-label={open ? "Close data counter" : "Open data counter"}
-      >
-        <span className="stats-graph-tab-icon">📈</span>
-        <span className="stats-graph-tab-label">DATA</span>
-      </button>
+  const tabButton = inline ? (
+    <button
+      type="button"
+      className="bcab-data-btn"
+      onClick={() => setOpen((value) => !value)}
+      aria-label={open ? "Close data counter" : "Open data counter"}
+    >
+      DATA
+    </button>
+  ) : (
+    <button
+      type="button"
+      className={`stats-graph-tab ${open ? "stats-graph-tab-open" : ""}`}
+      onClick={() => setOpen((value) => !value)}
+      aria-label={open ? "Close data counter" : "Open data counter"}
+    >
+      <span className="stats-graph-tab-icon">📈</span>
+      <span className="stats-graph-tab-label">DATA</span>
+    </button>
+  );
 
-      {open && (
+  return (
+    <>
+      {inline ? tabButton : createPortal(tabButton, document.body)}
+
+      {open && createPortal(
         <div
           className="data-counter-backdrop"
           onClick={() => setOpen(false)}
@@ -141,9 +159,9 @@ export default function StatsGraphPanel() {
               </button>
             </div>
           </aside>
-        </div>
+        </div>,
+        document.body
       )}
-    </>,
-    document.body
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import TopBar from "@/components/TopBar";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -74,7 +75,10 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white flex items-center justify-center px-4">
+    <main className="min-h-screen bg-zinc-950 text-white flex flex-col pb-6">
+      <TopBar />
+
+      <div className="flex-1 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-zinc-900 p-6 rounded-2xl">
         <h1 className="text-2xl font-bold mb-4">Login / Signup</h1>
 
@@ -111,6 +115,7 @@ export default function LoginPage() {
         </div>
 
         {message && <p className="mt-4 text-sm text-zinc-300">{message}</p>}
+      </div>
       </div>
     </main>
   );

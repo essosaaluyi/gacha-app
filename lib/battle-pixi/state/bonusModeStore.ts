@@ -1,3 +1,8 @@
+import {
+  getBattleMode,
+  setBattleMode,
+} from "@/lib/battle-pixi/state/battleModeStore";
+
 let active = false;
 
 let phase: "opening" | "bonus" | null = null;
@@ -37,10 +42,11 @@ export function startBonusOpening() {
   active = true;
   phase = "opening";
   bonusGamesRemaining = 0;
-  
+
   bonusTotalPoints = 0;
 waitingForResultConfirm = false;
 
+  setBattleMode("bonus", "bonus-opening");
   notify();
 }
 
@@ -62,9 +68,14 @@ export function consumeBonusGame() {
   notify();
 }
 
-export function resetBonusGamesToFive() {
-  bonusGamesRemaining = 5;
-  bonusGamesMax = 5;
+/**
+ * BAR/BAR/BAR restores the bonus to the length it was won with -- a 7G bonus
+ * resets to 7/7, not 5/5. It used to hard-code 5 and overwrite bonusGamesMax
+ * with it, so hitting a reset on a 7G bonus silently downgraded the run.
+ * bonusGamesMax is the entry count and is never rewritten here.
+ */
+export function resetBonusGamesToEntryCount() {
+  bonusGamesRemaining = bonusGamesMax;
 
   notify();
 }
@@ -73,10 +84,16 @@ export function finishBonusMode() {
   active = false;
   phase = null;
   bonusGamesRemaining = 0;
-  
+
   bonusTotalPoints = 0;
 waitingForResultConfirm = false;
 
+  // Hand the machine back to the base game only if we still own it. The
+  // collection phase starts before the bonus is torn down, so an unconditional
+  // handback here would yank the screen out from under the pick zone.
+  if (getBattleMode() === "bonus") {
+    setBattleMode("battle", "bonus-finished");
+  }
   notify();
 }
 
@@ -89,6 +106,23 @@ export function getBonusModeState() {
     bonusTotalPoints,
 waitingForResultConfirm,
   };
+}
+
+export function restoreBonusMode(snapshot: {
+  active: boolean;
+  phase: "opening" | "bonus" | null;
+  bonusGamesRemaining: number;
+  bonusGamesMax: number;
+  bonusTotalPoints: number;
+}) {
+  active = snapshot.active;
+  phase = snapshot.phase;
+  bonusGamesRemaining = snapshot.bonusGamesRemaining;
+  bonusGamesMax = snapshot.bonusGamesMax;
+  bonusTotalPoints = snapshot.bonusTotalPoints;
+  waitingForResultConfirm = false;
+  if (active) setBattleMode("bonus", "session-restore");
+  notify();
 }
 
 export function isBonusModeActive() {

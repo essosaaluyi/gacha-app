@@ -1,11 +1,6 @@
 let audio: HTMLAudioElement | null = null;
 
-const trackIndex = 0;
-
-const tracks = [
-  "/audio/BGM1.mp3",
-  "/audio/BGM2.mp3",
-];
+const BGM_TRACK = "/audio/BGM07228.mp3";
 
 export function getBgmAudio() {
   if (typeof window === "undefined") {
@@ -13,9 +8,13 @@ export function getBgmAudio() {
   }
 
   if (!audio) {
-    audio = new Audio(tracks[trackIndex]);
+    audio = new Audio(BGM_TRACK);
 
-    audio.loop = false;
+    // Looping: the track is a few minutes long, so with loop off it simply
+    // ended mid-run -- usually around the bonus, which is why the machine went
+    // silent for every round after it and never came back. The BGM is meant to
+    // run for the whole session, so it repeats.
+    audio.loop = true;
     audio.volume = 0.5;
   }
 
@@ -34,6 +33,14 @@ export function pauseBgm() {
   if (!bgm) return;
 
   bgm.pause();
+}
+
+export function stopBgm() {
+  const bgm = getBgmAudio();
+  if (!bgm) return;
+
+  bgm.pause();
+  bgm.currentTime = 0;
 }
 
 export function setBgmMuted(muted: boolean) {

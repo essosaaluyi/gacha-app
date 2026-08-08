@@ -14,9 +14,9 @@ export type SlumpPoint = { x: number; y: number };
 export type DataCounterStats = {
   bbCount: number;
   totalGames: number;
-  /** Games per bonus (総ゲーム数 ÷ BB回数); null when no BB yet. */
+  /** Games per bonus (total games / BB count); null when no BB yet. */
   combinedRate: number | null;
-  /** 差枚数: cumulative points won − points spent. Always equals the slump graph's last Y. */
+  /** Net difference: cumulative points won - points spent. Always equals the slump graph's last Y. */
   diffCoins: number;
 };
 

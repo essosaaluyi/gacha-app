@@ -1,7 +1,11 @@
+import { setBattlePresentationPhase } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
+
 export type BattleState =
   | "playing"
+  // No longer set: losing the last card goes straight to "gameOver" now that
+  // continues are gone. Kept so a session saved before that change still
+  // deserialises into a valid state.
   | "playerDefeated"
-  | "continue"
   | "gameOver";
 
 let battleState: BattleState = "playing";
@@ -14,6 +18,11 @@ export function getBattleState() {
 
 export function setBattleState(state: BattleState) {
   battleState = state;
+  if (state === "playerDefeated") {
+    setBattlePresentationPhase("defeat", "player-defeated");
+  } else if (state === "gameOver") {
+    setBattlePresentationPhase("game_over", "game-over");
+  }
   listeners.forEach((listener) => listener());
 }
 

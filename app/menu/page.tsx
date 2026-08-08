@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import TopBar from "@/components/TopBar";
 import { playBgm } from "@/lib/audio/bgmStore";
 import LegalFooter from "@/components/trust/LegalFooter";
 import { initializeWallet } from "@/lib/wallet/walletStore";
+import { hasSavedBattleSession, clearBattleSession } from "@/lib/battle-pixi/state/battleSessionStore";
 
 export default function MenuPage() {
+  const router = useRouter();
   const [guestNoticeOpen, setGuestNoticeOpen] = useState(false);
+  const [canResume, setCanResume] = useState(false);
 
   // Balance display and daily claim live in TopBar via the unified wallet.
   async function loadUser() {
@@ -24,6 +28,7 @@ export default function MenuPage() {
     }
 
     await initializeWallet();
+    setCanResume(hasSavedBattleSession());
   }
 
   useEffect(() => {
@@ -35,19 +40,46 @@ export default function MenuPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  const handleResume = () => {
+    localStorage.setItem("battle_resume_requested", "true");
+    router.push("/battle");
+  };
+
+  const handleDismissResume = () => {
+    clearBattleSession();
+    setCanResume(false);
+  };
+
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-6 relative">
-      <div className="absolute top-6 left-6 right-6 z-20">
-  <TopBar />
-</div>
+    <main className="min-h-screen bg-zinc-950 text-white pb-6 relative flex flex-col">
+      <TopBar />
 
       {/* Main content */}
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+      <div className="flex-1 flex flex-col items-center justify-center px-4">
         <img
           src="/images/gachabanner.webp"
           alt="Gacha Banner"
           className="w-full max-w-3xl object-contain mb-6 rounded-2xl"
         />
+
+        {canResume && (
+          <div className="mb-4 w-full max-w-md flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResume}
+              className="w-full bg-amber-600 hover:bg-amber-500 px-8 py-4 rounded-2xl text-2xl font-bold text-center transition-transform duration-200 hover:scale-105 active:scale-95"
+            >
+              Continue Battle
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissResume}
+              className="text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              Dismiss saved session
+            </button>
+          </div>
+        )}
 
         <Link
           href="/gacha"

@@ -1,5 +1,10 @@
 import BattleScreen from "@/components/battle/BattleScreen";
+import { Suspense } from "react";
 
 export default function BattlePage() {
-  return <BattleScreen />;
+  return (
+    <Suspense fallback={null}>
+      <BattleScreen />
+    </Suspense>
+  );
 }

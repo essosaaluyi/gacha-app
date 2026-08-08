@@ -32,17 +32,19 @@ export default function BGMPlayer() {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="battle-audio-controls">
       <button
         onClick={togglePlay}
-        className="bg-zinc-900/80 border border-zinc-700 hover:bg-zinc-800 px-4 py-2 rounded-xl text-white text-sm"
+        className="battle-utility-button battle-audio-button"
+        aria-label={playing ? "Pause background music" : "Play background music"}
       >
-        {playing ? "BGM: ON" : "BGM: OFF"}
+        {playing ? "BGM On" : "BGM Off"}
       </button>
 
       <button
         onClick={toggleMute}
-        className="bg-zinc-900/80 border border-zinc-700 hover:bg-zinc-800 px-4 py-2 rounded-xl text-white text-sm"
+        className="battle-utility-button battle-audio-button"
+        aria-label={muted ? "Unmute background music" : "Mute background music"}
       >
         {muted ? "Muted" : "Volume"}
       </button>

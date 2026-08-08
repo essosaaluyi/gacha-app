@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { hasSavedBattleSession } from "@/lib/battle-pixi/state/battleSessionStore";
 
 import { TitleNewsPanel } from "@/components/TitleNewsPanel";
 import LegalFooter from "@/components/trust/LegalFooter";
@@ -15,6 +16,7 @@ export default function HomePage() {
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [canResume, setCanResume] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -26,6 +28,7 @@ export default function HomePage() {
     };
 
     checkUser();
+    setCanResume(hasSavedBattleSession());
   }, []);
 
   const handleStart = async () => {
@@ -35,6 +38,11 @@ export default function HomePage() {
     }
 
     setLoginOpen(true);
+  };
+
+  const handleResumeBattle = () => {
+    localStorage.setItem("battle_resume_requested", "true");
+    router.push("/battle");
   };
 
   const handleMouseMove = (event: React.MouseEvent<HTMLElement>) => {
@@ -86,13 +94,19 @@ export default function HomePage() {
       <div className="absolute inset-0 bg-black/34" />
 
       {/* CENTER */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center px-6">
+      {/* From md up, centre above the footer band rather than the whole
+          viewport: at full size the stack is taller than a 768px screen, so on
+          short laptops it used to land under the legal footer, which then
+          swallowed the Play Now click. Mobile keeps inset-0 — the footer sits
+          well clear of the button there, and the row/column switch makes the
+          reserved band counterproductive. */}
+      <div className="absolute inset-0 md:bottom-[88px] z-10 flex items-center justify-center px-6">
   <div className="flex flex-col md:flex-row items-center justify-center gap-8">
     <div className="flex flex-col items-center justify-center">
       <img
         src="/images/team-c-title.webp"
         alt="Title"
-        style={{ width: "860px", height: "auto" }}
+        style={{ width: "min(860px, 88vw)", maxHeight: "34vh" }}
         className="object-contain"
       />
 
@@ -100,6 +114,14 @@ export default function HomePage() {
         <p>Make the Decisive Draw!</p>
         <span>Gacha Card Game • Instant Battles</span>
         <span>Free to Play</span>
+      </div>
+
+      <div className="title-dev-notice" role="status">
+        <strong>In Development</strong>
+        <span>
+          This game is still under development. Some features are unfinished
+          and progress may be reset while we keep building.
+        </span>
       </div>
 
       <button
@@ -114,6 +136,16 @@ export default function HomePage() {
           className="start-button-animated object-contain cursor-pointer hover:[animation-play-state:paused]"
         />
       </button>
+
+      {canResume && (
+        <button
+          type="button"
+          onClick={handleResumeBattle}
+          className="mt-3 px-6 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-lg transition-transform duration-200 hover:scale-105 active:scale-95 animate-pulse"
+        >
+          Continue Battle
+        </button>
+      )}
     </div>
 
     <TitleNewsPanel />

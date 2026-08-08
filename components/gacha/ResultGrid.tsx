@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { resolvePlayerCardBack } from "@/lib/cards/cardAssets";
 
 type Card = {
   name: string;
   rarity: string;
   image: string;
+  backImage?: string;
 };
 
 type BackGlow = "none" | "blue" | "gold" | "rainbow";
@@ -126,7 +128,7 @@ export default function ResultGrid({ results, setSelectedImage }: Props) {
                   )}`}
                 >
                   <img
-                    src="/images/card-back.webp"
+                    src={resolvePlayerCardBack(card.backImage)}
                     alt="Card Back"
                     className="w-full h-full object-contain rounded-2xl"
                   />

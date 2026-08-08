@@ -8,9 +8,10 @@ export default function BattleQuitButton() {
   return (
     <button
       onClick={() => router.push("/battle-result")}
-      className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl font-bold text-sm"
+      className="battle-utility-button battle-quit-button"
+      aria-label="Quit battle"
     >
-      Quit Game
+      Quit
     </button>
   );
 }

@@ -7,6 +7,7 @@ import {
   getWalletState,
   initializeWallet,
   resetWalletSessionEarned,
+  setWalletSessionEarned,
   subscribeWallet,
 } from "@/lib/wallet/walletStore";
 
@@ -21,6 +22,10 @@ export async function initializeBattlePoints() {
 
 export async function addBattlePoints(amount: number) {
   await addPoints(amount, "battle_reward");
+}
+
+export function setBattleSessionPoints(value: number) {
+  setWalletSessionEarned(value);
 }
 
 export function resetBattleSessionPoints() {

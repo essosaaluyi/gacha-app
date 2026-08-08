@@ -4,6 +4,7 @@ import {
   initializeBattlePoints,
   subscribeBattlePoints,
 } from "@/lib/battle-pixi/state/battlePointsStore";
+import BattleDigitStrip from "./BattleDigitStrip";
 
 export default function BattlePoints() {
   const [state, setState] = useState(getBattlePointsState());
@@ -19,56 +20,22 @@ export default function BattlePoints() {
   }, []);
 
   return (
-    <div
-      style={{
-        color: "#fde047",
-        fontFamily: 'Impact, "Arial Black", Arial, Helvetica, sans-serif',
-        fontSize: "24px",
-        fontWeight: 900,
-        letterSpacing: "0.04em",
-        lineHeight: 1,
-        textTransform: "uppercase",
-        textShadow:
-          "0 2px 0 rgba(0,0,0,0.95), 0 0 10px rgba(250,204,21,0.85)",
-        pointerEvents: "none",
-      }}
-    >
-      <span
-        style={{
-          fontSize: "13px",
-          verticalAlign: "middle",
-        }}
-      >
-        total
-      </span>{" "}
-      <span
-        style={{
-          fontSize: "28px",
-          verticalAlign: "middle",
-        }}
-      >
-        {state.loaded ? state.points : "..."}
-      </span>{" "}
-      <span
-        style={{
-          fontSize: "13px",
-          verticalAlign: "middle",
-        }}
-      >
-        p
-      </span>
-      <div
-        style={{
-          marginTop: "5px",
-          color: "#fff7ad",
-          fontFamily: "Arial, Helvetica, sans-serif",
-          fontSize: "12px",
-          fontWeight: 800,
-          letterSpacing: "0.02em",
-          textShadow: "0 1px 0 rgba(0,0,0,0.9)",
-        }}
-      >
-        battle +{state.sessionEarnedPoints}
+    <div className="battle-points-plaque" aria-label={`Total ${state.points} points`}>
+      <img className="battle-hud-frame" src="/images/battle-ui/production/v1/transparent/points-plaque-frame-v1.png" alt="" />
+      <div className="battle-points-content">
+        <div className="battle-points-total">
+          <span className="battle-points-label">Total</span>
+          {state.loaded ? (
+            <BattleDigitStrip value={state.points} style="crown-ledger" className="battle-points-value" />
+          ) : (
+            <span className="battle-points-loading" aria-hidden="true">...</span>
+          )}
+          <span className="battle-points-unit">P</span>
+        </div>
+        <div className="battle-points-earned">
+          <span>Battle</span>
+          <strong>+{state.sessionEarnedPoints}</strong>
+        </div>
       </div>
     </div>
   );

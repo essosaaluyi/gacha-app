@@ -12,6 +12,11 @@ export function nextRound() {
   listeners.forEach((listener) => listener());
 }
 
+export function setRound(value: number) {
+  currentRound = value;
+  listeners.forEach((listener) => listener());
+}
+
 export function resetRound() {
   currentRound = 1;
 

@@ -64,7 +64,6 @@ export default function ResurrectionOverlay() {
       <div className="resurrection-flash" />
 
       <div className="resurrection-title">
-        <span className="resurrection-title-jp">逆転</span>
         <span className="resurrection-title-en">REVERSAL!</span>
       </div>
     </div>

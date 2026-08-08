@@ -22,6 +22,7 @@ export default function RoundInsert() {
 
     const timer = window.setTimeout(() => {
       hideRoundInsert();
+      window.dispatchEvent(new Event("battle:round-intro-complete"));
     }, 1900);
 
     return () => {
@@ -35,11 +36,19 @@ export default function RoundInsert() {
     <div className="round-insert-layer">
       <div className="round-insert-stage">
         {state.roundImage && (
-          <img
-            src={state.roundImage}
-            alt={state.enemyName}
-            className="round-insert-enemy"
-          />
+          <>
+            <img
+              src={state.roundImage}
+              alt=""
+              aria-hidden="true"
+              className="round-insert-enemy-backdrop"
+            />
+            <img
+              src={state.roundImage}
+              alt={state.enemyName}
+              className="round-insert-enemy"
+            />
+          </>
         )}
 
         <div className="round-insert-title-wrap" data-text={state.roundText}>

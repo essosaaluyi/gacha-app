@@ -55,9 +55,11 @@ export default function CookiesPage() {
 
       <ManualSection title="Analytics and Marketing">
         <p>
-          Analytics cookies are not currently enabled. If analytics tools are
-          added, we should explain the provider, purpose, data collected,
-          retention, and whether consent is required.
+          Analytics cookies are not used. We use Vercel Web Analytics to count
+          page visits, and it is cookieless: it sets no cookie, stores no
+          identifier on your device, and does not use fingerprinting. It records
+          aggregate page views with coarse details such as page path, referrer,
+          country, and device type.
         </p>
         <p>
           Marketing cookies are not currently enabled. If marketing,

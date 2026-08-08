@@ -57,8 +57,15 @@ export default function PrivacyPage() {
           page activity, error logs, and approximate region.
         </p>
         <p>
-          Analytics and marketing tools are not currently enabled. If they are
-          added later, this policy and the Cookie Policy should be updated first.
+          We use Vercel Web Analytics to count page visits while the game is in
+          development. It is cookieless and does not use device fingerprinting,
+          does not store an identifier on your device, and does not build a
+          profile of you or follow you across other sites.
+        </p>
+        <p>
+          Marketing, advertising, and retargeting tools are not currently
+          enabled. If they are added later, this policy and the Cookie Policy
+          should be updated first.
         </p>
       </ManualSection>
 

@@ -10,6 +10,11 @@ export function incrementGameCount() {
   listeners.forEach((listener) => listener());
 }
 
+export function setGameCount(value: number) {
+  gameCount = value;
+  listeners.forEach((listener) => listener());
+}
+
 export function resetGameCount() {
   gameCount = 0;
   listeners.forEach((listener) => listener());

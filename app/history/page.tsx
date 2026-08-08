@@ -62,11 +62,11 @@ export default function HistoryPage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* TOP BAR */}
-        <TopBar />
+    <main className="min-h-screen bg-zinc-950 text-white pb-6">
+      {/* TOP BAR */}
+      <TopBar />
 
+      <div className="max-w-5xl mx-auto px-6">
         <h1 className="text-3xl font-bold mb-6">Pull History</h1>
 
         {message && <p className="text-zinc-300 mb-4">{message}</p>}

@@ -1,19 +1,25 @@
 import {
   Container,
   Rectangle,
-  Sprite,
   Texture,
 } from "pixi.js";
 
 import { UI } from "@/lib/battle-pixi/config";
+import type { BattleCardView } from "@/lib/battle-pixi/presentation/battleCardView";
 
 type ResetBattleCardsToGroupArgs = {
-  drawCards: Sprite[];
+  drawCards: BattleCardView[];
   cardGroup: Container;
   cardBackTexture: Texture;
   revealed: boolean[];
   setRevealedCount: (value: number) => void;
   setCardsReleased: (value: boolean) => void;
+  /** Layout values (cabinet mode overrides card scale/start); defaults to UI. */
+  layout?: {
+    CARD_SCALE: number;
+    CARD_START_X: number;
+    CARD_START_Y: number;
+  };
 };
 
 export function resetBattleCardsToGroup({
@@ -23,6 +29,7 @@ export function resetBattleCardsToGroup({
   revealed,
   setRevealedCount,
   setCardsReleased,
+  layout = UI,
 }: ResetBattleCardsToGroupArgs) {
   drawCards.forEach((card) => {
     if (card.parent !== cardGroup) {
@@ -35,14 +42,14 @@ export function resetBattleCardsToGroup({
     card.x = 0;
     card.y = 0;
     card.alpha = 1;
-    card.scale.set(UI.CARD_SCALE);
+    card.scale.set(layout.CARD_SCALE);
     card.rotation = UI.CARD_ROTATION;
     card.eventMode = "none";
   });
 
   cardGroup.visible = true;
-  cardGroup.x = UI.CARD_START_X;
-  cardGroup.y = UI.CARD_START_Y;
+  cardGroup.x = layout.CARD_START_X;
+  cardGroup.y = layout.CARD_START_Y;
   cardGroup.alpha = 1;
   cardGroup.eventMode = "static";
   cardGroup.cursor = "grab";

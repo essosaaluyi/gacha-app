@@ -3,14 +3,19 @@ import {
   rarityRates,
 } from "@/lib/game-config/generated";
 import { patchConfig } from "@/lib/game-config/patchConfig";
+import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
 
 export type Card = {
   name: string;
   rarity: string;
   image: string;
+  backImage?: string;
 };
 
-export const cards: Card[] = configuredCards.map((card) => ({ ...card }));
+export const cards: Card[] = configuredCards.map((card) => ({
+  ...card,
+  backImage: PLAYER_CARD_BACK_IMAGE,
+}));
 
 export function rollRarity() {
   // Admin-editable gacha odds override the spreadsheet rates when present.

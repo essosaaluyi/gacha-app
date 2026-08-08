@@ -135,20 +135,39 @@ Current asset:
 
 Attack fakeouts use insert panels inspired by Japanese slot-machine battle presentation.
 
-Fakeout sequence:
+Fakeout dialogue sequence:
 
-1. First fakeout insert:
-   - Shows the current player card character.
-   - Position: slightly left/top from center.
-   - Text: a line related to the player's card origin.
-2. Second fakeout insert:
-   - Shows the current enemy.
-   - Position: from right, slightly right/bottom from center.
-   - Text: a line related to the enemy origin.
-3. Final fakeout:
-   - No text insert.
-   - The player card should visibly attack.
-   - Enemy either gets hit or dodges.
+1. Each of the three fakeout games adds one dialogue insert immediately after
+   the first table card finishes flipping and settles.
+2. The speaker may be either the current player card character or the current
+   enemy. Select the side once per fakeout game and do not re-roll it during
+   rendering.
+3. Player dialogue uses the left-side frame and player icon. Enemy dialogue uses
+   the right-side frame and enemy icon.
+4. Dialogue history persists across the complete three-game fakeout sequence.
+   Do not dismiss an insert on a short per-line timer.
+5. A maximum of two dialogue inserts may be readable at once:
+   - The first dialogue occupies the upper row.
+   - The second dialogue occupies the lower row.
+   - When the third dialogue is ready, the oldest upper dialogue scrolls upward
+     and fades out, the lower dialogue moves into the upper row, and the third
+     dialogue enters the lower row.
+   - The third dialogue must not enter until the oldest dialogue is no longer
+     readable, so three readable boxes never share the screen.
+6. Horizontal placement always follows the speaker: player inserts anchor left;
+   enemy inserts anchor right.
+7. After the third fakeout game, keep the final two dialogue inserts visible
+   through the remaining fakeout suspense, then clear them immediately before
+   the attack hit/dodge payoff.
+8. The player card should visibly attack. The enemy either gets hit or dodges.
+
+Dialogue content:
+
+- Use the active character's approved character-sheet phrase exactly as written.
+- When a character has multiple approved phrases, cycle or select without
+  immediate repetition during one fakeout sequence.
+- If a character has no approved phrase, show the approved name and icon but
+  leave the phrase field empty. Do not invent replacement dialogue.
 
 Text insert color communicates anticipation.
 
@@ -178,6 +197,81 @@ Design intent:
 - Red should be rare during fail fakeouts.
 - Red should be more common during success fakeouts.
 - Success should not be too obvious, so white and blue can still appear on success.
+
+## Player Fatal Mode Opening Insert
+
+The Player Fatal Mode Opening Insert is a separate full-stage presentation. It is
+not an attack-fakeout dialogue box and must never be added to the two-entry
+attack-fakeout dialogue history.
+
+Current R4 prototype:
+
+- Character: R4 Young Knight.
+- Display title: `DESTINY BATTLE`.
+- `DESTINY BATTLE` is a mode title, not spoken character dialogue.
+- Canvas: 1250 x 618.
+- Current motion preview: 88 frames / approximately 2.93 seconds at 30 fps.
+- At 60 fps, double all frame counts while preserving the same real-time speed.
+- Temporary overlay only; the underlying battle layout remains unchanged.
+- The previous Legendary working phrase is retired and must not return.
+
+Composition direction:
+
+- Large distressed manga-ink two-line title on the left.
+- Close face, shoulder, and chest crop of R4 on the right.
+- Use two complete pixel-registered monochrome plates: a black-background
+  positive plate and a white-background negative plate.
+- Use dry-brush strokes, splatter, scratches, and halftone texture.
+- Animate the approved `07-energy-divider.png` as a segmented electrical motion
+  graphic above both monochrome plates.
+- Use `09-foreground-foil-monochrome-holographic-v2.png` as the active foil. It
+  is black, silver, and white only; the blue/yellow source foil is retired from
+  the active render stack.
+- Do not add a metallic arcade frame, orange perimeter, new colored sweep, or a
+  broad holographic light band.
+- Preserve R4's short blond low side fade, sharper youthful warrior face, slim
+  proportions, and smooth armor construction in monochrome.
+- Add clearly visible chromatic aberration at the four outer corners of the
+  complete 1250 x 618 upper battle screen. Keep the central title and R4 portrait
+  sharp.
+
+Motion sequence:
+
+1. Staggered horizontal plate shards of the positive plate close from both sides.
+2. Both halves meet with the sequence's only full-frame white flash.
+3. Stack the complete positive and negative plates without independently
+   scaling, cropping, or repositioning either image.
+4. Run four alternating horizontal mask reveals from bottom to top. Each flip
+   lasts four frames at 30 fps and uses a narrow 14 px smooth feather.
+5. Animate the energy divider with segmented jitter, brightness pulses, and a
+   faint offset echo above the swapping plates.
+6. Animate only a black/white reflective shimmer through the monochrome foil.
+7. Peak the stronger corner chromatic aberration at 11 px during the four
+   inversion sweeps, retain a visible 5-7 px pulse during hold, then clear it.
+8. Hold the complete positive plate long enough to bring the total presentation
+   to approximately 2.93 seconds.
+9. Shatter the positive plate outward and clear every insert pixel before returning to
+   the unchanged battle screen.
+
+Prohibited motion treatments:
+
+- Hue rotation or any cyan, gold, rainbow, or colored sweep. The approved energy
+  divider and foil are fixed foreground accents, not sweep sources.
+- Opacity dissolve between the positive and negative plates.
+- Screen/Add blending for the plate transition.
+- A broad white holographic band. The only full-frame white flash is the center
+  contact flash.
+
+Authoritative assets and timing:
+
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/monochrome-sweep-v2/04-composite-positive.png`
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/monochrome-sweep-v2/08-composite-negative.png`
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/07-energy-divider.png`
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/monochrome-sweep-v2/09-foreground-foil-monochrome-holographic-v2.png`
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/monochrome-sweep-v2/r4-monochrome-v2-selected-extended-v6.webp`
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/monochrome-sweep-v2/r4-monochrome-v2-selected-extended-keyframes-v6.jpg`
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/monochrome-sweep-v2/r4-monochrome-plate-comparison.jpg`
+- `public/images/battle-ui/phrase-inserts/r4-young-knight/monochrome-sweep-v2/R4_MONOCHROME_SWEEP_V2_MOTION_SPEC.md`
 
 ## Round Insert
 

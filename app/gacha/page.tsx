@@ -38,8 +38,6 @@ export default function GachaPage() {
   const [, setEmail] = useState<string | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [revealPreparing, setRevealPreparing] = useState(false);
-  const [battleConfirmOpen, setBattleConfirmOpen] = useState(false);
-
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmCount, setConfirmCount] = useState(1);
   const [confirmCost, setConfirmCost] = useState(0);
@@ -191,15 +189,14 @@ return;
 
   const continueToBattleOrder = () => {
     localStorage.setItem("pending_battle_cards", JSON.stringify(results));
-    setBattleConfirmOpen(false);
     router.push("/battle-order");
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-5xl mx-auto">
-        <TopBar />
+    <main className="min-h-screen bg-zinc-950 text-white pb-6">
+      <TopBar />
 
+      <div className="max-w-5xl mx-auto px-6">
         <img
           src="/images/widebanner.webp"
           alt="Gacha Banner"
@@ -252,7 +249,7 @@ return;
 />
 
             <button
-              onClick={() => setBattleConfirmOpen(true)}
+              onClick={continueToBattleOrder}
               className="group mt-8 animate-battleGlow hover:scale-105 active:scale-95 transition-transform duration-200 w-full flex flex-col items-center gap-2"
             >
               <span className="text-sm font-black tracking-[0.3em] text-blue-200">
@@ -306,33 +303,6 @@ return;
         </div>
       )}
 
-      {battleConfirmOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-2xl font-bold mb-3">Enter Battle?</h2>
-
-            <p className="text-zinc-300 mb-6">
-              Move these pull results into battle deck order.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setBattleConfirmOpen(false)}
-                className="flex-1 bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-xl font-semibold"
-              >
-                No
-              </button>
-
-              <button
-                onClick={continueToBattleOrder}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
-              >
-                Yes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {selectedImage && (
         <div

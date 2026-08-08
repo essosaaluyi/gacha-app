@@ -77,14 +77,33 @@ async function persist(nextPoints: number) {
   }
 }
 
+// Mutations are serialized through this chain. Without it two concurrent
+// callers both read the same `points`, and the slower write silently discards
+// the faster one's delta (classic lost update).
+let mutationChain: Promise<unknown> = Promise.resolve();
+
+function queueMutation<T>(mutate: () => Promise<T>): Promise<T> {
+  const run = mutationChain.then(mutate, mutate);
+  // Keep the chain alive even if a mutation rejects.
+  mutationChain = run.catch(() => undefined);
+  return run;
+}
+
 export async function addPoints(amount: number, reason: string) {
   if (amount <= 0) return;
 
+  return queueMutation(async () => {
+    await applyDelta(amount, reason);
+  });
+}
+
+async function applyDelta(amount: number, reason: string) {
   const nextPoints = points + amount;
   await persist(nextPoints);
 
   points = nextPoints;
-  sessionEarnedPoints += amount;
+  // Session-earned tracks winnings only; spending must not claw it back.
+  if (amount > 0) sessionEarnedPoints += amount;
   loaded = true;
 
   logEvent({
@@ -104,28 +123,61 @@ export async function addPoints(amount: number, reason: string) {
 export async function spendPoints(amount: number, reason: string): Promise<boolean> {
   if (amount < 0) return false;
   if (amount === 0) return true;
-  if (points < amount) return false;
 
-  const nextPoints = points - amount;
-  await persist(nextPoints);
+  return queueMutation(async () => {
+    // Re-check inside the queue: an earlier queued spend may have drained the
+    // balance after this call was made.
+    if (points < amount) return false;
 
-  points = nextPoints;
-  loaded = true;
-
-  logEvent({
-    kind: "pointsDelta",
-    detail: { reason },
-    pointsDelta: -amount,
-    balanceAfter: points,
+    await applyDelta(-amount, reason);
+    return true;
   });
+}
 
+/**
+ * Tops the balance up *to* `floor` when it has fallen below it, so a player can
+ * never be stranded with too few points to start a battle.
+ *
+ * Deliberately a floor rather than a flat grant: granting a fixed amount per
+ * battle lets the player farm it by restarting the battle screen. Because this
+ * pays only the shortfall, repeating it once the floor is reached is worth 0.
+ *
+ * Returns the amount actually granted.
+ */
+export async function ensureMinimumPoints(
+  floor: number,
+  reason: string
+): Promise<number> {
+  if (floor <= 0) return 0;
+
+  return queueMutation(async () => {
+    if (points >= floor) return 0;
+
+    const shortfall = floor - points;
+    await applyDelta(shortfall, reason);
+    return shortfall;
+  });
+}
+
+export function setWalletSessionEarned(value: number) {
+  sessionEarnedPoints = value;
   notify();
-  return true;
 }
 
 export function resetWalletSessionEarned() {
   sessionEarnedPoints = 0;
   notify();
+}
+
+// Dev-only console helper: `__addPoints(500)` grants test points from any page.
+// Ensures the wallet is loaded first so the grant adds to the real balance.
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  (window as Window & { __addPoints?: (amount: number) => Promise<number> }).__addPoints =
+    async (amount: number) => {
+      if (!loaded) await initializeWallet();
+      await addPoints(amount, "dev_grant");
+      return getWalletState().points;
+    };
 }
 
 export function subscribeWallet(listener: () => void) {

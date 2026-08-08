@@ -63,12 +63,19 @@ export default function ShopPage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-5xl mx-auto">
-        <TopBar />
+    <main className="min-h-screen bg-zinc-950 text-white pb-6">
+      <TopBar />
 
+      <div className="max-w-5xl mx-auto px-6">
         <div className="flex items-baseline justify-between mt-4 mb-2">
-          <h1 className="text-4xl font-black tracking-tight">Shop</h1>
+          <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
+            Shop
+            {!shopEnabled && (
+              <span className="text-[11px] font-black uppercase tracking-wide bg-amber-400/20 border border-amber-400/45 text-amber-300 rounded px-2 py-1">
+                Coming Soon
+              </span>
+            )}
+          </h1>
           <p className="text-zinc-400 text-sm">
             Balance:{" "}
             <span className="text-emerald-400 font-bold">

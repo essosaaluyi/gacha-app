@@ -6,6 +6,7 @@ import {
   getGameCount,
   subscribeGameCount,
 } from "@/lib/battle-pixi/state/battleGameStore";
+import BattleDigitStrip from "./BattleDigitStrip";
 
 export default function BattleGameCounter() {
   const [gameCount, setGameCount] = useState(getGameCount());
@@ -17,20 +18,12 @@ export default function BattleGameCounter() {
   }, []);
 
   return (
-  <div
-    style={{
-      fontSize: "24px",
-      fontWeight: 400,
-      color: "#d3d3d3",
-      fontFamily: "Impact, Arial Black, sans-serif",
-      textShadow: `
-        0 0 4px rgba(255, 255, 255, 0.8),
-    
-      `,
-      userSelect: "none",
-    }}
-  >
-    {String(gameCount).padStart(3, "0")}G
-  </div>
-);
+    <div className="battle-game-counter" aria-label={`${gameCount} games played`}>
+      <img className="battle-hud-frame" src="/images/battle-ui/production/v1/transparent/game-counter-plaque-frame-v1.png" alt="" />
+      <div className="battle-game-counter-content">
+        <BattleDigitStrip value={gameCount} style="rune-led" minDigits={3} />
+        <small>G</small>
+      </div>
+    </div>
+  );
 }

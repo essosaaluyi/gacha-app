@@ -1,3 +1,5 @@
+import { patchConfig } from "@/lib/game-config/patchConfig";
+
 let fatalModeGamesLeft = 0;
 let fatalModeTotalGames = 0;
 let fatalModeHit = false;
@@ -13,8 +15,11 @@ export function isFatalModeActive() {
 }
 
 export function startFatalMode() {
-  fatalModeGamesLeft = 2;
-  fatalModeTotalGames = 2;
+  // Read at arm time so an admin change applies to the next window.
+  const games = Math.max(1, Math.round(patchConfig.fatalMode.playerWindowGames));
+
+  fatalModeGamesLeft = games;
+  fatalModeTotalGames = games;
   fatalModeHit = false;
 
   listeners.forEach((listener) => listener());

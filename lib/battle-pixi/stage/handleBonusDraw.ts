@@ -1,21 +1,28 @@
 import { Container, Sprite } from "pixi.js";
 
 import { addBattleLog } from "@/lib/battle-pixi/state/battleLogStore";
+import { playSfx } from "@/lib/audio/sfxStore";
+import type { BattleCardView } from "@/lib/battle-pixi/presentation/battleCardView";
 import { incrementGameCount } from "@/lib/battle-pixi/state/battleGameStore";
 import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
 import {
   finishBonusMode,
   getBonusModeState,
-  
+
   startBonusGames,
-  startBonusOpening,
   consumeBonusGame,
-  resetBonusGamesToFive,
+  resetBonusGamesToEntryCount,
 } from "@/lib/battle-pixi/state/bonusModeStore";
+import {
+  bonusGamesForType,
+  rollBonusType,
+} from "@/lib/battle-pixi/core/bonusTypeLottery";
+import { startNestedBonus } from "@/lib/battle-pixi/state/nestedBonusStore";
+import { armBonusOpening } from "@/lib/battle-pixi/state/bonusPresentationStore";
+import { logEvent } from "@/lib/events/gameEventStore";
 
 import {
-  showBonusOpening,
-  showBonusStaticBackground,
+  armBonusBackground,
   setPendingBonusRevealVideo,
 } from "@/lib/battle-pixi/state/bonusPresentationStore";
 
@@ -45,13 +52,13 @@ import type { BattleCardSymbol } from "@/lib/battle-pixi/core/resultLottery";
 type HandleBonusDrawArgs = {
   setCardsAreOut: (value: boolean) => void;
   drawButton: Sprite;
-  drawCards: Sprite[];
+  drawCards: BattleCardView[];
   stage: Container;
   startNewDraw: () => void;
   resetCardsToGroup: () => void;
   drawCardsFromHolder: () => void;
   setCurrentBattleResult: (result: ReturnType<typeof drawBattleResult>) => void;
-  onBonusFinished: () => void;
+  onBonusFinished: (collectionStarted: boolean) => void;
 };
 
 function getBonusReward(result: string, hasBar: boolean) {
@@ -84,11 +91,12 @@ export function handleBonusDraw({
   finishBonusMode();
 
   // Feature 6: points are collected via the pick-me phase, not credited here.
-  if (totalPoints > 0) {
+  const collectionStarted = totalPoints > 0;
+  if (collectionStarted) {
     startCollectionPhase(totalPoints);
   }
 
-  onBonusFinished();
+  onBonusFinished(collectionStarted);
   addBattleLog("Bonus Finished. Collect your points!", "success");
 
   setCardsAreOut(false);
@@ -112,8 +120,16 @@ export function handleBonusDraw({
     { affectsCost: false }
   );
 
-resetCardsToGroup();
-drawCardsFromHolder();
+  // Cards set out to the disk exit. handleDrawButtonPress fires this cue for a
+  // normal battle draw, but it returns into this handler BEFORE reaching it, so
+  // the bonus was dealing in silence. The cue belongs to the deal, so it lives
+  // with the deal -- and it is after the result-confirm branch above, which
+  // sets no cards out and must stay silent.
+  playSfx("cardSetToDisk");
+
+  resetCardsToGroup();
+  drawCardsFromHolder();
+
   const hasChance = result.cards.includes("Chance");
 
   addBattleLog("Bonus Draw", "chance");
@@ -123,16 +139,37 @@ drawCardsFromHolder();
   if (bonusState.phase === "opening") {
     setBonusGameText("BONUS OPENING");
     addBattleLog("Bonus Opening", "chance");
-     showBonusOpening();
+
+    // The bonus grade is rolled HERE, not at the defeat, because the opening
+    // hand is part of the input: a Chance card in it is the bonus chance and
+    // takes the regular bonus off the table. The roll is settled before the
+    // opening video plays (that happens on the release click), so the video
+    // and the bonus always agree.
+    const bonusType = rollBonusType(hasChance);
+
     if (hasChance) {
-  addBattleLog("Bonus Opening: Chance! Bonus Games 7G.", "success");
-  startBonusGames(7);
-  addBattleLog("Bonus Games Started! 7G", "chance");
-} else {
-  addBattleLog("Bonus Opening: No Chance.", "draw");
-  startBonusGames(5);
-  addBattleLog("Bonus Games Started! 5G", "chance");
-}
+      addBattleLog("Bonus Opening: CHANCE! Guaranteed super.", "success");
+    }
+
+    if (bonusType === "superMax") {
+      // Super max is the nested loop. The classic bonus that was armed at the
+      // defeat is stood down and the nested one takes over.
+      finishBonusMode();
+      startNestedBonus();
+      setBonusGameText(
+        `MAIN ${patchConfig.nestedBonus.mainLoopGames}/${patchConfig.nestedBonus.mainLoopGames}`
+      );
+      logEvent({ kind: "bonusStart", detail: { mode: "nested" } });
+      addBattleLog("SUPER BONUS MAX! Nested loop.", "chance");
+    } else {
+      const games = bonusGamesForType(bonusType);
+      startBonusGames(games);
+      addBattleLog(`Bonus Games Started! ${games}G`, "chance");
+    }
+
+    // Arms the matching opening video for the deal. A super-max grade still
+    // opens on a regular/super clip -- the freeze cuts into it and promotes it.
+    armBonusOpening(bonusType);
 
     setCardsAreOut(true);
     drawButton.eventMode = "static";
@@ -142,7 +179,7 @@ drawCardsFromHolder();
   }
 
   if (bonusState.phase === "bonus") {
-  showBonusStaticBackground();
+  armBonusBackground();
 
   const totalBonusGames = bonusState.bonusGamesMax;
 const remainingAfterThisDraw = bonusState.bonusGamesRemaining - 1;
@@ -174,12 +211,12 @@ if (remainingAfterThisDraw > 0) {
     setPendingBonusRevealVideo("/videos/bonus-reveals/reset.mp4");
     addBattleLog("BAR! BAR! BAR! Reset Success!", "success");
 
-    consumeBonusGame();
-    resetBonusGamesToFive();
-    addBattleLog(
-      `Bonus games reset to ${patchConfig.barReset.resetGamesTo}G!`,
-      "success"
-    );
+    // Restores the bonus to its entry length -- 7G resets to 7/7, 5G to 5/5.
+    resetBonusGamesToEntryCount();
+    // The counter was written above for a normal game; a reset overrides it
+    // with the restored full count so the meter agrees with the state.
+    setBonusGameText(`${bonusState.bonusGamesMax}/${bonusState.bonusGamesMax}`);
+    addBattleLog(`Bonus games reset to ${bonusState.bonusGamesMax}G!`, "success");
   } else if (barEvent === "fake") {
     // BAR / BAR / EMPTY: the tension builds on the first two flips, then the
     // third breaks the reset and pays the fake amount instead.

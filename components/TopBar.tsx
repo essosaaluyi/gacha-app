@@ -230,6 +230,9 @@ const [giftClaimable, setGiftClaimable] = useState(0);
 
   return (
     <>
+      {/* The shell owns the bar's width so it renders identically on every
+          page, regardless of the content container it sits above. */}
+      <header className="game-topbar-shell">
       <div className="game-topbar">
         <div className="game-topbar-brand">
           <button
@@ -248,7 +251,14 @@ const [giftClaimable, setGiftClaimable] = useState(0);
           <Link href="/gacha">Gacha</Link>
           <Link href="/inventory">Cards</Link>
           <Link href="/history">History</Link>
-          {Boolean(patchConfig.shop.enabled) && <Link href="/shop">Shop</Link>}
+          {/* Shop is visible either way: unlocked when enabled, tagged as
+              coming soon while redeeming is still gated. */}
+          <Link href="/shop" className="game-topbar-nav-item">
+            Shop
+            {!patchConfig.shop.enabled && (
+              <span className="game-topbar-nav-tag">Coming Soon</span>
+            )}
+          </Link>
           <Link href="/how-to-play">Game Info</Link>
           <Link href="/rules">Rules</Link>
           <Link href="/support">Support</Link>
@@ -343,6 +353,7 @@ const [giftClaimable, setGiftClaimable] = useState(0);
           </div>
         </div>
       </div>
+      </header>
 
       {returnPopupOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
