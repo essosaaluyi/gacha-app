@@ -36,7 +36,10 @@ const enemyFaceoffFiles: Record<number, string> = {
 };
 
 export function getPlayerFaceoffImage(cardId: string | undefined) {
-  const file = cardId ? playerFaceoffFiles[cardId] : undefined;
+  const normalizedCardId = cardId?.trim().toUpperCase();
+  const file = normalizedCardId
+    ? playerFaceoffFiles[normalizedCardId]
+    : undefined;
   return file ? `${FACE_OFF_BASE}/${file}` : null;
 }
 

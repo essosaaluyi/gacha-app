@@ -66,7 +66,9 @@ const [giftClaimable, setGiftClaimable] = useState(0);
       .from("point_settings")
       .select("setting_value")
       .eq("setting_key", key)
-      .single();
+      // An absent setting row is the normal case -- the caller supplies the
+      // fallback. single() would 406 on it and log an error for nothing.
+      .maybeSingle();
 
     return data?.setting_value ?? fallback;
   };
@@ -100,7 +102,7 @@ const [giftClaimable, setGiftClaimable] = useState(0);
         .from("user_points")
         .select("last_daily_claim")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       setCooldownText(formatCooldown(data?.last_daily_claim ?? null));
 
@@ -180,7 +182,7 @@ const [giftClaimable, setGiftClaimable] = useState(0);
       .from("user_points")
       .select("last_daily_claim")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (formatCooldown(data?.last_daily_claim ?? null)) return;
 

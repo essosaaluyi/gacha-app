@@ -24,6 +24,10 @@ import {
   subscribeWallet,
 } from "@/lib/wallet/walletStore";
 
+// Used until the server's point_settings rows load, and whenever they are
+// absent. These are the only hardcoded prices left: the pack labels and the
+// confirm dialog both read the fetched values below.
+const FALLBACK_PULL_COSTS = { single: 100, ten: 1000 };
 
 export default function GachaPage() {
   const router = useRouter();
@@ -41,6 +45,9 @@ export default function GachaPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmCount, setConfirmCount] = useState(1);
   const [confirmCost, setConfirmCost] = useState(0);
+  // Fetched once, then used for both the pack labels and the confirm dialog, so
+  // the advertised price and the charged price cannot disagree.
+  const [pullCosts, setPullCosts] = useState(FALLBACK_PULL_COSTS);
 
   const [freezeActive, setFreezeActive] = useState(false);
   const [freezeTriggered, setFreezeTriggered] = useState(false);
@@ -83,22 +90,39 @@ export default function GachaPage() {
     return subscribeWallet(syncPoints);
   }, []);
 
-  const askPullConfirm = (count: number) => {
-    const costKey = count === 10 ? "ten_pull_cost" : "single_pull_cost";
-    const fallbackCost = count === 10 ? 1000 : 100;
-
-    setConfirmCount(count);
-    setConfirmCost(fallbackCost);
-    setConfirmOpen(true);
+  // Both prices in one request on mount, rather than one request per click of a
+  // pack. The pack labels used to be hardcoded text while only the confirm
+  // dialog asked the server, so changing single_pull_cost in /admin made the
+  // advertised price wrong.
+  useEffect(() => {
+    let cancelled = false;
 
     void supabase
       .from("point_settings")
-      .select("setting_value")
-      .eq("setting_key", costKey)
-      .single()
-      .then(({ data: costData }) => {
-        setConfirmCost(costData?.setting_value ?? fallbackCost);
+      .select("setting_key, setting_value")
+      .in("setting_key", ["single_pull_cost", "ten_pull_cost"])
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+
+        const byKey = Object.fromEntries(
+          data.map((row) => [row.setting_key, row.setting_value])
+        );
+
+        setPullCosts({
+          single: byKey.single_pull_cost ?? FALLBACK_PULL_COSTS.single,
+          ten: byKey.ten_pull_cost ?? FALLBACK_PULL_COSTS.ten,
+        });
       });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const askPullConfirm = (count: number) => {
+    setConfirmCount(count);
+    setConfirmCost(count === 10 ? pullCosts.ten : pullCosts.single);
+    setConfirmOpen(true);
   };
 
   const startPull = async (count: number, cost: number) => {
@@ -208,6 +232,7 @@ return;
     <DailyGachaPanel />
     <PullSelection
       askPullConfirm={askPullConfirm}
+      costs={pullCosts}
     />
   </>
 )}

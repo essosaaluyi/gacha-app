@@ -1,8 +1,6 @@
-// Feature 6: post-bonus collection (pick-me) phase state.
-// Bonus points aren't credited at bonus end — the player collects them by
-// flipping cards (one flip per game played; a Reply grants an extra flip).
-// A cascading multiplier and a Chance card boost payouts, but the banked
-// total is capped at the bonus earned, and the Collect card ends the phase.
+// Post-bonus Pick a Bonus state. Rewards are credited to the unified wallet
+// when their cards resolve; this store owns the table, picks, and handoff back
+// to the next battle round.
 
 import { patchConfig } from "@/lib/game-config/patchConfig";
 import {
@@ -25,9 +23,12 @@ import {
 export type CollectionState = {
   active: boolean;
   finished: boolean;
+  awaitingExtraDeal: boolean;
+  extraMode: boolean;
   deck: CollectionCard[];
   revealed: boolean[];
-  cap: number; // bonus total = max collectible
+  cap: number;
+  tableBanked: number;
   banked: number;
   multiplier: number;
   doubleNext: boolean;
@@ -36,18 +37,22 @@ export type CollectionState = {
 };
 
 const STORAGE_KEY = "collection_phase_state";
+const MAX_ZERO_RESTARTS = 3;
 
 let state: CollectionState = emptyState();
-
+let restartsUsed = 0;
 const listeners: (() => void)[] = [];
 
 function emptyState(): CollectionState {
   return {
     active: false,
     finished: false,
+    awaitingExtraDeal: false,
+    extraMode: false,
     deck: [],
     revealed: [],
     cap: 0,
+    tableBanked: 0,
     banked: 0,
     multiplier: 1,
     doubleNext: false,
@@ -63,14 +68,42 @@ function notify() {
 function persist() {
   if (typeof window === "undefined") return;
   try {
-    if (state.active) {
+    if (state.active || state.finished || state.awaitingExtraDeal) {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } else {
       window.localStorage.removeItem(STORAGE_KEY);
     }
   } catch {
-    // ignore storage failures
+    // Storage failure should not interrupt a live bonus.
   }
+}
+
+function dealCollection(
+  cap: number,
+  options: { extraMode?: boolean; preserveBanked?: number } = {}
+) {
+  const extraMode = options.extraMode ?? false;
+  const deck = buildCollectionDeck(cap, extraMode);
+
+  state = {
+    active: true,
+    finished: false,
+    awaitingExtraDeal: false,
+    extraMode,
+    deck,
+    revealed: deck.map(() => false),
+    cap,
+    tableBanked: 0,
+    banked: options.preserveBanked ?? 0,
+    multiplier: 1,
+    doubleNext: false,
+    flipsAvailable: patchConfig.collection.initialFlips,
+    lastFlip: null,
+  };
+
+  playCollectionStartSfx();
+  persist();
+  notify();
 }
 
 export function getCollectionState() {
@@ -78,43 +111,31 @@ export function getCollectionState() {
 }
 
 export function isCollectionActive() {
-  return state.active;
-}
-
-/** How many times a shutout may re-deal the board before it is allowed to end. */
-const MAX_ZERO_RESTARTS = 3;
-
-let restartsUsed = 0;
-
-/** Deals a fresh board for `bonusTotal`. Shared by a new phase and a re-deal. */
-function dealCollection(bonusTotal: number) {
-  const deck = buildCollectionDeck(bonusTotal);
-  state = {
-    active: true,
-    finished: false,
-    deck,
-    revealed: deck.map(() => false),
-    cap: bonusTotal,
-    banked: 0,
-    multiplier: 1,
-    doubleNext: false,
-    flipsAvailable: patchConfig.collection.initialFlips,
-    lastFlip: null,
-  };
-  playCollectionStartSfx();
-  persist();
-  notify();
+  return state.active || state.awaitingExtraDeal;
 }
 
 export function startCollectionPhase(bonusTotal: number) {
   restartsUsed = 0;
-  dealCollection(bonusTotal);
+  dealCollection(Math.max(1, Math.round(bonusTotal)));
   setBattleMode("collection", "collection-start");
   setBattlePresentationPhase("collection", "bonus-collection");
-  logEvent({ kind: "collectionFlip", detail: { phase: "start", cap: bonusTotal } });
+  logEvent({
+    kind: "collectionFlip",
+    detail: { phase: "start", cap: bonusTotal },
+  });
 }
 
-/** A game was played during collection — grant flip(s). */
+export function advanceCollectionAfterMaxPayout() {
+  if (!state.awaitingExtraDeal) return;
+
+  const { cap, banked } = state;
+  dealCollection(cap, { extraMode: true, preserveBanked: banked });
+  logEvent({
+    kind: "collectionFlip",
+    detail: { phase: "extra-table", cap, banked },
+  });
+}
+
 export function grantCollectionFlip(count = 1) {
   if (!state.active || state.finished) return;
   state.flipsAvailable += count;
@@ -123,125 +144,103 @@ export function grantCollectionFlip(count = 1) {
 }
 
 export function flipCollectionCard(index: number) {
-  if (!state.active || state.finished) return;
+  if (!state.active || state.finished || state.awaitingExtraDeal) return;
   if (index < 0 || index >= state.deck.length) return;
-  if (state.revealed[index]) return;
-  if (state.flipsAvailable <= 0) return;
-
-  // First pick is never a dud. Opening the collection on an Empty reads as
-  // "the game gave me nothing", so on the very first flip only, an Empty is
-  // swapped with a point card still face-down elsewhere in the deck. The deck
-  // composition is unchanged — the same cards remain, just reordered — so the
-  // total collectable value and every later flip stay exactly as dealt.
-  if (!state.revealed.some(Boolean) && state.deck[index].type === "empty") {
-    const swapWith = state.deck.findIndex(
-      (candidate, i) =>
-        i !== index && !state.revealed[i] && candidate.type === "point"
-    );
-
-    if (swapWith >= 0) {
-      const moved = state.deck[swapWith];
-      state.deck[swapWith] = state.deck[index];
-      state.deck[index] = moved;
-    }
-  }
+  if (state.revealed[index] || state.flipsAvailable <= 0) return;
 
   state.flipsAvailable -= 1;
   state.revealed[index] = true;
   const card = state.deck[index];
+  const doubleWasArmed = state.doubleNext;
 
-  // Fired here, not in the overlay, so the cue is bound to the one committed
-  // flip — a re-render or a replayed burst can never sound twice. Reads the card
-  // after the never-open-on-a-dud swap, so it always matches the visible face.
   playCollectionFlipSfx(card);
 
   let credited = 0;
 
-  // Mystery carries a real value chosen when the deck was built, so it pays
-  // exactly like a point card — only its face is hidden until the flip.
   if (card.type === "point" || card.type === "mystery") {
-    const factor = state.doubleNext ? patchConfig.collection.chanceMultiplier : 1;
-    const raw = Math.round(card.points * state.multiplier * factor);
-    // Cap the banked total at the bonus earned.
-    credited = Math.max(0, Math.min(raw, state.cap - state.banked));
+    const factor = doubleWasArmed
+      ? patchConfig.collection.chanceMultiplier
+      : 1;
+    const raw = Math.round(card.points * factor);
+    credited = Math.max(0, Math.min(raw, state.cap - state.tableBanked));
+    state.tableBanked += credited;
     state.banked += credited;
     state.doubleNext = false;
-    state.multiplier = roundTo(state.multiplier + patchConfig.collection.cascadeStep);
     if (credited > 0) void addPoints(credited, "collection");
-
-    // The combo card: pays and extends the round in one hit.
     if (card.picks > 0) state.flipsAvailable += card.picks;
   } else if (card.type === "chance") {
     state.doubleNext = true;
   } else if (card.type === "doubleAll") {
-    // Doubles what is already banked, still bounded by the bonus cap.
-    const bonus = Math.max(0, Math.min(state.banked, state.cap - state.banked));
-    if (bonus > 0) {
-      state.banked += bonus;
-      credited = bonus;
-      void addPoints(bonus, "collection");
-    }
+    const bonus = Math.max(
+      0,
+      Math.min(state.tableBanked, state.cap - state.tableBanked)
+    );
+    credited = bonus;
+    state.tableBanked += bonus;
+    state.banked += bonus;
+    if (bonus > 0) void addPoints(bonus, "collection");
   } else if (card.type === "pick") {
     state.flipsAvailable += card.picks;
-  } else if (card.type === "empty") {
-    // wasted flip
   } else if (card.type === "collect") {
-    state.finished = true;
     state.active = false;
+    state.finished = true;
   }
 
   state.lastFlip = { index, type: card.type, credited };
 
   logEvent({
     kind: "collectionFlip",
-    detail: { type: card.type, credited, banked: state.banked, multiplier: state.multiplier },
+    detail: {
+      type: card.type,
+      credited,
+      banked: state.banked,
+      tableBanked: state.tableBanked,
+      doubleApplied: doubleWasArmed,
+    },
     pointsDelta: credited > 0 ? credited : undefined,
   });
 
-  // Auto-finish if every card is flipped or the cap is reached.
-  if (!state.finished && (state.banked >= state.cap || state.revealed.every(Boolean))) {
-    state.finished = true;
+  if (!state.finished && state.tableBanked >= state.cap) {
     state.active = false;
+    state.awaitingExtraDeal = true;
+  } else if (
+    !state.finished &&
+    (state.revealed.every(Boolean) || state.flipsAvailable <= 0)
+  ) {
+    state.active = false;
+    state.finished = true;
   }
 
-  // Collection owns the full screen, so its initial picks are the complete
-  // allotment. Never wait for an overlapping normal battle draw to add more.
-  if (!state.finished && state.flipsAvailable <= 0) {
-    state.finished = true;
-    state.active = false;
-  }
-
-  // A shutout is not an ending. Running the pick zone out with nothing banked
-  // reads as the machine taking the whole bonus away, which is the worst
-  // possible payoff beat -- so the board is re-dealt and the player picks
-  // again for the same pot rather than being shown a 0.
-  //
-  // Bounded, because the restart is only worth having if it terminates: the
-  // very first pick can be a `collect`, which ends a round instantly, and
-  // without a cap a run of those would re-deal forever.
   if (state.finished && state.banked <= 0 && restartsUsed < MAX_ZERO_RESTARTS) {
     restartsUsed += 1;
     logEvent({
       kind: "collectionFlip",
-      detail: { type: "restart", credited: 0, banked: 0, restart: restartsUsed },
+      detail: {
+        type: "restart",
+        credited: 0,
+        banked: 0,
+        restart: restartsUsed,
+      },
     });
-    dealCollection(state.cap);
+    dealCollection(state.cap, { extraMode: state.extraMode });
     return;
   }
 
-  // The guard at the top of this function means the phase was still running on
-  // entry, so a finished flag here is always a fresh ending — one fanfare, once.
-  if (state.finished) playCollectionFinishSfx();
+  if (state.finished) {
+    state.doubleNext = false;
+    playCollectionFinishSfx();
+  }
 
   persist();
   notify();
 }
 
 export function dismissCollectionResult() {
+  if (!state.finished) return;
+
+  const banked = state.banked;
   state = emptyState();
-  // Hand the machine back before announcing the round -- the round insert is a
-  // battle-scene beat, and leaving the mode on "collection" would keep the pick
-  // scene owning the screen underneath it.
+
   if (getBattleMode() === "collection") {
     setBattleMode("battle", "collection-dismissed");
   }
@@ -249,31 +248,22 @@ export function dismissCollectionResult() {
   persist();
   notify();
 
-  // The next screen after the pick phase is the next round's insert, not an
-  // idle table waiting for another press. The stage owns round advancement, so
-  // it is asked to run it rather than duplicating that logic here.
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("battle:collection-dismissed"));
+    window.dispatchEvent(
+      new CustomEvent("battle:collection-dismissed", {
+        detail: { banked },
+      })
+    );
   }
 }
 
-/**
- * Force-ends a collection on battle reset/quit: credits any bonus points the
- * player hasn't banked yet so a bonus is never silently lost, then clears.
- */
+/** Clears an interrupted collection. Only already-revealed rewards are kept. */
 export function finalizeCollectionAndCredit() {
-  if (state.active && !state.finished) {
-    const remaining = Math.max(0, state.cap - state.banked);
-    if (remaining > 0) {
-      void addPoints(remaining, "collection_autocredit");
-    }
-  }
   resetCollectionPhase();
 }
 
 export function resetCollectionPhase() {
   state = emptyState();
-  // Release the machine back to the base game if the pick zone still owns it.
   if (getBattleMode() === "collection") {
     setBattleMode("battle", "collection-end");
   }
@@ -281,55 +271,47 @@ export function resetCollectionPhase() {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {
-      // ignore
+      // Ignore storage failure during reset.
     }
   }
   notify();
 }
 
-// Note: an earlier design granted extra picks for battle games played during
-// collection. That could never fire — collection owns the screen, so no battle
-// game can be played, and the phase ends the moment picks reach zero. The
-// subscription was dead code and has been removed. Extra picks now come from
-// the deck itself (the "pick" and combo cards).
-
-/**
- * Restores an in-progress pick phase after a reload. Must also put the machine
- * back into collection mode: the pick phase is its own scene now, and the scene
- * is chosen from the presentation phase -- without this a reload mid-collection
- * would come back to the battle scene with the saved picks stranded in storage.
- *
- * Called once from BattleScreen, which is always mounted; the overlay itself
- * cannot do it, since it only exists while the scene is already active.
- */
 export function hydrateCollectionFromStorage() {
   if (typeof window === "undefined") return;
+
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as CollectionState;
-      if (parsed && parsed.active) {
-        state = parsed;
-        setBattleMode("collection", "collection-restore");
-        setBattlePresentationPhase("collection", "collection-restore");
-        notify();
-      }
-    }
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw) as Partial<CollectionState>;
+    if (!parsed.active && !parsed.finished && !parsed.awaitingExtraDeal) return;
+
+    state = {
+      ...emptyState(),
+      ...parsed,
+      tableBanked:
+        typeof parsed.tableBanked === "number"
+          ? parsed.tableBanked
+          : parsed.banked ?? 0,
+      awaitingExtraDeal: Boolean(parsed.awaitingExtraDeal),
+      extraMode: Boolean(parsed.extraMode),
+    } as CollectionState;
+
+    setBattleMode("collection", "collection-restore");
+    setBattlePresentationPhase("collection", "collection-restore");
+    notify();
   } catch {
-    // ignore
+    // Invalid saved collection data is ignored.
   }
 }
 
-// Dev-only console helper. A collection normally requires winning a bonus, so
-// `__startCollection(600)` drops straight into the pick-me phase with that many
-// points on the line — enough to exercise the flip economy, the multiplier
-// cascade and the never-open-on-a-dud rule without grinding a bonus first.
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
   (
     window as Window & { __startCollection?: (points?: number) => string }
   ).__startCollection = (points = 600) => {
     startCollectionPhase(points);
-    return `Collection started with ${points}P to collect and ${patchConfig.collection.initialFlips} flips.`;
+    return `Pick a Bonus started with a ${points}P max payout.`;
   };
 }
 
@@ -339,8 +321,4 @@ export function subscribeCollection(listener: () => void) {
     const index = listeners.indexOf(listener);
     if (index >= 0) listeners.splice(index, 1);
   };
-}
-
-function roundTo(value: number) {
-  return Math.round(value * 100) / 100;
 }

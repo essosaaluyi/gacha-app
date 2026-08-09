@@ -101,14 +101,26 @@ export default function BattleDeckOrder({ cards }: Props) {
 
       <button
         onClick={beginBattle}
+        aria-label="Begin battle"
         className="group animate-battleGlow hover:scale-105 active:scale-95 transition-transform duration-200 w-full flex justify-center"
       >
         <img
           src="/images/beginbattle.webp"
-          alt="Begin Battle"
+          alt=""
           className="w-full max-w-[800px] object-contain drop-shadow-[0_0_25px_rgba(59,130,246,0.7)] group-hover:drop-shadow-[0_0_40px_rgba(96,165,250,1)] transition-all duration-300"
         />
       </button>
+
+      {/* This screen used to be forward-only: once you arrived, browser-back was
+          the sole way out, and the pulled cards are already banked by then. */}
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={() => router.push("/menu")}
+          className="px-5 py-2.5 rounded-xl border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 text-sm font-semibold"
+        >
+          Back to menu
+        </button>
+      </div>
     </section>
   );
 }

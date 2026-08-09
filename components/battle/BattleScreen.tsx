@@ -17,9 +17,12 @@ import BonusOverlay from "@/components/battle/BonusOverlay";
 import ResurrectionOverlay from "@/components/battle/ResurrectionOverlay";
 import BarResetOverlay from "@/components/battle/BarResetOverlay";
 import CollectionPhaseOverlay from "@/components/battle/CollectionPhaseOverlay";
+import CollectionPointsHandoff from "@/components/battle/CollectionPointsHandoff";
 import {
+  dismissCollectionResult,
   getCollectionState,
   hydrateCollectionFromStorage,
+  startCollectionPhase,
   subscribeCollection,
 } from "@/lib/battle-pixi/state/collectionStore";
 import {
@@ -173,6 +176,9 @@ export default function BattleScreen() {
   const startBonusRound =
     process.env.NODE_ENV !== "production" &&
     searchParams.get("start") === "bonus";
+  const startCollectionPreview =
+    process.env.NODE_ENV !== "production" &&
+    searchParams.get("start") === "collection";
   const attackLandPreview =
     process.env.NODE_ENV !== "production" ? searchParams.get("preview") : null;
   const attackLandPreviewWinner =
@@ -206,6 +212,11 @@ export default function BattleScreen() {
     "idle" | "set" | "launching" | "consumed"
   >("idle");
   const [collectionScene, setCollectionScene] = useState(false);
+  const [collectionResultReady, setCollectionResultReady] = useState(false);
+  const [collectionHandoff, setCollectionHandoff] = useState<{
+    key: number;
+    points: number;
+  } | null>(null);
 
   useEffect(() => {
     const handlePileState = (event: Event) => {
@@ -301,7 +312,16 @@ export default function BattleScreen() {
     if (!getWalletState().loaded) void initializeWallet();
     // A reload mid-pick comes back into the pick scene, not the battle scene.
     hydrateCollectionFromStorage();
-  }, []);
+    const collection = getCollectionState();
+    if (
+      startCollectionPreview &&
+      !collection.active &&
+      !collection.finished &&
+      !collection.awaitingExtraDeal
+    ) {
+      startCollectionPhase(600);
+    }
+  }, [startCollectionPreview]);
 
   useEffect(() => {
     const unlock = () => unlockSfx();
@@ -382,10 +402,37 @@ export default function BattleScreen() {
   useEffect(() => {
     const sync = () => {
       const snap = getCollectionState();
-      setCollectionScene(snap.active || snap.finished);
+      const ownsScreen = snap.active || snap.finished || snap.awaitingExtraDeal;
+      setCollectionScene(ownsScreen);
+      if (!ownsScreen || snap.active || snap.awaitingExtraDeal) {
+        setCollectionResultReady(false);
+      }
     };
     sync();
     return subscribeCollection(sync);
+  }, []);
+
+  useEffect(() => {
+    let clearTimer: number | null = null;
+
+    const showHandoff = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const points = Number(event.detail?.banked) || 0;
+      if (points <= 0) return;
+
+      setCollectionHandoff({ key: Date.now(), points });
+      if (clearTimer !== null) window.clearTimeout(clearTimer);
+      clearTimer = window.setTimeout(() => {
+        setCollectionHandoff(null);
+        clearTimer = null;
+      }, 3400);
+    };
+
+    window.addEventListener("battle:collection-dismissed", showHandoff);
+    return () => {
+      window.removeEventListener("battle:collection-dismissed", showHandoff);
+      if (clearTimer !== null) window.clearTimeout(clearTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -587,11 +634,20 @@ export default function BattleScreen() {
   const pileIsSet = pileState === "set";
   const bonusVideoActive = presentationFlow.phase === "bonus_video";
   const drawLocked = !bonusVideoActive && presentationFlow.phase !== "next_round_ready" && !pileIsSet;
+  const collectionActive = collectionScene;
+  const cabinetDrawLocked = collectionActive
+    ? !collectionResultReady
+    : drawLocked;
 
   const handleDrawPress = () => {
     unlockSfx();
     // Draw-button feedback: play on every press, no matter what it triggers.
     playSfx("buttonPush");
+
+    if (collectionActive) {
+      if (collectionResultReady) dismissCollectionResult();
+      return;
+    }
 
     if (bonusVideoActive) {
       window.dispatchEvent(new Event("battle:skip-bonus-video"));
@@ -616,8 +672,6 @@ export default function BattleScreen() {
     setBattleCoverActive(true);
     setAudioReady(true);
   };
-
-  const collectionActive = collectionScene;
 
   return (
     <main
@@ -706,7 +760,11 @@ export default function BattleScreen() {
                   every other overlay are unmounted rather than hidden behind
                   it, so nothing can animate underneath or pop in front. */}
               {!collectionActive && <BattleBackground />}
-              {audioReady && collectionActive && <CollectionPhaseOverlay />}
+              {audioReady && collectionActive && (
+                <CollectionPhaseOverlay
+                  onResultReadyChange={setCollectionResultReady}
+                />
+              )}
               {audioReady && !collectionActive && (
                 <>
                   <BattleSpawnScene />
@@ -720,6 +778,12 @@ export default function BattleScreen() {
                   <ResurrectionOverlay />
                   <BarResetOverlay />
                   <RoundInsert />
+                  {collectionHandoff && (
+                    <CollectionPointsHandoff
+                      key={collectionHandoff.key}
+                      points={collectionHandoff.points}
+                    />
+                  )}
                   <BattleCutInOverlay />
                   <ChanceIconOverlay />
                   <PlayerFatalModeOpeningInsertTest
@@ -855,17 +919,23 @@ export default function BattleScreen() {
             <button
               type="button"
               className={`bcab-draw-btn ${
-                drawLocked || collectionActive ? "bcab-draw-locked" : ""
+                cabinetDrawLocked ? "bcab-draw-locked" : ""
               }`}
-              aria-label={bonusVideoActive ? "Skip bonus video" : "Draw cards"}
-              aria-disabled={drawLocked || collectionActive}
-              disabled={drawLocked || collectionActive}
+              aria-label={
+                collectionResultReady
+                  ? "Continue to next round"
+                  : bonusVideoActive
+                    ? "Skip bonus video"
+                    : "Draw cards"
+              }
+              aria-disabled={cabinetDrawLocked}
+              disabled={cabinetDrawLocked}
               onClick={handleDrawPress}
             />
 
-            {/* Collection owns the screen, so the draw button is physically
-                taped off rather than just greyed out. */}
-            {collectionActive && (
+            {/* The tape releases when ROUND COMPLETE appears. The physical
+                DRAW button then becomes the only way to leave Pick a Bonus. */}
+            {collectionActive && !collectionResultReady && (
               <div className="bcab-keepout" aria-hidden="true">
                 <span className="bcab-keepout-tape bcab-keepout-tape-a">
                   KEEP OUT · KEEP OUT · KEEP OUT · KEEP OUT

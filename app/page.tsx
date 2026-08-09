@@ -127,6 +127,7 @@ export default function HomePage() {
       <button
         type="button"
         onClick={handleStart}
+        aria-label="Play now"
         className="play-now-button transition-transform duration-300 hover:scale-105 active:scale-95"
       >
         <img

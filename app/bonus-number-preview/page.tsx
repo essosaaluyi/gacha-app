@@ -18,31 +18,35 @@ type Flight = {
   y: number;
   length: number;
   angle: number;
+  delay: number;
 };
 
 const INITIAL_TOTAL = 0;
 const CAP = 600;
 const INITIAL_PICKS = 3;
 const ACTIVE_BURST_MS = 3400;
+const DOUBLE_PHASE_DELAY_MS = 1900;
 const ABSORB_DELAY_MS = 2750;
 const ABSORB_DURATION_MS = 1050;
 const MAX_PAYOUT_CELEBRATION_MS = 4300;
 const burstParticles = Array.from({ length: 22 }, (_, index) => index);
 
 function createDeck(tripledMisses = false): PrototypeCard[] {
-  const points = tripledMisses ? [120, 140, 160, 180] : [45, 50, 55, 60, 65, 70, 75, 80, 100];
+  const points = tripledMisses ? [100, 120, 140, 160, 180, 200] : [80, 90, 100, 110, 120, 130, 140, 150, 160, 170];
   const missCount = tripledMisses ? 6 : 2;
-  const collectCount = tripledMisses ? 2 : 1;
+  const chanceCount = 1;
 
   return [
     ...points.map((value, index) => ({
       id: index + 1,
       type: "point" as const,
       points: value,
-      picks: index % 4 === 0 ? (index % 3) + 1 : undefined,
+      picks: tripledMisses
+        ? ({ 0: 1, 4: 1, 5: 1 }[index] ?? undefined)
+        : ({ 0: 1, 1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 9: 1 }[index] ?? undefined),
     })),
-    ...Array.from({ length: missCount }, (_, index) => ({ id: points.length + index + 1, type: "empty" as const })),
-    ...Array.from({ length: collectCount }, (_, index) => ({ id: points.length + missCount + index + 1, type: "collect" as const })),
+    ...Array.from({ length: missCount - chanceCount }, (_, index) => ({ id: points.length + index + 1, type: "empty" as const })),
+    ...Array.from({ length: chanceCount }, (_, index) => ({ id: points.length + missCount - chanceCount + index + 1, type: "chance" as const })),
   ];
 }
 
@@ -80,6 +84,9 @@ export default function BonusNumberPreviewPage() {
   const [doubleNext, setDoubleNext] = useState(false);
   const [activeCard, setActiveCard] = useState<number | null>(null);
   const [lastGain, setLastGain] = useState(0);
+  const [finalGain, setFinalGain] = useState(0);
+  const [burstPhase, setBurstPhase] = useState(1);
+  const [doubleReward, setDoubleReward] = useState(false);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [burstVersion, setBurstVersion] = useState(0);
   const [message, setMessage] = useState("Choose a card");
@@ -87,9 +94,9 @@ export default function BonusNumberPreviewPage() {
   const [showMaxPayout, setShowMaxPayout] = useState(false);
   const [tripledMisses, setTripledMisses] = useState(false);
   const [showTestContent, setShowTestContent] = useState(true);
-  const [maxPayoutOdds, setMaxPayoutOdds] = useState(80);
   const gridRef = useRef<HTMLDivElement>(null);
   const totalRef = useRef<HTMLDivElement>(null);
+  const picksRef = useRef<HTMLDivElement>(null);
   const flightIdRef = useRef(0);
 
   useEffect(() => {
@@ -102,6 +109,11 @@ export default function BonusNumberPreviewPage() {
 
   const progress = Math.min(100, (total / CAP) * 100);
   const activeReward = activeCard === null ? null : cards.find((card) => card.id === activeCard) ?? null;
+  const activeRewardLabel = activeReward?.type === "point"
+    ? `+${lastGain.toLocaleString()}`
+    : activeReward ? cardLabel(activeReward) : "";
+  const winningBoxCount = cards.filter((card) => card.type === "point" || card.type === "pick").length;
+  const tableWinOdds = Math.round((winningBoxCount / cards.length) * 100);
   const remaining = useMemo(
     () => cards.filter((card) => !revealed.includes(card.id)).length,
     [cards, revealed]
@@ -120,9 +132,22 @@ export default function BonusNumberPreviewPage() {
 
   useEffect(() => {
     if (activeCard === null) return;
-    const timer = window.setTimeout(() => setActiveCard(null), ACTIVE_BURST_MS);
-    return () => window.clearTimeout(timer);
-  }, [activeCard]);
+    const phaseTimer = doubleReward && burstPhase === 1
+      ? window.setTimeout(() => {
+          setBurstPhase(2);
+          setLastGain(finalGain);
+          setBurstVersion((value) => value + 1);
+        }, DOUBLE_PHASE_DELAY_MS)
+      : null;
+    const timer = window.setTimeout(
+      () => setActiveCard(null),
+      doubleReward && burstPhase === 1 ? ACTIVE_BURST_MS + DOUBLE_PHASE_DELAY_MS : ACTIVE_BURST_MS
+    );
+    return () => {
+      if (phaseTimer !== null) window.clearTimeout(phaseTimer);
+      window.clearTimeout(timer);
+    };
+  }, [activeCard, burstPhase, doubleReward, finalGain]);
 
   useEffect(() => {
     if (total < CAP) return;
@@ -137,6 +162,9 @@ export default function BonusNumberPreviewPage() {
       setDoubleNext(false);
       setActiveCard(null);
       setLastGain(0);
+      setFinalGain(0);
+      setBurstPhase(1);
+      setDoubleReward(false);
       setFlights([]);
       setMessage("Hard mode table dealt: misses tripled");
       setFinished(false);
@@ -157,11 +185,29 @@ export default function BonusNumberPreviewPage() {
     setDoubleNext(false);
     setActiveCard(null);
     setLastGain(0);
+    setFinalGain(0);
+    setBurstPhase(1);
+    setDoubleReward(false);
     setFlights([]);
     setMessage("Choose a card");
     setFinished(false);
     setShowMaxPayout(false);
     setTripledMisses(false);
+  };
+
+  const shuffleTable = () => {
+    setCards((current) => {
+      const shuffled = [...current];
+      for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const randomValue = window.crypto.getRandomValues(new Uint32Array(1))[0];
+        const swapIndex = randomValue % (index + 1);
+        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+      }
+      return shuffled;
+    });
+    setActiveCard(null);
+    setBurstVersion((value) => value + 1);
+    setMessage("Table shuffled");
   };
 
   const draw = (card: PrototypeCard) => {
@@ -170,53 +216,61 @@ export default function BonusNumberPreviewPage() {
     setRevealed((current) => [...current, card.id]);
     setActiveCard(card.id);
     setBurstVersion((value) => value + 1);
+    setBurstPhase(1);
+    setDoubleReward(false);
     setPicks((value) => Math.max(0, value - 1));
     setMessage(card.type === "point" ? "" : cardName(card));
     setLastGain(0);
 
     if (card.type === "point") {
-      const raw = Math.round((card.points ?? 0) * multiplier * (doubleNext ? 2 : 1));
-      const gain = Math.max(0, Math.min(raw, CAP - total));
-      setLastGain(gain);
-      window.setTimeout(() => setTotal((value) => value + gain), ABSORB_DELAY_MS);
-      window.setTimeout(() => setBankedTotal((value) => value + gain), ABSORB_DELAY_MS);
+      const wasDoubleNext = doubleNext;
+      const baseRaw = Math.round((card.points ?? 0) * multiplier);
+      const baseGain = Math.max(0, Math.min(baseRaw, CAP - total));
+      const gain = Math.max(0, Math.min(baseRaw * (wasDoubleNext ? 2 : 1), CAP - total));
+      const payoutDelay = wasDoubleNext ? ABSORB_DELAY_MS + DOUBLE_PHASE_DELAY_MS : ABSORB_DELAY_MS;
+      setDoubleReward(wasDoubleNext);
+      setFinalGain(gain);
+      setLastGain(wasDoubleNext ? baseGain : gain);
+      window.setTimeout(() => setTotal((value) => value + gain), payoutDelay);
+      window.setTimeout(() => setBankedTotal((value) => value + gain), payoutDelay);
       setDoubleNext(false);
       if (card.picks) setPicks((value) => value + card.picks!);
 
       const source = document.querySelector(`[data-card-id="${card.id}"]`);
-      const target = totalRef.current;
       const field = gridRef.current?.parentElement;
-      if (source && target && field) {
+      if (source && field) {
         const sourceRect = source.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
         const fieldRect = field.getBoundingClientRect();
         const x1 = sourceRect.left + sourceRect.width / 2 - fieldRect.left;
         const y1 = sourceRect.top + sourceRect.height / 2 - fieldRect.top;
-        const x2 = targetRect.left + targetRect.width / 2 - fieldRect.left;
-        const y2 = targetRect.top + targetRect.height / 2 - fieldRect.top;
-        const flightId = flightIdRef.current + 1;
-        flightIdRef.current = flightId;
-        setFlights((current) => [...current, {
-          id: flightId,
-          x: x1,
-          y: y1,
-          length: Math.hypot(x2 - x1, y2 - y1),
-          angle: (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI,
-        }]);
-        window.setTimeout(() => setFlights((current) => current.filter((item) => item.id !== flightId)), ABSORB_DELAY_MS + ABSORB_DURATION_MS);
+        const addFlight = (target: HTMLDivElement | null, delay: number) => {
+          if (!target) return;
+          const targetRect = target.getBoundingClientRect();
+          const x2 = targetRect.left + targetRect.width / 2 - fieldRect.left;
+          const y2 = targetRect.top + targetRect.height / 2 - fieldRect.top;
+          const flightId = flightIdRef.current + 1;
+          flightIdRef.current = flightId;
+          setFlights((current) => [...current, {
+            id: flightId,
+            x: x1,
+            y: y1,
+            length: Math.hypot(x2 - x1, y2 - y1),
+            angle: (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI,
+            delay,
+          }]);
+          window.setTimeout(() => setFlights((current) => current.filter((item) => item.id !== flightId)), delay + ABSORB_DURATION_MS);
+        };
+        addFlight(totalRef.current, payoutDelay);
+        if (card.picks) addFlight(picksRef.current, ABSORB_DELAY_MS);
       }
     } else if (card.type === "chance") {
       setDoubleNext(true);
     } else if (card.type === "pick") {
       setPicks((value) => value + (card.picks ?? 1));
     } else if (card.type === "collect") {
-      const successRoll = window.crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000;
-      if (successRoll < maxPayoutOdds / 100) {
-        const remainingPayout = Math.max(0, CAP - total);
-        setLastGain(remainingPayout);
-        setTotal(CAP);
-        setBankedTotal((value) => value + remainingPayout);
-        setMessage("MAX PAYOUT CHANCE HIT");
+      setActiveCard(null);
+      if (total === 0) {
+        restart();
       } else {
         setFinished(true);
         setMessage("Bonus collected");
@@ -240,8 +294,14 @@ export default function BonusNumberPreviewPage() {
         <header className={styles.header}>
           <div className={styles.totalDock} ref={totalRef}>
             <span className={styles.totalLabel}>BANKED POINTS</span>
-            <strong className={`${shownTotal !== bankedTotal ? styles.totalImpact : ""} ${tripledMisses ? styles.rainbowStream : ""}`}>
-              {shownTotal.toLocaleString()}
+            <strong className={`${styles.layeredBankedText} ${shownTotal !== bankedTotal ? styles.totalImpact : ""}`}>
+              <span className={styles.bankedValueBase}>{shownTotal.toLocaleString()}</span>
+              <span
+                className={tripledMisses ? styles.bankedRainbowGloss : styles.bankedValueGloss}
+                aria-hidden="true"
+              >
+                {shownTotal.toLocaleString()}
+              </span>
             </strong>
             <span className={styles.totalUnit}>P</span>
             <div className={styles.progressTrack} aria-hidden="true">
@@ -255,9 +315,10 @@ export default function BonusNumberPreviewPage() {
               {tripledMisses ? "EXTRA PICK A BONUS" : "PICK A BONUS"}
             </h1>
             <p>{message}</p>
+            {doubleNext || doubleReward ? <span className={styles.doubleNextBanner}>x2</span> : null}
           </div>
 
-          <div className={styles.picksDock}>
+          <div className={styles.picksDock} ref={picksRef}>
             <span className={styles.picksLabel}>PICKS</span>
             <strong>{picks}</strong>
             <small>{remaining} CARDS</small>
@@ -268,20 +329,7 @@ export default function BonusNumberPreviewPage() {
           <div className={styles.fieldHeader}>
             <span>MAX PAYOUT <b>{CAP}P</b></span>
             <span className={styles.fieldOdds}>
-              TABLE WIN ODDS
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="1"
-                value={maxPayoutOdds}
-                onChange={(event) => {
-                  const nextValue = Number(event.target.value);
-                  if (Number.isFinite(nextValue)) setMaxPayoutOdds(Math.max(0, Math.min(100, nextValue)));
-                }}
-                aria-label="Max payout odds percentage"
-              />
-              <b>%</b>
+              TABLE WIN ODDS <b>{tableWinOdds}%</b> ({winningBoxCount}/{cards.length} WIN BOXES)
               · {tripledMisses ? "MISS ODDS x3" : doubleNext ? "x2 NEXT REWARD ARMED" : `MULTIPLIER x${multiplier.toFixed(1)}`}
             </span>
           </div>
@@ -312,7 +360,12 @@ export default function BonusNumberPreviewPage() {
                       <span className={styles.cardLogo} aria-hidden="true">
                         DESTINY<span>WARS</span>
                       </span>
-                      <strong>{cardLabel(card)}</strong>
+                      {card.type === "point" ? (
+                        <strong className={styles.layeredRewardText}>
+                          <span className={styles.rewardTextBase}>{cardLabel(card)}</span>
+                          <span className={styles.rewardTextGloss} aria-hidden="true">{cardLabel(card)}</span>
+                        </strong>
+                      ) : <strong>{cardLabel(card)}</strong>}
                     </span>
                   </span>
                 </button>
@@ -326,11 +379,12 @@ export default function BonusNumberPreviewPage() {
               className={`${styles.cardBurst} ${activeReward.type === "pick" ? styles.pickBurst : ""}`}
               aria-hidden="true"
             >
-              <strong>
-                {activeReward.type === "point"
-                  ? `+${lastGain.toLocaleString()}`
-                  : cardLabel(activeReward)}
-              </strong>
+              {activeReward.type === "point" ? (
+                <strong className={styles.layeredRewardText}>
+                  <span className={styles.rewardTextBase}>{activeRewardLabel}</span>
+                  <span className={styles.rewardTextGloss} aria-hidden="true">{activeRewardLabel}</span>
+                </strong>
+              ) : <strong>{activeRewardLabel}</strong>}
               {activeReward.type === "point" && activeReward.picks ? (
                 <small>+{activeReward.picks} EXTRA PICK</small>
               ) : null}
@@ -362,6 +416,7 @@ export default function BonusNumberPreviewPage() {
                 top: flight.y,
                 width: flight.length,
                 "--angle": `${flight.angle}deg`,
+                "--flight-delay": `${flight.delay}ms`,
               } as React.CSSProperties}
             />
           ))}
@@ -384,6 +439,17 @@ export default function BonusNumberPreviewPage() {
               </span>
             </span>
           ) : null}
+
+          {finished && activeCard === null && !showMaxPayout ? (
+            <span className={styles.endSummaryOverlay} aria-live="polite">
+              <small>ROUND COMPLETE</small>
+              <strong>
+                <span className={styles.summaryValueBase}>{bankedTotal.toLocaleString()}P</span>
+                <span className={styles.summaryValueGloss} aria-hidden="true">{bankedTotal.toLocaleString()}P</span>
+              </strong>
+              <span>TOTAL POINTS EARNED</span>
+            </span>
+          ) : null}
         </div>
 
         <footer className={styles.footer}>
@@ -395,6 +461,9 @@ export default function BonusNumberPreviewPage() {
           </div>
           <button type="button" className={styles.restart} onClick={restart}>
             REDEAL PROTOTYPE
+          </button>
+          <button type="button" className={styles.testToggle} onClick={shuffleTable}>
+            SHUFFLE TABLE
           </button>
           <button
             type="button"

@@ -10,6 +10,9 @@ import LegalFooter from "@/components/trust/LegalFooter";
 import { initializeWallet } from "@/lib/wallet/walletStore";
 import { hasSavedBattleSession, clearBattleSession } from "@/lib/battle-pixi/state/battleSessionStore";
 
+/** Set once the guest has acknowledged how guest saves work. */
+const GUEST_NOTICE_SEEN_KEY = "guest_notice_seen";
+
 export default function MenuPage() {
   const router = useRouter();
   const [guestNoticeOpen, setGuestNoticeOpen] = useState(false);
@@ -23,7 +26,13 @@ export default function MenuPage() {
 
     if (user) {
       localStorage.removeItem("guest_mode");
-    } else if (localStorage.getItem("guest_mode") === "true") {
+    } else if (
+      localStorage.getItem("guest_mode") === "true" &&
+      localStorage.getItem(GUEST_NOTICE_SEEN_KEY) !== "true"
+    ) {
+      // Once per browser, not once per visit to the menu -- it is a one-time
+      // explanation of how guest saves work, and re-showing it on every return
+      // to the menu just trains people to dismiss it without reading.
       setGuestNoticeOpen(true);
     }
 
@@ -126,7 +135,10 @@ export default function MenuPage() {
             </div>
 
             <button
-              onClick={() => setGuestNoticeOpen(false)}
+              onClick={() => {
+                localStorage.setItem(GUEST_NOTICE_SEEN_KEY, "true");
+                setGuestNoticeOpen(false);
+              }}
               className="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-semibold"
             >
               OK

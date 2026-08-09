@@ -53,7 +53,9 @@ export async function initializeWallet() {
       .from("user_points")
       .select("points")
       .eq("user_id", user.id)
-      .single();
+      // maybeSingle: a user with no row yet is normal and falls back to 0.
+      // single() answers that with a 406, which is only console noise here.
+      .maybeSingle();
 
     points = data?.points ?? 0;
   } else {

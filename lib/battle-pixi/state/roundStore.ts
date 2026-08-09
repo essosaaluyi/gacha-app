@@ -1,6 +1,15 @@
+import { setEventBattleContext } from "@/lib/events/gameEventStore";
+
 let currentRound = 1;
 
 let listeners: (() => void)[] = [];
+
+// See battleGameStore: logged events carry the round they happened in, and
+// nothing was publishing it, so every event recorded round: 0.
+function publish() {
+  setEventBattleContext({ round: currentRound });
+  listeners.forEach((listener) => listener());
+}
 
 export function getCurrentRound() {
   return currentRound;
@@ -8,19 +17,17 @@ export function getCurrentRound() {
 
 export function nextRound() {
   currentRound += 1;
-
-  listeners.forEach((listener) => listener());
+  publish();
 }
 
 export function setRound(value: number) {
   currentRound = value;
-  listeners.forEach((listener) => listener());
+  publish();
 }
 
 export function resetRound() {
   currentRound = 1;
-
-  listeners.forEach((listener) => listener());
+  publish();
 }
 
 export function subscribeRound(

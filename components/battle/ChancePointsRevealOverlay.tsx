@@ -9,7 +9,6 @@ import {
   CHANCE_POINTS_LOAD_BATCH,
   CHANCE_POINTS_MAX_FRAMES,
   CHANCE_POINTS_MIN_BUFFER,
-  chancePointsCharacterBuilders,
   chancePointsNumberBuilders,
   finishChancePointsReveal,
   getChancePointsRevealState,
@@ -146,33 +145,20 @@ export default function ChancePointsRevealOverlay() {
       finishChancePointsReveal();
     };
 
-    // The number layer is always a PNG sequence (it needs alpha). The
-    // character layer is only streamed when the mp4 could not play.
+    // The number layer is always a PNG sequence (it needs alpha). The character
+    // layer is mp4 only -- its 15 PNG fallback folders (3.4 GB against ~104 MB
+    // of video) have been deleted, so there is nothing to stream if the video
+    // fails; the +NP text fallback below covers that case instead.
     const jobs = [
       streamSequence(chancePointsNumberBuilders(reveal.points), (frames) => {
         numberRef.current = frames;
       }),
     ];
 
-    if (videoFailed) {
-      jobs.push(
-        streamSequence(
-          chancePointsCharacterBuilders(reveal.cardName),
-          (frames) => {
-            characterRef.current = frames;
-          }
-        )
-      );
-    }
-
     void Promise.all(jobs).then(() => {
       if (cancelled) return;
       completeRef.current = true;
-      setHasArtwork(
-        !videoFailed ||
-          characterRef.current.length > 0 ||
-          numberRef.current.length > 0
-      );
+      setHasArtwork(!videoFailed || numberRef.current.length > 0);
     });
 
     const context = canvasRef.current?.getContext("2d") ?? null;

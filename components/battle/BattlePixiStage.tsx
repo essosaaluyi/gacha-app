@@ -1132,6 +1132,12 @@ export default function BattlePixiStage({
       };
 
       let pendingNextRound = false;
+      if (
+        process.env.NODE_ENV !== "production" &&
+        new URLSearchParams(window.location.search).get("start") === "collection"
+      ) {
+        pendingNextRound = true;
+      }
       let pendingEnemyDefeatPresentation = false;
       // Armed at draw time, played when the cards leave the deck.
       let pendingChanceUpCue = false;

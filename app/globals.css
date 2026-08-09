@@ -48,11 +48,26 @@ body.battle-screen-active .app-content-with-video {
   overflow: hidden;
 }
 
-body:has(.battle-fixed-stage) > .global-bgm-player {
-  display: none;
+/* The layout-level BGM control is the fallback for pages that have no chrome of
+   their own (the title screen). It had no positioning at all, so it rendered as
+   two unstyled buttons dangling off the bottom of every page -- below the fold
+   on desktop, and at the end of the scroll on mobile. Pin it to a corner, and
+   hide it wherever a surface already owns the audio controls: the battle
+   cabinet has its own pair, and TopBar has one on every routed page. */
+.global-bgm-player {
+  position: fixed;
+  right: 12px;
+  /* Top, not bottom: the only page that shows this control (the title screen)
+     puts the legal footer along the bottom edge, and at narrow widths those
+     links wrap far enough up that a bottom-pinned control sits on top of
+     Privacy and Terms. The top-right corner is free on that page. */
+  top: 12px;
+  z-index: 40;
 }
 
-body.battle-screen-active > .global-bgm-player {
+body:has(.battle-fixed-stage) > .global-bgm-player,
+body.battle-screen-active > .global-bgm-player,
+body:has(.game-topbar-shell) > .global-bgm-player {
   display: none;
 }
 
@@ -8609,3 +8624,5 @@ body.page-video-active .trust-page {
     animation-duration: 1ms;
   }
 }
+
+

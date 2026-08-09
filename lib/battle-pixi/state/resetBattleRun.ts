@@ -29,6 +29,13 @@ export function resetBattleRun() {
   resetBattlePresentationFlow();
   resetBattleState();
   resetBattleLogs();
+
+  // Must precede the round/game resets: it zeroes the event log's battle
+  // context, and those resets are what publish the real starting values back
+  // into it. The other order leaves every event stamped round 0.
+  clearBattleSession();
+  startNewBattleSession();
+
   resetGameCount();
   resetRound();
   resetCurrentEnemy();
@@ -48,8 +55,6 @@ export function resetBattleRun() {
   clearResurrection();
   resetBattleMode();
   resetDrawSequenceGuard();
-  clearBattleSession();
-  startNewBattleSession();
 
   // Bankruptcy floor, not a per-battle payout: tops the player back up to the
   // starting stake only when they are below it, so nobody is ever stranded at

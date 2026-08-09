@@ -22,7 +22,7 @@ export default function LoginPage() {
       .from("point_settings")
       .select("setting_value")
       .eq("setting_key", "starting_points")
-      .single();
+      .maybeSingle();
 
     const startingPoints = setting?.setting_value ?? 1000;
 

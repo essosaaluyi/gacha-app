@@ -177,23 +177,18 @@ export const patchConfig = {
   // EMPTY count. `empty` is therefore the main lever for how long a run lasts.
   collection: {
     gridSize: 12,
-    composition: {
-      collect: 1, // ends the round
-      empty: 3, // duds — the price of the combo cards
-      chance: 1, // x2 the next pick
-      doubleAll: 1, // x2 everything banked so far
-      mystery: 1, // hidden value, settled at deal time
-      pick: 1, // picks only
-      point: 4, // payouts; the first `comboPickCards` also grant a pick
-    },
-    // Point values are drawn from this ladder and allocated to sum to the
-    // bonus total, so the board's MAX is exactly what a perfect run pays.
-    pointLadder: [10, 20, 50, 100, 300, 1000] as number[],
-    comboPickCards: 2,
-    pickCardPicks: 1,
+    // Accepted 600P prototype table. Real bonus values scale these weights to
+    // the amount won in the preceding bonus, preserving the tested pacing.
+    baseCap: 600,
+    standardPointValues: [80, 90, 100, 110, 120, 130, 140, 150, 160, 170] as number[],
+    standardPickBonuses: [1, 1, 1, 1, 2, 2, 0, 0, 0, 1] as number[],
+    standardEmptyCards: 1,
+    extraPointValues: [100, 120, 140, 160, 180, 200] as number[],
+    extraPickBonuses: [1, 0, 0, 0, 1, 1] as number[],
+    extraEmptyCards: 5,
+    chanceCards: 1,
     roundingUnit: 100,
     chanceMultiplier: 2,
-    cascadeStep: 0.25,
     initialFlips: 3,
   },
 

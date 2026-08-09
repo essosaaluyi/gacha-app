@@ -56,12 +56,9 @@ function prefixCandidates(folder: string) {
   return Array.from(new Set([folder, folder.toLowerCase(), folder.toUpperCase()]));
 }
 
-/** Candidate frame-path builders for the acting character's sequence. */
-export function chancePointsCharacterBuilders(cardName: string) {
-  return prefixCandidates(cardName).map(
-    (prefix) => (frame: number) => framePath(cardName, prefix, frame)
-  );
-}
+// The character layer's PNG sequences (points-gain/<CARD>/) were deleted once
+// the mp4 in points-gain-mp4/ covered all 15 cards -- 3.4 GB against ~104 MB.
+// Only the number layer still ships as frames, because it needs real alpha.
 
 /** Candidate frame-path builders for the points-number sequence. */
 export function chancePointsNumberBuilders(points: number) {
