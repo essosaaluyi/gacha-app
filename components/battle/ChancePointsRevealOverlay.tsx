@@ -61,6 +61,13 @@ async function resolveBuilder(builders: FrameBuilder[]) {
  * stopping at the first gap. Decoded <img> elements are kept (not just URLs) so
  * the render loop never pays a decode cost mid-playback, and the sequence
  * length is discovered rather than maintained in code.
+ *
+ * Each batch is gated on its own first frame. Firing all CHANCE_POINTS_LOAD_BATCH
+ * requests up front and only then looking for the gap meant the batch that runs
+ * past the end wasted a full batch of 404s every single reveal (30 of them, for
+ * a 180-frame sequence). The sentinel is a frame the batch needs anyway, so no
+ * successful request is duplicated -- the end of the sequence just costs one
+ * miss instead of thirty.
  */
 async function streamSequence(
   builders: FrameBuilder[],
@@ -80,13 +87,24 @@ async function streamSequence(
     start < CHANCE_POINTS_MAX_FRAMES;
     start += CHANCE_POINTS_LOAD_BATCH
   ) {
-    const batch = await Promise.all(
-      Array.from({ length: CHANCE_POINTS_LOAD_BATCH }, (_, offset) =>
-        loadFrame(build(CHANCE_POINTS_FIRST_FRAME + start + offset))
+    // Does this batch exist at all? One request answers it.
+    const sentinel = await loadFrame(build(CHANCE_POINTS_FIRST_FRAME + start));
+
+    if (!sentinel) {
+      onFrames([...frames], true);
+      return;
+    }
+
+    frames.push(sentinel);
+
+    // The sentinel covered offset 0, so only fetch the remainder.
+    const rest = await Promise.all(
+      Array.from({ length: CHANCE_POINTS_LOAD_BATCH - 1 }, (_, offset) =>
+        loadFrame(build(CHANCE_POINTS_FIRST_FRAME + start + offset + 1))
       )
     );
 
-    for (const image of batch) {
+    for (const image of rest) {
       if (!image) {
         onFrames([...frames], true);
         return;
