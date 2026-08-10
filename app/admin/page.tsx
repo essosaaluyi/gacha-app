@@ -487,9 +487,16 @@ function SectionCard({
       </div>
       <p className="text-xs text-zinc-500 mb-4 leading-relaxed">{section.desc}</p>
 
+      {/* minmax(0,1fr), not 1fr: every row below is its own grid, so a plain
+          1fr resolves against that row's own content. A long outcome name (or
+          the PINNED tag) then widened its own first column and shoved the two
+          number columns right, leaving the table visibly ragged once the panel
+          got narrow -- the Sheet column landed at four different x-positions at
+          375px. Letting the name column shrink below its content width gives
+          every row the same free space, so the columns line up at any width. */}
       {section.variant === "odds" ? (
         <div className="space-y-1">
-          <div className="grid grid-cols-[1fr_5rem_7rem] gap-3 px-1 pb-1 text-[11px] uppercase tracking-wide text-zinc-600">
+          <div className="grid grid-cols-[minmax(0,1fr)_5rem_7rem] gap-3 pb-1 text-[11px] uppercase tracking-wide text-zinc-600">
             <span>Outcome</span>
             <span className="text-right">Sheet</span>
             <span className="text-right">Override</span>
@@ -499,9 +506,9 @@ function SectionCard({
             return (
               <label
                 key={field.path}
-                className="grid grid-cols-[1fr_5rem_7rem] gap-3 items-center py-1"
+                className="grid grid-cols-[minmax(0,1fr)_5rem_7rem] gap-3 items-center py-1"
               >
-                <span className="text-sm text-zinc-300 flex items-center gap-2">
+                <span className="min-w-0 truncate text-sm text-zinc-300 flex items-center gap-2">
                   {field.label}
                   {pinned && (
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded">
