@@ -16,6 +16,7 @@ import {
 import { STAGE, UI } from "@/lib/battle-pixi/config";
 import { PresentationContext } from "@/lib/battle-pixi/presentation/presentationContext";
 import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
+import { readDrawTell } from "@/lib/battle-pixi/presentation/drawTell";
 import { recordDrawOutcome } from "@/lib/battle-pixi/state/drawCostStore";
 import {
   animateTo,
@@ -3328,6 +3329,22 @@ export default function BattlePixiStage({
         const settleDuration = cabinetMode ? CABINET_CARD_LAND_MS : 320;
         const alive = aliveGuard();
 
+        // Where the card actually came to rest, in stage coordinates, for the
+        // overlay to put a shockwave on. Sent per card rather than per hand
+        // because the wave belongs to the card that landed, not to the slot it
+        // was aimed at — under the cabinet's perspective those differ.
+        if (cabinetMode) {
+          window.dispatchEvent(
+            new CustomEvent("battle:vfx-card-landed", {
+              detail: {
+                symbol: result.cards[cardIndex],
+                onTarget: cardIndex === result.targetSlot,
+                stage: { x: landingOrigin.x, y: landingOrigin.y },
+              },
+            })
+          );
+        }
+
         // REACH only. The combination flash is NOT read here — the table
         // reports a finished hand, so it fires once from handleRevealComplete
         // after all three cards are down, not as each one lands.
@@ -3661,9 +3678,16 @@ const globalY = cardGroup.y + card.y;
         }
 
         // Tell the cabinet shell the stack is set at the disk exit.
+        //
+        // The tell rides along because this is the only moment the disc's aura
+        // can be decided: the hand is drawn by now, and the player has not seen
+        // a card yet. Only the tell travels, never the hand — the overlay has
+        // no business knowing which symbols are coming.
         if (cabinetMode && value) {
           window.dispatchEvent(
-            new CustomEvent("battle:cabinet-pile", { detail: { state: "set" } })
+            new CustomEvent("battle:cabinet-pile", {
+              detail: { state: "set", tell: readDrawTell(currentBattleResult) },
+            })
           );
         }
       };

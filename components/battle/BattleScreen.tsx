@@ -5,6 +5,7 @@ import BattleGameCounter from "@/components/battle/BattleGameCounter";
 import BattleHUD from "@/components/battle/BattleHUD";
 import BattleLog from "@/components/battle/BattleLog";
 import BattlePixiStage from "@/components/battle/BattlePixiStage";
+import BattleVfxOverlay from "@/components/battle/BattleVfxOverlay";
 import BattleSpawnScene from "@/components/battle/BattleSpawnScene";
 import BattlePoints from "@/components/battle/BattlePoints";
 import MagicCircleOverlay from "@/components/battle/MagicCircleOverlay";
@@ -610,6 +611,9 @@ export default function BattleScreen() {
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap"
       />
+      {/* Outside the scaled stage on purpose: a canvas under scale(0.75) would
+          render at three-quarter resolution and be scaled back up. */}
+      {audioReady && <BattleVfxOverlay />}
       <div className="fixed inset-0 flex items-center justify-center">
         <div
           className="relative battle-fixed-stage battle-cabinet-stage"
