@@ -1,0 +1,39 @@
+{
+  "created": "2026-07-21",
+  "description": "Byte-identical reconstruction of the SSR1/SSR2/SSR4 production files immediately before approved v3 polished-composite promotion",
+  "files": [
+    {
+      "card": "SSR1",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-ssr1-ssr2-ssr4-v3-promotion-2026-07-21/player/SSR1/card.png",
+        "webp": "design-source/cards/archive/pre-polished-ssr1-ssr2-ssr4-v3-promotion-2026-07-21/player/SSR1/card.webp"
+      },
+      "sha256": {
+        "png": "e12c6b998fe088578646923ec290762d785400ef07a76b14e3c0323f61159681",
+        "webp": "ddb982a7664b56f28c92411539ebda01a8ff2a1a279a7ce41a2f5904992d6f99"
+      }
+    },
+    {
+      "card": "SSR2",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-ssr1-ssr2-ssr4-v3-promotion-2026-07-21/player/SSR2/card.png",
+        "webp": "design-source/cards/archive/pre-polished-ssr1-ssr2-ssr4-v3-promotion-2026-07-21/player/SSR2/card.webp"
+      },
+      "sha256": {
+        "png": "a752abb2b8cd07507b3248be5db36be9aeb745dca95b7e0589e2d4d85ae167ef",
+        "webp": "54c9f919f66f8f90b64184d0ec52291081bb98820fbfd7bcca631151fad33ad1"
+      }
+    },
+    {
+      "card": "SSR4",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-ssr1-ssr2-ssr4-v3-promotion-2026-07-21/player/SSR4/card.png",
+        "webp": "design-source/cards/archive/pre-polished-ssr1-ssr2-ssr4-v3-promotion-2026-07-21/player/SSR4/card.webp"
+      },
+      "sha256": {
+        "png": "640351fb7ed479446bc28d0f33f26c2a53ae000ec0ef9a6f089075f434ae45e8",
+        "webp": "a02744b637feddf58e8f6ef29632172b736485a13504b67d416c05338f965944"
+      }
+    }
+  ]
+}

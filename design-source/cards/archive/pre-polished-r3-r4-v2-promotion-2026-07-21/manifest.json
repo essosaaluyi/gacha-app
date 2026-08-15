@@ -1,0 +1,28 @@
+{
+  "created": "2026-07-21",
+  "description": "Byte-identical reconstruction of the R3/R4 production files immediately before approved v2 polished-art promotion",
+  "files": [
+    {
+      "card": "R3",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-r3-r4-v2-promotion-2026-07-21/player/R3/card.png",
+        "webp": "design-source/cards/archive/pre-polished-r3-r4-v2-promotion-2026-07-21/player/R3/card.webp"
+      },
+      "sha256": {
+        "png": "5dc3127dc23aa6a3728d4c117fdd3111f19d5d72e833eee0e2f0afe72652e4a7",
+        "webp": "f24ddbcb073db70779e0ab491dd9a4f11a87d67bcb286455bea3c11152afd7fc"
+      }
+    },
+    {
+      "card": "R4",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-r3-r4-v2-promotion-2026-07-21/player/R4/card.png",
+        "webp": "design-source/cards/archive/pre-polished-r3-r4-v2-promotion-2026-07-21/player/R4/card.webp"
+      },
+      "sha256": {
+        "png": "0dacd36e5bd4760cd933ba4aabafc7938ccf70569753f063a5abd0dd3c817641",
+        "webp": "a8d2bd7f3192f367f2c59fa011bbfdc15209663e6492edbe766559e48630bdaf"
+      }
+    }
+  ]
+}

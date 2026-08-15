@@ -8,9 +8,12 @@ export type BarResetEvent = "real" | "fake" | "none";
 export function rollBarResetEvent(): BarResetEvent {
   const { realResetChance, fakeChance } = patchConfig.barReset;
 
-  const roll = Math.random();
+  // The flags are independent. A simultaneous hit resolves as the successful
+  // triple BAR, matching the main-game BAR CHANCE priority rule.
+  const real = Math.random() < realResetChance;
+  const fake = Math.random() < fakeChance;
 
-  if (roll < realResetChance) return "real";
-  if (roll < realResetChance + fakeChance) return "fake";
+  if (real) return "real";
+  if (fake) return "fake";
   return "none";
 }

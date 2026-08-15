@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1250 618" role="img" aria-labelledby="title desc">
+  <title id="title">Final Curtain enemy fatal scene title insert</title>
+  <desc id="desc">An original theatrical obsidian, gold, and cyan enemy fatal title card with a closing-act motif.</desc>
+  <defs>
+    <linearGradient id="veil" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#030609" stop-opacity=".16"/>
+      <stop offset=".18" stop-color="#070d12" stop-opacity=".95"/>
+      <stop offset=".5" stop-color="#18202a" stop-opacity=".98"/>
+      <stop offset=".82" stop-color="#070d12" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#030609" stop-opacity=".16"/>
+    </linearGradient>
+    <linearGradient id="ivoryGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff9d9"/>
+      <stop offset=".28" stop-color="#e6c36d"/>
+      <stop offset=".54" stop-color="#fff3ba"/>
+      <stop offset="1" stop-color="#8b6427"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6e4816"/>
+      <stop offset=".22" stop-color="#ffe9a3"/>
+      <stop offset=".5" stop-color="#c3973e"/>
+      <stop offset=".78" stop-color="#fff1b8"/>
+      <stop offset="1" stop-color="#6e4816"/>
+    </linearGradient>
+    <radialGradient id="victoryBurst">
+      <stop offset="0" stop-color="#8ef3ff" stop-opacity=".36"/>
+      <stop offset=".32" stop-color="#d8b75e" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="cyanGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <path d="M0 108L286 140H964L1250 108V510L964 478H286L0 510Z" fill="url(#veil)"/>
+  <ellipse cx="625" cy="309" rx="430" ry="260" fill="url(#victoryBurst)"/>
+  <g opacity=".25" stroke="#f5d77c" fill="none">
+    <path d="M72 468L521 145M151 500L585 143M1178 468L729 145M1099 500L665 143"/>
+    <circle cx="625" cy="309" r="214" stroke-dasharray="4 11"/>
+    <circle cx="625" cy="309" r="236" stroke-dasharray="1 15"/>
+  </g>
+
+  <g fill="none" stroke="url(#gold)">
+    <path d="M75 207L211 171H1039L1175 207" stroke-width="4"/>
+    <path d="M75 411L211 447H1039L1175 411" stroke-width="4"/>
+    <path d="M210 184H1040M210 434H1040" stroke-width="1"/>
+  </g>
+  <g fill="#0a1118" stroke="#e5c66f" stroke-width="2">
+    <path d="M58 207L94 184L130 207L94 230Z"/>
+    <path d="M1192 207L1156 184L1120 207L1156 230Z"/>
+    <path d="M58 411L94 388L130 411L94 434Z"/>
+    <path d="M1192 411L1156 388L1120 411L1156 434Z"/>
+  </g>
+  <g fill="#98f5ff" filter="url(#cyanGlow)">
+    <path d="M94 195L106 207L94 219L82 207Z"/>
+    <path d="M1156 195L1168 207L1156 219L1144 207Z"/>
+    <path d="M625 156L633 171L625 186L617 171Z"/>
+  </g>
+
+  <g font-family="'Yu Mincho','Hiragino Mincho ProN','Noto Serif JP',serif" text-anchor="middle">
+    <text x="625" y="220" fill="#bceff5" font-size="20" font-weight="700" letter-spacing="9">ACT THREE</text>
+    <text x="625" y="359" fill="#090d11" stroke="#090d11" stroke-width="13" font-size="76" font-weight="900" letter-spacing="8" paint-order="stroke">FINAL CURTAIN</text>
+    <text x="625" y="359" fill="url(#ivoryGold)" stroke="#fff0ad" stroke-width="2" font-size="76" font-weight="900" letter-spacing="8" paint-order="stroke">FINAL CURTAIN</text>
+  </g>
+  <g fill="none" stroke="url(#gold)">
+    <path d="M300 389H950" stroke-width="2"/>
+    <path d="M625 376L638 389L625 402L612 389Z" fill="#0a1118" stroke-width="2"/>
+  </g>
+  <g font-family="Georgia,'Times New Roman',serif" text-anchor="middle">
+    <text x="625" y="426" fill="#d9faff" font-size="17" font-weight="700" letter-spacing="8">ENEMY FATAL</text>
+    <text x="625" y="469" fill="#c8ad68" font-size="10" letter-spacing="5">THE FINAL CURTAIN FALLS</text>
+  </g>
+  <g fill="none" stroke="#d4ad52" stroke-width="2" opacity=".78">
+    <circle cx="160" cy="309" r="44"/>
+    <circle cx="1090" cy="309" r="44"/>
+    <path d="M160 260V358M111 309H209M1090 260V358M1041 309H1139"/>
+  </g>
+</svg>

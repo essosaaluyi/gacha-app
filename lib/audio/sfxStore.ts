@@ -63,6 +63,10 @@ const SFX = {
   textInsertFakeout: "/audio/se/text-insert-f-se.mp3",
   // Predetermined enemy-defeat tease (25% chance at the press).
   vibration: "/audio/se/vibration.mp3",
+  // Temporary BAR CHANCE mix placeholders. Dedicated production clips will
+  // replace these paths without changing the reveal choreography.
+  barImpact: "/audio/se/vibration.mp3",
+  barFailure: "/audio/se/vibration.mp3",
 } as const;
 
 export type SfxName = keyof typeof SFX;
@@ -100,6 +104,8 @@ const SFX_OWNERS: Partial<Record<SfxName, BattleMode[]>> = {
   stageName: ["battle"],
   textInsertFakeout: ["battle"],
   vibration: ["battle"],
+  barImpact: BATTLE_AND_BONUS,
+  barFailure: BATTLE_AND_BONUS,
   // Bonus-only. The openings and the freeze all sound after the machine has
   // already been handed to the bonus, so they belong to that section.
   chestOpenPoint: ["bonus"],
@@ -326,6 +332,71 @@ export function playSfx(name: SfxName, options: PlayOptions = {}): void {
 
   void loadClip(name).then((clip) => {
     if (clip) play(clip);
+  });
+}
+
+/**
+ * Dedicated Triple Chance surge. This is synthesized instead of borrowing a
+ * card or jackpot clip: layered filtered noise gives the frame a broad power
+ * rush while the short descending oscillators add the heavy electrical body.
+ */
+export function playTripleChanceSurgeSfx(): void {
+  if (!BATTLE_AND_BONUS.includes(getBattleMode())) return;
+
+  const ctx = getContext();
+  const destination = runtime.masterGain;
+  if (!ctx || !destination || muted) return;
+
+  if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+
+  const now = ctx.currentTime;
+  const duration = 1;
+  const output = ctx.createGain();
+  output.gain.setValueAtTime(0.0001, now);
+  output.gain.exponentialRampToValueAtTime(0.78, now + 0.025);
+  output.gain.exponentialRampToValueAtTime(0.34, now + 0.38);
+  output.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  output.connect(destination);
+
+  const noiseBuffer = ctx.createBuffer(
+    1,
+    Math.ceil(ctx.sampleRate * duration),
+    ctx.sampleRate
+  );
+  const noise = noiseBuffer.getChannelData(0);
+  for (let index = 0; index < noise.length; index += 1) {
+    const envelope = 1 - index / noise.length;
+    noise[index] = (Math.random() * 2 - 1) * (0.42 + envelope * 0.58);
+  }
+
+  const noiseSource = ctx.createBufferSource();
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseSource.buffer = noiseBuffer;
+  noiseFilter.type = "bandpass";
+  noiseFilter.frequency.setValueAtTime(2200, now);
+  noiseFilter.frequency.exponentialRampToValueAtTime(420, now + duration);
+  noiseFilter.Q.value = 0.7;
+  noiseSource.connect(noiseFilter);
+  noiseFilter.connect(output);
+  noiseSource.start(now);
+  noiseSource.stop(now + duration);
+
+  [96, 148, 236].forEach((frequency, index) => {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = index === 0 ? "sawtooth" : "square";
+    oscillator.frequency.setValueAtTime(frequency * 1.8, now);
+    oscillator.frequency.exponentialRampToValueAtTime(
+      frequency * 0.62,
+      now + 0.62
+    );
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16 / (index + 1), now + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
+    oscillator.connect(gain);
+    gain.connect(output);
+    oscillator.start(now);
+    oscillator.stop(now + 0.74);
   });
 }
 

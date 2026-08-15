@@ -15,9 +15,10 @@ import ChancePointsRevealOverlay from "@/components/battle/ChancePointsRevealOve
 import ChanceIconOverlay from "@/components/battle/ChanceIconOverlay";
 import BonusOverlay from "@/components/battle/BonusOverlay";
 import ResurrectionOverlay from "@/components/battle/ResurrectionOverlay";
-import BarResetOverlay from "@/components/battle/BarResetOverlay";
+import BarChanceOverlay from "@/components/battle/BarChanceOverlay";
 import CollectionPhaseOverlay from "@/components/battle/CollectionPhaseOverlay";
 import CollectionPointsHandoff from "@/components/battle/CollectionPointsHandoff";
+import DefenseShieldOverlay from "@/components/battle/DefenseShieldOverlay";
 import {
   dismissCollectionResult,
   getCollectionState,
@@ -25,10 +26,6 @@ import {
   startCollectionPhase,
   subscribeCollection,
 } from "@/lib/battle-pixi/state/collectionStore";
-import {
-  getPlayerFatalModeOpeningState,
-  subscribePlayerFatalModeOpening,
-} from "@/lib/battle-pixi/state/playerFatalModeOpeningStore";
 import StatsGraphPanel from "@/components/battle/StatsGraphPanel";
 import EnemyAttackCounter from "@/components/battle/EnemyAttackCounter";
 import RoundInsert from "@/components/battle/RoundInsert";
@@ -80,6 +77,10 @@ import {
   getBgmMuted,
   setBgmMuted,
 } from "@/lib/audio/bgmStore";
+import {
+  finishChancePointsReveal,
+  isChancePointsRevealActive,
+} from "@/lib/battle-pixi/state/chancePointsRevealStore";
 import { playSfx, preloadSfx, unlockSfx } from "@/lib/audio/sfxStore";
 import { getWalletState, initializeWallet } from "@/lib/wallet/walletStore";
 import { getCurrentRound } from "@/lib/battle-pixi/state/roundStore";
@@ -99,6 +100,14 @@ import {
   CABINET_TABLE_DEPTH_SCALE,
   CABINET_TABLE_PITCH_OFFSET_Y,
 } from "@/lib/battle-pixi/presentation/cabinetTableGeometry";
+import {
+  getBarChanceState,
+  subscribeBarChance,
+} from "@/lib/battle-pixi/state/barChanceStore";
+import {
+  getCabinetSignalState,
+  subscribeCabinetSignals,
+} from "@/lib/battle-pixi/state/cabinetSignalStore";
 
 // Battle opening. The clip runs ~18s; the backstop is deliberately well past
 // that so a slow start never truncates it, and only catches a clip that never
@@ -150,19 +159,16 @@ export default function BattleScreen() {
   const [battleCoverActive, setBattleCoverActive] = useState(true);
   const [audioReady, setAudioReady] = useState(false);
   const [presentationFlow, setPresentationFlow] = useState(getBattlePresentationFlow());
-  const [guaranteedWinBlackout, setGuaranteedWinBlackout] = useState(false);
   const [bgmPlaying, setBgmPlaying] = useState(false);
   const [bgmMuted, setBgmMutedState] = useState(false);
   const [autoEnabled, setAutoEnabled] = useState(false);
-  const [cabinetReact, setCabinetReact] = useState<string | null>(null);
-  const [chanceWaitActive, setChanceWaitActive] = useState(false);
+  const [barChanceState, setBarChanceState] = useState(getBarChanceState());
+  const [cabinetSignals, setCabinetSignals] = useState(getCabinetSignalState());
   // Quitting ends the run and deletes the resume save, so it asks first.
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
   // Shown in the quit dialog so the player can see what they'd be walking away
   // from before they confirm.
   const [quitSummary, setQuitSummary] = useState({ round: 1, earned: 0 });
-  const [memoryLedFill, setMemoryLedFill] = useState<string | null>(null);
-  const [memoryLedEnabled, setMemoryLedEnabled] = useState(true);
   const fatalModeOpeningParam = searchParams.get(
     "player-fatal-mode-opening-insert"
   );
@@ -205,6 +211,11 @@ export default function BattleScreen() {
     });
   }, []);
 
+  useEffect(
+    () => subscribeBarChance(() => setBarChanceState(getBarChanceState())),
+    []
+  );
+
   // Disk-exit pile: idle (hidden) -> set (backs out of the disk, flat) ->
   // launching (backs slide across the disk->table gap to the Pixi entry) ->
   // consumed (cards have traveled onto the tilted table).
@@ -238,71 +249,13 @@ export default function BattleScreen() {
     };
   }, []);
 
-  // Cabinet reaction: a screen event lights up one of the physical props for a
-  // beat, so the machine reads as a single linked unit rather than a screen
-  // with scenery around it.
-  useEffect(() => {
-    let clearTimer: number | null = null;
-
-    const handleReact = (event: Event) => {
-      const prop =
-        event instanceof CustomEvent && typeof event.detail?.prop === "string"
-          ? event.detail.prop
-          : "led";
-
-      setCabinetReact(prop);
-
-      if (clearTimer !== null) window.clearTimeout(clearTimer);
-      clearTimer = window.setTimeout(() => setCabinetReact(null), 2400);
-    };
-
-    window.addEventListener("battle:cabinet-react", handleReact);
-    return () => {
-      window.removeEventListener("battle:cabinet-react", handleReact);
-      if (clearTimer !== null) window.clearTimeout(clearTimer);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleMemoryLedColor = (event: Event) => {
-      if (!(event instanceof CustomEvent)) return;
-      const fill = event.detail?.color;
-      const enabled = event.detail?.enabled;
-
-      setMemoryLedFill(typeof fill === "string" && fill.trim() ? fill : null);
-      if (typeof enabled === "boolean") setMemoryLedEnabled(enabled);
-    };
-
-    window.addEventListener("battle:set-memory-led-color", handleMemoryLedColor);
-    return () => {
-      window.removeEventListener("battle:set-memory-led-color", handleMemoryLedColor);
-    };
-  }, []);
-
-  useEffect(() => {
-    let clearTimer: number | null = null;
-
-    const handleChanceSweep = (event: Event) => {
-      const durationMs =
-        event instanceof CustomEvent &&
-        typeof event.detail?.durationMs === "number"
-          ? event.detail.durationMs
-          : 4100;
-
-      setChanceWaitActive(true);
-      if (clearTimer !== null) window.clearTimeout(clearTimer);
-      clearTimer = window.setTimeout(() => {
-        clearTimer = null;
-        setChanceWaitActive(false);
-      }, durationMs);
-    };
-
-    window.addEventListener("battle:chance-card-sweep", handleChanceSweep);
-    return () => {
-      window.removeEventListener("battle:chance-card-sweep", handleChanceSweep);
-      if (clearTimer !== null) window.clearTimeout(clearTimer);
-    };
-  }, []);
+  useEffect(
+    () =>
+      subscribeCabinetSignals(() =>
+        setCabinetSignals({ ...getCabinetSignalState() })
+      ),
+    []
+  );
 
   useEffect(() => {
     setBgmMutedState(getBgmMuted());
@@ -367,17 +320,7 @@ export default function BattleScreen() {
   // lights are cut for its duration — the bottom LED panel and the top-left
   // memory board. Without this the machine keeps cheerfully glowing around a
   // beat that is meant to own the room.
-  const [fatalInsertActive, setFatalInsertActive] = useState(false);
-
-  useEffect(() => {
-    const sync = () =>
-      setFatalInsertActive(getPlayerFatalModeOpeningState().active);
-    sync();
-    return subscribePlayerFatalModeOpening(sync);
-  }, []);
-
-  // Both blackout sources drive the same switch, so they can never fight.
-  const ledsBlackedOut = guaranteedWinBlackout || fatalInsertActive;
+  const ledsBlackedOut = cabinetSignals.blackout !== null;
 
   // Ends the battle opening: fades the overlay out, then unmounts it. Called
   // by the video's own end, by an error, and by the backstop timer -- so it
@@ -432,31 +375,6 @@ export default function BattleScreen() {
     return () => {
       window.removeEventListener("battle:collection-dismissed", showHandoff);
       if (clearTimer !== null) window.clearTimeout(clearTimer);
-    };
-  }, []);
-
-  useEffect(() => {
-    let restoreTimer: number | null = null;
-
-    const handleGuaranteedWinBlackout = (event: Event) => {
-      const durationMs =
-        event instanceof CustomEvent && typeof event.detail?.durationMs === "number"
-          ? event.detail.durationMs
-          : 720;
-
-      if (restoreTimer !== null) window.clearTimeout(restoreTimer);
-      setGuaranteedWinBlackout(true);
-      restoreTimer = window.setTimeout(() => {
-        setGuaranteedWinBlackout(false);
-        restoreTimer = null;
-      }, durationMs);
-    };
-
-    window.addEventListener("battle:guaranteed-win-blackout", handleGuaranteedWinBlackout);
-
-    return () => {
-      window.removeEventListener("battle:guaranteed-win-blackout", handleGuaranteedWinBlackout);
-      if (restoreTimer !== null) window.clearTimeout(restoreTimer);
     };
   }, []);
 
@@ -649,6 +567,12 @@ export default function BattleScreen() {
       return;
     }
 
+    // The point-reward video is presentation only. A new Draw press cuts it
+    // immediately and continues the normal battle flow on the same press.
+    if (isChancePointsRevealActive()) {
+      finishChancePointsReveal();
+    }
+
     if (bonusVideoActive) {
       window.dispatchEvent(new Event("battle:skip-bonus-video"));
       return;
@@ -676,7 +600,9 @@ export default function BattleScreen() {
   return (
     <main
       className={`fixed inset-0 overflow-hidden battle-cabinet-shell ${
-        cabinetReact ? `bcab-react bcab-react-${cabinetReact}` : ""
+        barChanceState.phase === "success"
+          ? "bcab-bar-success-strobe"
+          : ""
       }`}
     >
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -735,19 +661,25 @@ export default function BattleScreen() {
           </div>
 
           <div
-            className={`bcab-memboard ${chanceWaitActive ? "bcab-memboard-chance-wait" : ""}`}
+            className={`bcab-memboard ${cabinetSignals.chanceSweepActive ? "bcab-memboard-chance-wait" : ""} ${cabinetSignals.statueTone ? `bcab-signal-${cabinetSignals.statueTone}` : ""}`}
             aria-hidden="true"
-            data-led-state={ledsBlackedOut || !memoryLedEnabled ? "off" : "on"}
+            data-led-state={ledsBlackedOut ? "off" : "on"}
             style={
-              memoryLedFill
-                ? ({ "--bcab-memory-led-fill": memoryLedFill } as CSSProperties)
+              cabinetSignals.statueTone
+                ? ({ "--bcab-memory-led-fill": `var(--bcab-signal-${cabinetSignals.statueTone})` } as CSSProperties)
                 : undefined
             }
           >
             <div className="bcab-memboard-led-glow" />
             <div className="bcab-memboard-led-color" />
             <div className="bcab-memboard-led-texture" />
-            <div className="bcab-memboard-chance-sweep" />
+            {cabinetSignals.memoryPulse && (
+              <div
+                key={cabinetSignals.memoryPulse.token}
+                className={`bcab-panel-pulse bcab-panel-pulse-${cabinetSignals.memoryPulse.mode}`}
+                style={{ "--bcab-pulse-ms": `${cabinetSignals.memoryPulse.durationMs}ms` } as CSSProperties}
+              />
+            )}
           </div>
 
           <section
@@ -776,7 +708,7 @@ export default function BattleScreen() {
                   <ChancePointsRevealOverlay />
                   <BonusOverlay />
                   <ResurrectionOverlay />
-                  <BarResetOverlay />
+                  <BarChanceOverlay />
                   <RoundInsert />
                   {collectionHandoff && (
                     <CollectionPointsHandoff
@@ -874,14 +806,20 @@ export default function BattleScreen() {
             </div>
             <BattleLog variant="ticker" />
             <StatsGraphPanel inline />
-            <div className="bcab-mascot" aria-hidden="true">
-              <img src="/images/cabinet/statue.png" alt="" />
+            <div className={`bcab-mascot ${cabinetSignals.statueTone ? `bcab-mascot-active bcab-signal-${cabinetSignals.statueTone}` : ""}`} aria-hidden="true">
+              <img key={cabinetSignals.statueToken} src="/images/cabinet/statue.png" alt="" />
             </div>
             <img className="bcab-grille" src="/images/cabinet/grille-wide.png" alt="" aria-hidden="true" />
           </div>
 
+          <DefenseShieldOverlay />
+
           <div
-            className="bcab-deck"
+            className={`bcab-deck ${
+              barChanceState.phase === "failure"
+                ? "bcab-bar-failure"
+                : ""
+            }`}
             data-led-state={ledsBlackedOut ? "off" : "on"}
           >
             <div className="bcab-lower-led-panel" aria-hidden="true">
@@ -910,6 +848,13 @@ export default function BattleScreen() {
                 src="/images/battle-ui/lower-cabinet-led-v3/lower-cabinet-led-right-on-v3.webp"
                 alt=""
               />
+              {cabinetSignals.lowerPulse && (
+                <div
+                  key={cabinetSignals.lowerPulse.token}
+                  className={`bcab-panel-pulse bcab-panel-pulse-${cabinetSignals.lowerPulse.mode}`}
+                  style={{ "--bcab-pulse-ms": `${cabinetSignals.lowerPulse.durationMs}ms` } as CSSProperties}
+                />
+              )}
             </div>
             <div className="bcab-card-layer" aria-hidden="true" />
             <div className="bcab-disk-well" aria-hidden="true">

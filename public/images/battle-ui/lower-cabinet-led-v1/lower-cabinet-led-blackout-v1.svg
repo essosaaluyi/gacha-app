@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 350" role="img" aria-labelledby="title desc">
+  <title id="title">Destiny Wars lower cabinet LED panel — blackout</title>
+  <desc id="desc">Original lower cabinet panel with all illumination extinguished while metal, glass, circuits, and the Destiny Wars title remain structurally readable.</desc>
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0e1013"/>
+      <stop offset=".25" stop-color="#050607"/>
+      <stop offset=".75" stop-color="#090b0e"/>
+      <stop offset="1" stop-color="#020304"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20242a"/>
+      <stop offset=".26" stop-color="#08090b"/>
+      <stop offset=".52" stop-color="#16191e"/>
+      <stop offset=".78" stop-color="#050608"/>
+      <stop offset="1" stop-color="#1c2025"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0c1113"/>
+      <stop offset=".24" stop-color="#050809"/>
+      <stop offset="1" stop-color="#020304"/>
+    </linearGradient>
+    <linearGradient id="deadGold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#241d11"/>
+      <stop offset=".5" stop-color="#51442b"/>
+      <stop offset="1" stop-color="#211a0e"/>
+    </linearGradient>
+    <pattern id="scan" width="7" height="7" patternUnits="userSpaceOnUse">
+      <path d="M0 6.5H7" stroke="#d9ffff" stroke-opacity=".012"/>
+    </pattern>
+    <pattern id="micro" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M0 16H11L16 11V0M32 16H21L16 21V32" fill="none" stroke="#677073" stroke-opacity=".028"/>
+      <circle cx="16" cy="16" r="1.4" fill="#859093" fill-opacity=".035"/>
+    </pattern>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" seed="19" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 .045 0"/>
+      <feBlend in="SourceGraphic" mode="soft-light"/>
+    </filter>
+    <clipPath id="windowClip">
+      <path d="M374 38L405 12H1515L1546 38V317L1518 340H402L374 317Z"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1920" height="350" fill="url(#base)"/>
+  <rect width="1920" height="350" fill="url(#scan)"/>
+  <g filter="url(#grain)">
+    <path d="M0 0H1920V51H1562L1535 28H385L358 51H0Z" fill="url(#metal)" stroke="#020304" stroke-width="2"/>
+    <path d="M0 350V52H344L368 76V318L339 350Z" fill="url(#metal)" stroke="#010202" stroke-width="3"/>
+    <path d="M1920 350V52H1576L1552 76V318L1581 350Z" fill="url(#metal)" stroke="#010202" stroke-width="3"/>
+    <path d="M349 350L377 322H1543L1571 350Z" fill="url(#metal)" stroke="#020303" stroke-width="3"/>
+  </g>
+
+  <path d="M374 38L405 12H1515L1546 38V317L1518 340H402L374 317Z" fill="url(#glass)" stroke="#050708" stroke-width="6"/>
+  <path d="M383 42L410 20H1510L1537 42V311L1512 331H408L383 311Z" fill="none" stroke="url(#deadGold)" stroke-width="2" opacity=".82"/>
+  <g clip-path="url(#windowClip)">
+    <rect x="374" y="12" width="1172" height="328" fill="url(#micro)"/>
+    <path d="M430 -24L840 350H640L310 45Z" fill="#fff" opacity=".012"/>
+    <path d="M1060 -35L1430 350H1335L980 22Z" fill="#fff" opacity=".008"/>
+    <path d="M385 88H1535M385 262H1535" stroke="#22292b" stroke-width="1" opacity=".55"/>
+  </g>
+
+  <g fill="none" stroke="#4a5154" stroke-width="2" opacity=".075">
+    <path d="M523 293C552 247 574 210 572 166C596 183 612 205 615 238C635 214 656 202 687 200C661 230 655 263 668 298M540 300L576 255L600 302"/>
+    <path d="M1397 294C1368 244 1347 205 1353 158C1325 182 1310 207 1309 240C1285 213 1262 201 1233 202C1260 231 1267 263 1252 298M1380 300L1343 254L1319 301"/>
+    <path d="M686 309C724 276 748 246 757 211M1234 309C1196 276 1172 246 1163 211" stroke-dasharray="4 8"/>
+  </g>
+
+  <path d="M53 21H341L365 44H1555L1579 21H1867" fill="none" stroke="#201b12" stroke-width="9"/>
+  <path d="M53 21H341L365 44H1555L1579 21H1867" fill="none" stroke="#4a402c" stroke-width="1" opacity=".68"/>
+  <g fill="#0a0d0e" stroke="#22292a">
+    <rect x="438" y="38" width="78" height="5" rx="2"/>
+    <rect x="548" y="38" width="118" height="5" rx="2"/>
+    <rect x="704" y="38" width="165" height="5" rx="2"/>
+    <rect x="897" y="38" width="126" height="5" rx="2"/>
+    <rect x="1051" y="38" width="165" height="5" rx="2"/>
+    <rect x="1254" y="38" width="118" height="5" rx="2"/>
+    <rect x="1404" y="38" width="78" height="5" rx="2"/>
+  </g>
+
+  <g>
+    <g transform="translate(350 92)">
+      <path d="M0 12L12 0H57L69 12V43L57 55H12L0 43Z" fill="#030405" stroke="#382f20" stroke-width="2"/>
+      <rect x="13" y="16" width="43" height="23" rx="3" fill="#071012" stroke="#172124"/>
+      <path d="M18 20H51" stroke="#354044" stroke-width="1" opacity=".45"/>
+    </g>
+    <g transform="translate(1501 92)">
+      <path d="M0 12L12 0H57L69 12V43L57 55H12L0 43Z" fill="#030405" stroke="#382f20" stroke-width="2"/>
+      <rect x="13" y="16" width="43" height="23" rx="3" fill="#071012" stroke="#172124"/>
+      <path d="M18 20H51" stroke="#354044" stroke-width="1" opacity=".45"/>
+    </g>
+  </g>
+
+  <g fill="none" stroke-linecap="round" opacity=".62">
+    <path d="M35 103H184L215 134H327M1885 103H1736L1705 134H1593" stroke="#1d2929" stroke-width="5"/>
+    <path d="M35 249H215L247 218H329M1885 249H1705L1673 218H1591" stroke="#29251b" stroke-width="5"/>
+    <path d="M35 103H184L215 134H327M1885 103H1736L1705 134H1593" stroke="#344344" stroke-width="1"/>
+    <path d="M35 249H215L247 218H329M1885 249H1705L1673 218H1591" stroke="#4a4230" stroke-width="1"/>
+  </g>
+
+  <g transform="translate(734 238)">
+    <path d="M0 26L26 0H426L452 26V88L426 112H26L0 88Z" fill="#030405" fill-opacity=".92" stroke="#101416" stroke-width="5"/>
+    <path d="M9 30L30 9H422L443 30V83L422 103H30L9 83Z" fill="none" stroke="url(#deadGold)" stroke-width="2" opacity=".75"/>
+    <g transform="translate(226 25)" fill="none" stroke="#30383a" stroke-width="2" opacity=".68">
+      <path d="M0 -17L10 -5L0 7L-10 -5Z"/>
+      <path d="M-35 0L-18 14L0 7L18 14L35 0"/>
+      <path d="M-23 20L0 7L23 20"/>
+    </g>
+    <text x="226" y="71" text-anchor="middle" fill="#171b1e" stroke="#373229" stroke-width="1" paint-order="stroke" font-family="Cinzel, Georgia, serif" font-size="34" font-weight="800" letter-spacing="6">DESTINY WARS</text>
+    <text x="226" y="92" text-anchor="middle" fill="#252d2f" opacity=".85" font-family="'Share Tech Mono', Consolas, monospace" font-size="9" letter-spacing="5">FATE CIRCUIT / SILENT</text>
+  </g>
+
+  <g fill="#050607" stroke="#393224" stroke-width="2">
+    <circle cx="30" cy="28" r="8"/><circle cx="1890" cy="28" r="8"/>
+    <circle cx="30" cy="322" r="8"/><circle cx="1890" cy="322" r="8"/>
+    <circle cx="356" cy="332" r="6"/><circle cx="1564" cy="332" r="6"/>
+  </g>
+  <g stroke="#4b4230" stroke-width="1" opacity=".5">
+    <path d="M25 28H35M30 23V33M1885 28H1895M1890 23V33M25 322H35M30 317V327M1885 322H1895M1890 317V327"/>
+  </g>
+  <path d="M0 346H1920" stroke="#3b3324" stroke-width="2" opacity=".55"/>
+</svg>

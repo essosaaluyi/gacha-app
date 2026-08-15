@@ -153,14 +153,6 @@ export function showFakeoutChanceReveal(
 
   playSfx("chanceIcon");
 
-  if (typeof window !== "undefined") {
-    const props = ["led", "statue", "memboard"] as const;
-    window.dispatchEvent(
-      new CustomEvent("battle:cabinet-react", {
-        detail: { prop: props[Math.floor(Math.random() * props.length)] },
-      })
-    );
-  }
 
   notify();
 }

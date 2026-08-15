@@ -59,3 +59,11 @@ export function consumeEnemyAttackModeTurn() {
 
   return result;
 }
+
+export function resetEnemyAttackMode() {
+  enemyAttackModeTurnsLeft = 0;
+  enemyAttackModeTotalTurns = 0;
+  playerCountered = false;
+  playerResetEnemyAttack = false;
+  listeners.forEach((listener) => listener());
+}

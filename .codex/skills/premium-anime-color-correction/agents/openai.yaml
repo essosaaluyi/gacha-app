@@ -1,0 +1,4 @@
+interface:
+  display_name: "Premium Anime Color Correction"
+  short_description: "Apply a premium HDR anime color grade to game art."
+  default_prompt: "Use $premium-anime-color-correction to upscale and color-grade this character card while preserving the design."

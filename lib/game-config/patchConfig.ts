@@ -166,8 +166,8 @@ export const patchConfig = {
   // length it was won with (7G back to 7/7, 5G back to 5/5). The old fixed 5
   // quietly shortened every 7G bonus that hit a reset.
   barReset: {
-    realResetChance: 1 / 9,
-    fakeChance: 1 / 6,
+    realResetChance: 1 / 7,
+    fakeChance: 1 / 5,
     fakePoints: 20,
   },
 

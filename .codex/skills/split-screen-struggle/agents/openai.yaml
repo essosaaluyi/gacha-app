@@ -1,0 +1,4 @@
+interface:
+  display_name: "Split Screen Struggle"
+  short_description: "Build reusable animated face-off struggle scenes"
+  default_prompt: "Use $split-screen-struggle to create or update a reusable split-screen battle struggle animation."

@@ -4,6 +4,12 @@ import { startBonusOpening } from "@/lib/battle-pixi/state/bonusModeStore";
 import { triggerEnemyDefeatPresentation } from "@/lib/battle-pixi/state/enemyDefeatPresentationStore";
 import { setBattlePresentationPhase } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import { logEvent } from "@/lib/events/gameEventStore";
+import type { BonusType } from "@/lib/battle-pixi/core/bonusTypeLottery";
+import { getCurrentPlayerBattleCard } from "@/lib/battle-pixi/state/playerBattleCardStore";
+import {
+  addBonusStock,
+  scheduleUr1BoostAfterCollection,
+} from "@/lib/battle-pixi/state/barProgressionStore";
 
 // How long the enemy-defeat presentation owns the screen before the player
 // gets the controls back.
@@ -11,6 +17,8 @@ const DEFEAT_PRESENTATION_MS = 3000;
 
 type HandleBattleEnemyDefeatedArgs = {
   setPendingNextRound: (value: boolean) => void;
+  presentation?: "default" | "barChance";
+  forcedBonusType?: BonusType | null;
 };
 
 /**
@@ -26,10 +34,12 @@ type HandleBattleEnemyDefeatedArgs = {
  */
 export function handleBattleEnemyDefeated({
   setPendingNextRound,
+  presentation = "default",
+  forcedBonusType = null,
 }: HandleBattleEnemyDefeatedArgs) {
   clearAttackFakeout();
   addBattleLog("Enemy Defeated!", "success");
-  triggerEnemyDefeatPresentation();
+  if (presentation === "default") triggerEnemyDefeatPresentation();
 
   // The only place a defeat is actually confirmed, so it is the only honest
   // place to count one. The end-of-run summary reads these back per battleId
@@ -42,7 +52,12 @@ export function handleBattleEnemyDefeated({
   // so the roll happens at the opening draw, in handleBonusDraw. All this does
   // is put the machine into the classic bonus opening; a super-max roll
   // converts it to the nested loop at that point.
-  startBonusOpening();
+  startBonusOpening(forcedBonusType);
+
+  if (presentation === "barChance") addBonusStock();
+  if (getCurrentPlayerBattleCard()?.name === "UR1") {
+    scheduleUr1BoostAfterCollection();
+  }
 
   logEvent({ kind: "bonusStart", detail: { mode: "classic" } });
   addBattleLog("Bonus Opening Started!", "chance");
@@ -51,9 +66,11 @@ export function handleBattleEnemyDefeated({
   // start the bonus turn themselves. Previously the bonus opening video set
   // this phase when it auto-played here; now that the video waits for the next
   // deal, the unlock has to happen on its own.
-  window.setTimeout(() => {
-    setBattlePresentationPhase("next_round_ready", "enemy-defeat-complete");
-  }, DEFEAT_PRESENTATION_MS);
+  if (presentation === "default") {
+    window.setTimeout(() => {
+      setBattlePresentationPhase("next_round_ready", "enemy-defeat-complete");
+    }, DEFEAT_PRESENTATION_MS);
+  }
 
   setPendingNextRound(false);
 }

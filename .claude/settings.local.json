@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth *)",
+      "PowerShell(Get-Command gh -ErrorAction SilentlyContinue)",
+      "PowerShell(gh auth status 2>&1)",
+      "Bash(git ls-remote *)",
+      "PowerShell(winget install --id GitHub.cli -e --accept-source-agreements --accept-package-agreements)",
+      "PowerShell($env:Path = [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"Path\",\"User\"\\); Get-Command gh | Select-Object Source)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Replace boilerplate README with project overview *)",
+      "Bash(git push *)",
+      "PowerShell(& \"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" auth setup-git)",
+      "PowerShell(git push -u origin docs/project-readme)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:58602/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:63850/)",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__claude-in-chrome__navigate",
+      "mcp__claude-in-chrome__computer",
+      "mcp__claude-in-chrome__read_console_messages",
+      "mcp__claude-in-chrome__resize_window",
+      "mcp__claude-in-chrome__javascript_tool",
+      "Bash(python -c \"from PIL import Image; im=Image.open\\('public/images/battle-characters/r1-triplets-baby-dragon/idle/' + __import__\\('os'\\).listdir\\('public/images/battle-characters/r1-triplets-baby-dragon/idle'\\)[0]\\); print\\(im.size, im.mode\\)\")",
+      "PowerShell(npx tsc --noEmit 2>$null)",
+      "PowerShell(if \\($?\\) { \"typecheck OK\" })",
+      "PowerShell($conns = Get-NetTCPConnection -LocalPort 58672 -State Listen -ErrorAction SilentlyContinue; if \\($conns\\) { $conns | ForEach-Object { \"$\\($_.LocalPort\\) pid=$\\($_.OwningProcess\\) $\\(\\(Get-Process -Id $_.OwningProcess\\).ProcessName\\)\" } } else { \"port 58672 free\" }; $c3 = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue; if \\($c3\\) { \"3000 listening pid=$\\(\\($c3 | Select-Object -First 1\\).OwningProcess\\)\" } else { \"3000 free\" })",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:3000/gacha\" -UseBasicParsing -TimeoutSec 120; \"status=$\\($r.StatusCode\\) length=$\\($r.RawContentLength\\)\"; if \\($r.Content -match \"TODAY\"\\) { \"panel markup present in SSR\" } else { \"panel not in SSR HTML \\(expected: renders after mount\\)\" })"
+    ]
+  }
+}

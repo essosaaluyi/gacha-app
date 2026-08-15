@@ -4,10 +4,15 @@ import { addBattleLog } from "@/lib/battle-pixi/state/battleLogStore";
 import { playSfx } from "@/lib/audio/sfxStore";
 import type { BattleCardView } from "@/lib/battle-pixi/presentation/battleCardView";
 import { incrementGameCount } from "@/lib/battle-pixi/state/battleGameStore";
-import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
+import {
+  createBarChanceResult,
+  drawBattleResult,
+  type BattleCardSymbol,
+} from "@/lib/battle-pixi/core/resultLottery";
 import {
   finishBonusMode,
   getBonusModeState,
+  consumeForcedBonusOpeningType,
 
   startBonusGames,
   consumeBonusGame,
@@ -44,9 +49,12 @@ import { bonusRewards } from "@/lib/game-config/generated";
 import { recordDrawOutcome } from "@/lib/battle-pixi/state/drawCostStore";
 import { startCollectionPhase } from "@/lib/battle-pixi/state/collectionStore";
 import { rollBarResetEvent } from "@/lib/battle-pixi/core/barResetLottery";
-import { showBarResetTension } from "@/lib/battle-pixi/state/barResetTensionStore";
 import { patchConfig } from "@/lib/game-config/patchConfig";
-import type { BattleCardSymbol } from "@/lib/battle-pixi/core/resultLottery";
+import {
+  beginCabinetDrawSignals,
+  notifyBonusOpeningStarted,
+} from "@/lib/battle-pixi/state/cabinetSignalStore";
+import { terminateActiveBarBoost } from "@/lib/battle-pixi/state/barProgressionStore";
 
 
 type HandleBonusDrawArgs = {
@@ -110,7 +118,7 @@ export function handleBonusDraw({
 
   incrementGameCount();
 
-  const result = drawBattleResult();
+  const result = drawBattleResult({ barChance: "none" });
   setCurrentBattleResult(result);
 
   // Data counter: bonus draws count as games but stay free (no cost carry-over).
@@ -137,6 +145,13 @@ export function handleBonusDraw({
   
 
   if (bonusState.phase === "opening") {
+    terminateActiveBarBoost();
+    beginCabinetDrawSignals({
+      cards: result.cards,
+      result: result.result,
+      barChance: false,
+    });
+    notifyBonusOpeningStarted();
     setBonusGameText("BONUS OPENING");
     addBattleLog("Bonus Opening", "chance");
 
@@ -145,7 +160,7 @@ export function handleBonusDraw({
     // takes the regular bonus off the table. The roll is settled before the
     // opening video plays (that happens on the release click), so the video
     // and the bonus always agree.
-    const bonusType = rollBonusType(hasChance);
+    const bonusType = consumeForcedBonusOpeningType() ?? rollBonusType(hasChance);
 
     if (hasChance) {
       addBattleLog("Bonus Opening: CHANCE! Guaranteed super.", "success");
@@ -200,13 +215,13 @@ if (remainingAfterThisDraw > 0) {
   const barEvent = rollBarResetEvent();
 
   if (barEvent === "real") {
-    const barCards: BattleCardSymbol[] = ["Bar", "Bar", "Bar"];
-    setCurrentBattleResult({
-      result: "Bar",
-      cards: barCards,
-      targetSlot: result.targetSlot,
+    const barResult = createBarChanceResult("success", "bonus", result.targetSlot);
+    setCurrentBattleResult(barResult);
+    beginCabinetDrawSignals({
+      cards: barResult.cards,
+      result: barResult.result,
+      barChance: true,
     });
-    showBarResetTension("real");
 
     setPendingBonusRevealVideo("/videos/bonus-reveals/reset.mp4");
     addBattleLog("BAR! BAR! BAR! Reset Success!", "success");
@@ -220,13 +235,13 @@ if (remainingAfterThisDraw > 0) {
   } else if (barEvent === "fake") {
     // BAR / BAR / EMPTY: the tension builds on the first two flips, then the
     // third breaks the reset and pays the fake amount instead.
-    const fakeCards: BattleCardSymbol[] = ["Bar", "Bar", "Empty"];
-    setCurrentBattleResult({
-      result: "Empty",
-      cards: fakeCards,
-      targetSlot: result.targetSlot,
+    const barResult = createBarChanceResult("fake", "bonus", result.targetSlot);
+    setCurrentBattleResult(barResult);
+    beginCabinetDrawSignals({
+      cards: barResult.cards,
+      result: barResult.result,
+      barChance: true,
     });
-    showBarResetTension("fake");
 
     const fakePoints = patchConfig.barReset.fakePoints;
     setPendingBonusRevealVideo(`/videos/bonus-reveals/${fakePoints}.mp4`);
@@ -245,6 +260,11 @@ if (remainingAfterThisDraw > 0) {
       result: safeResult,
       cards: safeCards,
       targetSlot: result.targetSlot,
+    });
+    beginCabinetDrawSignals({
+      cards: safeCards,
+      result: safeResult,
+      barChance: false,
     });
 
     const reward = getBonusReward(safeResult, false);

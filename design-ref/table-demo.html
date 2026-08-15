@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Tilted Card Table — minimal reference</title>
+<style>
+/* ============================================================
+   MINIMAL REFERENCE: perspective card table + 3-click card cycle
+   No images. Every technique the full cabinet uses, isolated.
+   ============================================================ */
+body{margin:0;height:100vh;display:grid;place-items:center;background:#0a0c0f;font-family:sans-serif}
+#scene{position:relative;width:1100px;height:520px}
+
+/* --- 1) THE TABLE ---------------------------------------------------
+   KEY: a parent with `perspective` (the camera), a child with `rotateX`
+   (the physical tilt). transform-origin at the BOTTOM edge so the table
+   tips away from the viewer like a real cabinet shelf.               */
+.table-space{position:absolute;left:50px;top:120px;width:1000px;height:340px;
+  perspective:1050px;               /* camera distance — lower = more dramatic */
+  perspective-origin:50% 10%;}      /* camera looks from slightly above       */
+.card-table{position:absolute;inset:0;
+  transform:rotateX(18deg);         /* the tilt itself                        */
+  transform-style:preserve-3d;      /* children live on the tilted plane      */
+  transform-origin:50% 100%;        /* hinge at the bottom edge               */
+  border-radius:16px;padding:10px;
+  background:linear-gradient(150deg,#efd695,#8a6a2f 30%,#c9a24b 55%,#8a6a2f 85%); /* gold frame */
+  box-shadow:0 24px 50px rgba(0,0,0,.75);}
+.table-glass{position:relative;width:100%;height:100%;border-radius:10px;overflow:hidden;
+  background:
+    radial-gradient(ellipse at 30% 0%,rgba(255,255,255,.10),transparent 45%),  /* sheen   */
+    repeating-linear-gradient(60deg,rgba(77,232,210,.03) 0 2px,transparent 2px 26px), /* etch */
+    linear-gradient(180deg,#14413b,#0c2724 70%,#081b18);}                      /* teal    */
+
+/* --- 2) SLOTS (children of the glass => inherit the tilt for free) -- */
+.card-slots{position:absolute;top:38px;left:50%;transform:translateX(-50%);display:flex;gap:48px}
+.slot{width:136px;height:198px;border-radius:9px;position:relative;
+  border:1px dashed rgba(77,232,210,.28);background:rgba(5,20,18,.35);
+  perspective:600px;}               /* per-slot camera for the flip */
+
+/* --- 3) THE DECK (hidden inside the machine until "SET") ------------ */
+.disk{position:absolute;left:40px;bottom:10px;width:170px;height:170px;border-radius:50%;
+  background:radial-gradient(circle at 38% 30%,#2e333b,#15181d 60%,#0b0d10);
+  border:5px solid #8a6a2f;display:grid;place-items:center;color:#c9a24b;
+  font-weight:700;letter-spacing:.2em;cursor:pointer;user-select:none}
+.pile{position:absolute;left:250px;bottom:20px;width:136px;height:198px;pointer-events:none} /* deck is scenery — never eats clicks */
+.pile .stack{position:absolute;inset:0;
+  transition:transform .6s cubic-bezier(.25,.9,.3,1),opacity .3s;
+  transform:translateX(-190px) translateY(30px) scale(.8);opacity:0;} /* hidden "inside" */
+.pile.set .stack{transform:none;opacity:1}                            /* slid out        */
+.pile .back{position:absolute;inset:0;border-radius:9px;border:2px solid #8a6a2f;
+  background:linear-gradient(160deg,#123a34,#0a201d 70%);display:grid;place-items:center}
+.pile .back::after{content:"◆";font-size:34px;color:rgba(239,214,149,.5)}
+.pile .back:nth-child(1){transform:translateX(8px)}   /* straight stack, X-offset only */
+.pile .back:nth-child(2){transform:translateX(4px)}
+
+/* --- 4) TRAVELING CARDS ---------------------------------------------
+   KEY: cards that MOVE live in one absolutely-positioned overlay layer
+   spanning the whole scene, so a single left/top transition carries
+   them anywhere (deck -> slot) without re-parenting mid-flight.      */
+#cardLayer{position:absolute;inset:0;z-index:40;pointer-events:none}
+.pcard{position:absolute;width:136px;height:198px;border-radius:9px;
+  transform-style:preserve-3d;opacity:0;pointer-events:none;
+  transition:transform .5s cubic-bezier(.2,.8,.3,1),
+             left .55s cubic-bezier(.2,.85,.3,1.05),
+             top  .55s cubic-bezier(.2,.85,.3,1.05);}
+.pcard.interactive{pointer-events:auto;cursor:pointer}
+/* --- 5) THE FLIP: two faces back-to-back, rotateY the wrapper ------- */
+.pcard .face{position:absolute;inset:0;border-radius:9px;backface-visibility:hidden;overflow:hidden}
+.pcard .back-face{background:linear-gradient(160deg,#123a34,#0a201d 70%);border:2px solid #8a6a2f;
+  display:grid;place-items:center}
+.back-face::after{content:"◆";font-size:34px;color:rgba(239,214,149,.5)}
+.pcard .front-face{background:linear-gradient(160deg,#3b4a6b,#1c2438 60%,#2c3450);
+  border:2px solid #c9a24b;transform:rotateY(180deg);
+  display:grid;place-items:center;color:#efd695;font-size:44px}
+.pcard.flipped{transform:rotateY(180deg)!important}
+</style></head><body>
+<div id="scene">
+  <div class="table-space"><div class="card-table"><div class="table-glass">
+    <div class="card-slots">
+      <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+    </div>
+  </div></div></div>
+  <div class="disk" id="drawBtn">DRAW</div>
+  <div class="pile" id="pile"><div class="stack">
+    <div class="back"></div><div class="back"></div><div class="back"></div>
+  </div></div>
+  <div id="cardLayer"></div>
+</div>
+<script>
+/* --- 6) THE 3-CLICK STATE MACHINE ----------------------------------
+   phase 0: idle (deck hidden inside machine)
+   click 1 -> SET   : deck slides out to the exit position
+   click 2 -> PLACE : 3 cards travel from deck to slots, face-down
+   click 3+ -> FLIP : click each card; when all flipped, next click resets */
+const slots=[...document.querySelectorAll('.slot')];
+const pile=document.getElementById('pile');
+const layer=document.getElementById('cardLayer');
+let phase=0,cards=[];
+const arts=['⚔️','🐲','✨'];
+
+/* KEY: convert any element's center into cardLayer coordinates.
+   Works no matter how the page is scaled (divide by scale if you
+   transform-scale a wrapper, like the cabinet does). */
+function centerIn(el){
+  const lr=layer.getBoundingClientRect(), r=el.getBoundingClientRect();
+  return {x:r.left-lr.left+r.width/2, y:r.top-lr.top+r.height/2};
+}
+function placeAt(c,p){c.style.left=(p.x-68)+'px';c.style.top=(p.y-99)+'px';}
+
+document.getElementById('drawBtn').onclick=()=>{
+  if(phase===0){ pile.classList.add('set'); phase=1; }
+  else if(phase===1){
+    const p=centerIn(pile); cards=[];
+    slots.forEach((slot,i)=>{
+      const c=document.createElement('div'); c.className='pcard';
+      c.innerHTML='<div class="face back-face"></div><div class="face front-face">'+arts[i]+'</div>';
+      layer.appendChild(c); placeAt(c,p); c.style.opacity=1; cards.push(c);
+      /* stagger each card's departure; transition on left/top does the glide */
+      setTimeout(()=>placeAt(c,centerIn(slot)), 60+i*130);
+      setTimeout(()=>c.classList.add('interactive'), 60+i*130+560);
+      c.onclick=()=>{ if(phase===2&&!c.classList.contains('flipped')) c.classList.add('flipped'); };
+    });
+    setTimeout(()=>pile.classList.remove('set'),240); /* empty stack retracts */
+    phase=2;
+  } else { cards.forEach(c=>c.remove()); cards=[]; pile.classList.remove('set'); phase=0;
+           document.getElementById('drawBtn').click(); } /* immediate re-SET */
+};
+</script></body></html>

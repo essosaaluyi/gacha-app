@@ -22,6 +22,7 @@ import { startPendingChancePointsReveal } from "@/lib/battle-pixi/state/chancePo
 import {
   getBonusModeState,
   isBonusModeActive,
+  startBonusOpening,
 } from "@/lib/battle-pixi/state/bonusModeStore";
 import {
   getNestedBonusState,
@@ -44,6 +45,11 @@ import {
   isDrawSequenceActive,
   isDrawSequenceCurrent,
 } from "@/lib/battle-pixi/state/drawSequenceGuard";
+import {
+  consumeBonusStock,
+  hasBonusStock,
+  terminateActiveBarBoost,
+} from "@/lib/battle-pixi/state/barProgressionStore";
 
 type HandleDrawButtonPressArgs = {
   cardsAreOut: boolean;
@@ -138,6 +144,38 @@ if (isNestedBonusActive()) {
     onBonusFinished,
   });
 
+  return;
+}
+
+// A stored bonus is deliberately consumed only after the previous complete
+// Bonus -> Pick a Bonus cycle. It starts on the player's next Draw click and
+// pays the ordinary draw cost before entering the opening hand.
+if (hasBonusStock()) {
+  const stockDrawCost = getNextDrawCost();
+  if (stockDrawCost > 0) {
+    if (getWalletState().points < stockDrawCost) {
+      addBattleLog(`Not enough points (need ${stockDrawCost}).`, "fail");
+      return;
+    }
+    void spendPoints(stockDrawCost, "battle_draw");
+    addBattleLog(`Draw cost: -${stockDrawCost}P`, "normal");
+  }
+
+  consumeBonusStock();
+  terminateActiveBarBoost();
+  startBonusOpening();
+  setBattlePresentationPhase("draw_reveal", "bonus-stock-opening");
+  handleBonusDraw({
+    setCardsAreOut,
+    drawButton,
+    drawCards,
+    stage,
+    startNewDraw,
+    resetCardsToGroup,
+    drawCardsFromHolder,
+    setCurrentBattleResult,
+    onBonusFinished,
+  });
   return;
 }
 

@@ -1,0 +1,64 @@
+{
+  "package": "lower-cabinet-led-v1",
+  "version": 1,
+  "target": {
+    "stage": "1920x1080",
+    "lowerDeckRect": {
+      "x": 0,
+      "y": 730,
+      "width": 1920,
+      "height": 350
+    },
+    "aspectRatio": "1920 / 350"
+  },
+  "assets": [
+    {
+      "id": "lower-cabinet-led-on",
+      "state": "poweredOn",
+      "svg": "/images/battle-ui/lower-cabinet-led-v1/lower-cabinet-led-on-v1.svg",
+      "png": "/images/battle-ui/lower-cabinet-led-v1/lower-cabinet-led-on-v1.png",
+      "dimensions": "1920x350",
+      "alpha": false,
+      "runtimeRequired": true
+    },
+    {
+      "id": "lower-cabinet-led-blackout",
+      "state": "guaranteedWinBlackout",
+      "svg": "/images/battle-ui/lower-cabinet-led-v1/lower-cabinet-led-blackout-v1.svg",
+      "png": "/images/battle-ui/lower-cabinet-led-v1/lower-cabinet-led-blackout-v1.png",
+      "dimensions": "1920x350",
+      "alpha": false,
+      "runtimeRequired": true,
+      "recommendedDurationMs": 720,
+      "allowedDurationRangeMs": [500, 900]
+    }
+  ],
+  "safeZones": {
+    "drawAssembly": { "x": 0, "y": 0, "width": 390, "height": 350 },
+    "liveTableAndCards": { "x": 420, "y": 52, "width": 1080, "height": 188 },
+    "playerHand": { "x": 1500, "y": 28, "width": 420, "height": 322 },
+    "titlePlate": { "x": 734, "y": 238, "width": 452, "height": 112 }
+  },
+  "stacking": {
+    "panelBackground": 0,
+    "deckShade": 1,
+    "table": 12,
+    "cardLayer": 15,
+    "drawWell": 16,
+    "drawButton": 18,
+    "playerHand": 18
+  },
+  "rightsNote": "Original Destiny Wars cabinet artwork. No copyrighted pachislot logo, character, or exact ornamental layout is included.",
+  "generation": {
+    "method": "authored SVG with mechanically rendered PNG fallback",
+    "aiRasterGenerationUsed": false
+  },
+  "qa": {
+    "verifiedOn": "2026-07-19",
+    "svgXmlValidation": "passed",
+    "pngDimensions": "passed: 1920x350",
+    "pngAlpha": "fully opaque: alpha 255",
+    "visualInspection": "passed",
+    "logicFilesChanged": false
+  }
+}

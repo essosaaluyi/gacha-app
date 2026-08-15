@@ -2,6 +2,7 @@ import {
   getBattleMode,
   setBattleMode,
 } from "@/lib/battle-pixi/state/battleModeStore";
+import type { BonusType } from "@/lib/battle-pixi/core/bonusTypeLottery";
 
 let active = false;
 
@@ -14,6 +15,7 @@ let listeners: (() => void)[] = [];
 let bonusTotalPoints = 0;
 let waitingForResultConfirm = false;
 let bonusGamesMax = 5;
+let forcedOpeningType: BonusType | null = null;
 
 function notify() {
   listeners.forEach((listener) => listener());
@@ -38,16 +40,23 @@ export function getBonusTotalPoints() {
   return bonusTotalPoints;
 }
 
-export function startBonusOpening() {
+export function startBonusOpening(forcedType: BonusType | null = null) {
   active = true;
   phase = "opening";
   bonusGamesRemaining = 0;
+  forcedOpeningType = forcedType;
 
   bonusTotalPoints = 0;
 waitingForResultConfirm = false;
 
   setBattleMode("bonus", "bonus-opening");
   notify();
+}
+
+export function consumeForcedBonusOpeningType() {
+  const type = forcedOpeningType;
+  forcedOpeningType = null;
+  return type;
 }
 
 export function startBonusGames(games = 5) {
@@ -87,6 +96,7 @@ export function finishBonusMode() {
 
   bonusTotalPoints = 0;
 waitingForResultConfirm = false;
+  forcedOpeningType = null;
 
   // Hand the machine back to the base game only if we still own it. The
   // collection phase starts before the bonus is torn down, so an unconditional
@@ -121,6 +131,7 @@ export function restoreBonusMode(snapshot: {
   bonusGamesMax = snapshot.bonusGamesMax;
   bonusTotalPoints = snapshot.bonusTotalPoints;
   waitingForResultConfirm = false;
+  forcedOpeningType = null;
   if (active) setBattleMode("bonus", "session-restore");
   notify();
 }

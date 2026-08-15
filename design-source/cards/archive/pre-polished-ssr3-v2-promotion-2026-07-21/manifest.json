@@ -1,0 +1,17 @@
+{
+  "created": "2026-07-21",
+  "description": "Byte-identical reconstruction of the SSR3 production files immediately before approved v2 polished-composite promotion",
+  "files": [
+    {
+      "card": "SSR3",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-ssr3-v2-promotion-2026-07-21/player/SSR3/card.png",
+        "webp": "design-source/cards/archive/pre-polished-ssr3-v2-promotion-2026-07-21/player/SSR3/card.webp"
+      },
+      "sha256": {
+        "png": "d74be5cab54e131e591c21ee3a4c3efec207e5de0763535a2f96188920b03cce",
+        "webp": "c7ef80be0a8a10636e803b00f4e1ed5e6bc0e7a2fd185fab46bdb08ef06df908"
+      }
+    }
+  ]
+}

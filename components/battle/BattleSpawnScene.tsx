@@ -19,6 +19,10 @@ import {
 } from "@/lib/battle-pixi/state/currentEnemyStore";
 import type { EnemyId } from "@/lib/battle-pixi/config/enemyConfig";
 import {
+  battleEnemies,
+  type BattleEnemy,
+} from "@/lib/battle-pixi/config/enemyConfig";
+import {
   getEnemyCharacterName,
   getPlayerCharacterName,
 } from "@/lib/battle-pixi/config/characterNames";
@@ -64,6 +68,8 @@ type RevealPreset = {
   layers: RevealLayerMap;
   standFrameSrc: (index: number) => string;
   idleFrameSrc: (index: number) => string;
+  /** True when no character sequence exists yet and card art is the identity-safe fallback. */
+  staticCardFallback?: boolean;
 };
 
 type SpawnStyle = CSSProperties & Record<`--${string}`, string>;
@@ -492,10 +498,10 @@ const enemySevenPreset = {
       .padStart(4, "0")}.png`,
 } satisfies RevealPreset;
 
-// Summon animations that have authored frame sequences today. Enemies absent
-// from this map fall back to enemySevenPreset for the animation only -- their
-// card art and name still come from live battle state, so the summon always
-// names the right opponent even when its bespoke animation is not drawn yet.
+// Summon animations that have authored frame sequences today. Do not fall
+// back to another enemy's sequence: that makes the reveal visibly contradict
+// the card and opponent name. Missing sequences use that enemy's own card art
+// as a temporary identity-safe visual until a character animation is authored.
 const ENEMY_PRESETS_BY_ID: Partial<Record<EnemyId, RevealPreset>> = {
   1: enemyOnePreset,
   2: enemyTwoPreset,
@@ -503,6 +509,55 @@ const ENEMY_PRESETS_BY_ID: Partial<Record<EnemyId, RevealPreset>> = {
   6: enemySixPreset,
   7: enemySevenPreset,
 };
+
+const enemyCardFallbackLayers = {
+  ...enemySevenLayers,
+  stand: { ...enemySevenLayers.stand, scale: 0.76 },
+  idle: { ...enemySevenLayers.idle, scale: 0.76 },
+} satisfies RevealPreset["layers"];
+
+function createEnemyCardFallback(enemy: BattleEnemy): RevealPreset {
+  return {
+    id: `enemy-${enemy.id}-card-fallback`,
+    name: enemy.name,
+    storageKey: `enemy-${enemy.id}-card-fallback`,
+    cardImage: enemy.image,
+    characterFrameWidth: 430,
+    standFrameCount: 1,
+    idleFrameCount: 1,
+    standFrameMs: 1000,
+    idleFrameMs: 1000,
+    standStartFrame: 0,
+    idleStartFrame: 0,
+    standTransformOrigin: "50% 82%",
+    idleTransformOrigin: "50% 82%",
+    durationMs: 7600,
+    timeline: {
+      ...baseTimeline,
+      stand: { startMs: 2600, endMs: 7600 },
+      idle: { startMs: 7600, endMs: 7600 },
+    },
+    layers: enemyCardFallbackLayers,
+    standFrameSrc: () => enemy.image,
+    idleFrameSrc: () => enemy.image,
+    staticCardFallback: true,
+  };
+}
+
+const ENEMY_CARD_FALLBACK_PRESETS: Record<EnemyId, RevealPreset> =
+  Object.fromEntries(
+    (Object.keys(battleEnemies) as unknown as EnemyId[]).map((id) => [
+      id,
+      createEnemyCardFallback(battleEnemies[id]),
+    ])
+  ) as Record<EnemyId, RevealPreset>;
+
+function enemyPresetFor(enemy: BattleEnemy | null) {
+  if (!enemy) return enemySevenPreset;
+  return (
+    ENEMY_PRESETS_BY_ID[enemy.id] ?? ENEMY_CARD_FALLBACK_PRESETS[enemy.id]
+  );
+}
 
 const youngKnightTimeline = {
   ...baseTimeline,
@@ -1059,7 +1114,9 @@ function CharacterSequence({
 
   return (
     <div
-      className={`battle-spawn-character-slot battle-spawn-character-${phase}`}
+      className={`battle-spawn-character-slot battle-spawn-character-${phase}${
+        preset.staticCardFallback ? " battle-spawn-character-card-fallback" : ""
+      }`}
       aria-label={name}
     >
       <img
@@ -1129,7 +1186,7 @@ export default function BattleSpawnScene() {
     loadSavedPreset(playerPresetFor(getCurrentPlayerBattleCard()))
   );
   const [resolvedEnemyPreset, setResolvedEnemyPreset] = useState<RevealPreset>(() =>
-    loadSavedPreset(enemySevenPreset)
+    loadSavedPreset(enemyPresetFor(getCurrentEnemy()))
   );
   // Latest summon duration, read at schedule time so the persistence handoff
   // stays correct without re-subscribing the visibility effect. Synced in an
@@ -1159,8 +1216,7 @@ export default function BattleSpawnScene() {
   }, []);
 
   // The animation preset for whichever enemy this round actually is.
-  const enemyBasePreset =
-    (currentEnemy && ENEMY_PRESETS_BY_ID[currentEnemy.id]) ?? enemySevenPreset;
+  const enemyBasePreset = enemyPresetFor(currentEnemy);
 
   // ...and for whichever card the player is actually fighting with, so the
   // summoned character matches the card art beside it.

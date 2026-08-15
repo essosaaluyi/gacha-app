@@ -124,7 +124,7 @@ export function handleNestedBonusDraw({
 
   incrementGameCount();
 
-  const result = drawBattleResult();
+  const result = drawBattleResult({ barChance: "none" });
   setCurrentBattleResult(result);
 
   // Nested-bonus draws count as games but stay free (no cost carry-over).

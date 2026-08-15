@@ -23,7 +23,10 @@ import {
 } from "@/lib/battle-pixi/presentation/animations";
 import type { AnimationGuard } from "@/lib/battle-pixi/presentation/animations";
 import { CABINET_TABLE_DEPTH_SCALE } from "@/lib/battle-pixi/presentation/cabinetTableGeometry";
-import { playSfx } from "@/lib/audio/sfxStore";
+import {
+  playSfx,
+  playTripleChanceSurgeSfx,
+} from "@/lib/audio/sfxStore";
 import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
 import type { Card } from "@/lib/gacha/pullLogic";
 import type { BattleEnemy } from "@/lib/battle-pixi/config/enemyConfig";
@@ -84,6 +87,15 @@ import {
   registerEnemyAttackReset,
   consumeEnemyAttackModeTurn,
 } from "@/lib/battle-pixi/state/enemyAttackModeStore";
+import {
+  awardDefenseShield,
+  clearDefenseShield,
+  consumeDefenseShieldForFatal,
+  getDefenseShieldState,
+  revealDefenseShield,
+  type DefenseShieldGrade,
+  type DefenseShieldResolution,
+} from "@/lib/battle-pixi/state/defenseShieldStore";
 
 import {
   selectEnemyForRound,
@@ -168,6 +180,22 @@ import {
   showInterruptCutIn,
   showResultCutIn,
 } from "@/lib/battle-pixi/presentation/cutInRules";
+import {
+  beginBarChanceDistortion,
+  clearBarChance,
+  getBarChanceState,
+  revealBarChanceSymbol,
+  startBarChance,
+} from "@/lib/battle-pixi/state/barChanceStore";
+import {
+  armFatalWinCabinetSignal,
+  beginCabinetDrawSignals,
+  clearCabinetTurnSignals,
+  getCabinetSignalState,
+  notifyCabinetProgress,
+  notifyEnemyDefeatResult,
+} from "@/lib/battle-pixi/state/cabinetSignalStore";
+import { consumeBarBoostGame } from "@/lib/battle-pixi/state/barProgressionStore";
 
 function formatRoundInsertText(round: number) {
   if (round <= 10) {
@@ -621,7 +649,6 @@ export default function BattlePixiStage({
     let removeRoundIntroControl: (() => void) | null = null;
     let removeBonusConfirmControl: (() => void) | null = null;
     let removeFlowControl: (() => void) | null = null;
-    let guaranteedWinRevealTimer: number | null = null;
     let disposeHandTimers: (() => void) | null = null;
     let cancelled = false;
 
@@ -729,7 +756,7 @@ export default function BattlePixiStage({
       const TARGET_PIP_CORE = 0xffe9df;
       // Generous, because the surface squash flattens it to roughly half this
       // in height once it is laid onto the table.
-      const TARGET_PIP_RADIUS = 13;
+      const TARGET_PIP_RADIUS = 8.5;
 
       const targetMarker = new Container();
       targetMarker.visible = false;
@@ -825,11 +852,17 @@ export default function BattlePixiStage({
       // Minimum interval between game starts, matching the 4.1s wait every
       // Japanese pachislot cabinet is required to enforce. It caps a spamming
       // player at ~878 games/hour, the same ceiling a real machine has.
-      const DRAW_WAIT_MS = 4100;
-      const CHANCE_SWEEP_MS = 1200;
+      // The browser cabinet is interactive rather than coin-operated.
+      const DRAW_WAIT_MS = 0;
 
       let lastDrawStartedAt = Number.NEGATIVE_INFINITY;
       let chanceWaitUntil = Number.NEGATIVE_INFINITY;
+      const getChanceWaitRemaining = () =>
+        Math.max(
+          0,
+          chanceWaitUntil - performance.now(),
+          getCabinetSignalState().chanceSweepEndsAt - Date.now()
+        );
 
       let handGeneration = 0;
       let cardPhase: CardPhase = "idle";
@@ -906,10 +939,21 @@ export default function BattlePixiStage({
       // pending hand timers.
       disposeHandTimers = clearManagedTimeouts;
 
+      let attackTargetGlowLayer: Container | null = null;
+      const clearAttackTargetGlow = () => {
+        if (!attackTargetGlowLayer) return;
+        if (attackTargetGlowLayer.parent === stage) {
+          stage.removeChild(attackTargetGlowLayer);
+        }
+        attackTargetGlowLayer.destroy({ children: true });
+        attackTargetGlowLayer = null;
+      };
+
       // The one centralized cleanup every new hand runs through.
       const beginNewHand = (reason: string) => {
         handGeneration += 1;
         clearManagedTimeouts();
+        clearAttackTargetGlow();
         chanceWaitUntil = Number.NEGATIVE_INFINITY;
         stopAllHoverFloat();
         drawCards.forEach((card) => card.removeAllListeners("pointertap"));
@@ -927,10 +971,26 @@ export default function BattlePixiStage({
         }
       };
 
-      let currentBattleResult = drawBattleResult();
+      let currentBattleResult = drawBattleResult({ barChance: "none" });
 
       const setCurrentBattleResult = (result: typeof currentBattleResult) => {
         currentBattleResult = result;
+
+        if (result.barChance) {
+          const playerCard = getCurrentPlayerBattleCard();
+          startBarChance({
+            outcome: result.barChance.outcome,
+            tone: result.barChance.tone,
+            scope: result.barChance.scope,
+            bonusType: result.barChance.bonusType,
+            characterImage:
+              getPlayerFaceoffImage(playerCard?.name) ??
+              playerCard?.image ??
+              PLAYER_CARD_BACK_IMAGE,
+          });
+        } else {
+          clearBarChance();
+        }
       };
 
       const table = new Sprite(tableTexture);
@@ -1138,24 +1198,43 @@ export default function BattlePixiStage({
       ) {
         pendingNextRound = true;
       }
-      let pendingEnemyDefeatPresentation = false;
+      let pendingEnemyDefeatPresentation: {
+        presentation: "default" | "barChance";
+        forcedBonusType: "regular" | "super" | "superMax" | null;
+      } | null = null;
       // Armed at draw time, played when the cards leave the deck.
       let pendingChanceUpCue = false;
       // Payoff game: the struggle is already on screen from the draw click.
       // This is the winner the third flip will name.
       let pendingStruggleWinner: "player" | "enemy" | null = null;
       let pendingFakeoutDialogue: PendingFakeoutDialogue | null = null;
+      let pendingEnemyFatalShieldResolution: DefenseShieldResolution | null = null;
+      let pendingTripleDefenseGrade: DefenseShieldGrade | null = null;
 
-      const handleEnemyDefeated = () => {
-        pendingEnemyDefeatPresentation = true;
+      const handleEnemyDefeated = (
+        presentation: "default" | "barChance" = "default",
+        forcedBonusType: "regular" | "super" | "superMax" | null = null
+      ) => {
+        pendingEnemyDefeatPresentation = {
+          presentation,
+          forcedBonusType,
+        };
       };
 
       const commitEnemyDefeated = () => {
+        const pending = pendingEnemyDefeatPresentation;
+        if (!pending) return;
+        pendingEnemyDefeatPresentation = null;
+        clearDefenseShield();
+        pendingEnemyFatalShieldResolution = null;
         handleBattleEnemyDefeated({
           setPendingNextRound: (value) => {
             pendingNextRound = value;
           },
+          presentation: pending.presentation,
+          forcedBonusType: pending.forcedBonusType,
         });
+        notifyEnemyDefeatResult();
       };
 
       const drawCardsFromHolder = () => {
@@ -1204,6 +1283,9 @@ export default function BattlePixiStage({
         if (!pendingNextRound) return false;
 
         pendingNextRound = false;
+        // A stored shield belongs to one enemy battle only. Clear it before
+        // the next opponent is selected so it cannot leak across rounds.
+        clearDefenseShield();
 
         nextRound();
 
@@ -1229,6 +1311,7 @@ export default function BattlePixiStage({
         startPlayerFatalModeOpening();
         resetCardsToGroup();
         pendingFakeoutDialogue = null;
+        pendingTripleDefenseGrade = null;
         // Last hand's target is stale the moment a new one is dealt; the new
         // one lights up when this hand's result is drawn.
         targetMarker.visible = false;
@@ -1296,23 +1379,27 @@ export default function BattlePixiStage({
 
         preparePendingNextRound();
 
-        currentBattleResult = drawBattleResult();
+        const boostedBarOdds = consumeBarBoostGame();
+        setCurrentBattleResult(
+          drawBattleResult(
+            boostedBarOdds
+              ? { barChance: "main", barOdds: boostedBarOdds }
+              : { barChance: "main" }
+          )
+        );
 
         // Chance hands occasionally earn the stronger anticipation cue. The
         // outcome is known here, but every card remains unclickable until the
         // full cabinet wait has elapsed.
         chanceWaitUntil = Number.NEGATIVE_INFINITY;
-        if (
-          currentBattleResult.cards.includes("Chance") &&
-          Math.random() < 0.5
-        ) {
-          chanceWaitUntil = performance.now() + DRAW_WAIT_MS;
-          window.dispatchEvent(
-            new CustomEvent("battle:chance-card-sweep", {
-              detail: { durationMs: DRAW_WAIT_MS, sweepMs: CHANCE_SWEEP_MS },
-            })
-          );
-        }
+        beginCabinetDrawSignals({
+          cards: currentBattleResult.cards,
+          result: currentBattleResult.result,
+          barChance: Boolean(currentBattleResult.barChance),
+        });
+        // The central store owns the wait deadline so a blackout can cancel it
+        // immediately; keeping a second local deadline would leave cards
+        // locked after the physical sweep had already been cut.
 
         // v-Next patch: record outcome (prices the next draw + event log)
         recordDrawOutcome(currentBattleResult.result, {
@@ -1348,6 +1435,7 @@ export default function BattlePixiStage({
           currentBattleResult,
           getCurrentPlayerBattleCard()?.rarity
         );
+        const fatalModeWasActive = isFatalModeActive();
 
         addBattleLog(
           `Draw / Target Slot: ${currentBattleResult.targetSlot + 1}`,
@@ -1355,11 +1443,22 @@ export default function BattlePixiStage({
         );
 
         let shouldStopBattleEvaluation = false;
-        let guaranteedWinCue = false;
+
+        if (
+          currentBattleResult.barChance?.scope === "battle" &&
+          currentBattleResult.barChance.outcome === "success"
+        ) {
+          handleEnemyDefeated(
+            "barChance",
+            currentBattleResult.barChance.bonusType
+          );
+          shouldStopBattleEvaluation = true;
+          addBattleLog("Triple BAR win armed.", "success");
+        }
 
         // v-Next patch (feature 3): a hidden win is armed — this game must
         // look 100% ordinary; the crack/glitch fires after the cards reveal.
-        if (isResurrectionArmed()) {
+        if (!shouldStopBattleEvaluation && isResurrectionArmed()) {
           promoteResurrectionToGlitchPending();
           addBattleLog(`Cards: ${currentBattleResult.cards.join(" | ")}`);
           addBattleLog("No attack triggered.");
@@ -1489,7 +1588,6 @@ export default function BattlePixiStage({
             pendingStruggleWinner = cycleSucceeded ? "player" : "enemy";
 
             if (cycleSucceeded) {
-              guaranteedWinCue = true;
               addBattleLog("Attack Success Revealed!", "success");
               clearAttackFakeout();
 
@@ -1523,9 +1621,19 @@ export default function BattlePixiStage({
         stage.setChildIndex(targetMarker, stage.children.length - 1);
 
         if (!shouldStopBattleEvaluation && isEnemyAttackModeActive()) {
+          const tripleDefensePredetermined = currentBattleResult.cards.every(
+            (symbol) => symbol === "Defense"
+          );
+
+          // Results are predetermined at draw time. Arm Triple Defense here
+          // during a fatal window so even its last turn can use the shield;
+          // the hologram itself still waits for the third visible flip.
+          if (tripleDefensePredetermined && !pendingTripleDefenseGrade) {
+            pendingTripleDefenseGrade = awardDefenseShield();
+          }
+
           const playerCounter =
             evaluation.chanceAttack ||
-            currentBattleResult.result === "Defense" ||
             currentBattleResult.result === "Bar";
 
           const resetEnemyAttack =
@@ -1547,6 +1655,21 @@ export default function BattlePixiStage({
               addBattleLog("Enemy Fatal Mode Started!", "fail");
             }
 
+            // A Triple Defense can finish revealing after the fatal window's
+            // first draw was evaluated. Keep checking until a shield is found,
+            // then hold that single result for the remainder of the sequence.
+            if (!pendingEnemyFatalShieldResolution) {
+              pendingEnemyFatalShieldResolution =
+                consumeDefenseShieldForFatal();
+
+              if (pendingEnemyFatalShieldResolution) {
+                addBattleLog(
+                  `${pendingEnemyFatalShieldResolution.grade.toUpperCase()} Shield consumed.`,
+                  "success"
+                );
+              }
+            }
+
             addBattleLog(
               `Enemy Fatal Mode Turn ${enemyTurn.turnNumber}`,
               "fail"
@@ -1557,17 +1680,34 @@ export default function BattlePixiStage({
             shouldStopBattleEvaluation = true;
 
             if (enemyTurn.finished) {
+              const shieldResolution = pendingEnemyFatalShieldResolution;
+              pendingEnemyFatalShieldResolution = null;
+              const survivedFatalWindow = shieldResolution
+                ? shieldResolution.survived
+                : enemyTurn.playerCountered || enemyTurn.playerResetEnemyAttack;
+
+              if (shieldResolution) {
+                addBattleLog(
+                  `${shieldResolution.grade.toUpperCase()} Shield: ${Math.round(
+                    shieldResolution.survivalChance * 100
+                  )}% survival roll ${shieldResolution.survived ? "succeeded" : "failed"}.`,
+                  shieldResolution.survived ? "success" : "fail"
+                );
+              }
+
               // Surviving the enemy's window is survival, not victory. A
               // counter used to defeat the enemy outright, which meant a single
               // Defense during the window won the round -- far too much for a
               // defensive read. Both escapes now do the same thing: the player
               // lives and the enemy's attack counter goes back to full. Killing
               // the enemy stays something the player's own attack has to earn.
-              if (enemyTurn.playerCountered || enemyTurn.playerResetEnemyAttack) {
+              if (survivedFatalWindow) {
                 addBattleLog(
-                  enemyTurn.playerCountered
-                    ? "Counter! The fatal blow is turned aside."
-                    : "Enemy attack count reset.",
+                  shieldResolution
+                    ? "The stored shield absorbs the fatal sequence."
+                    : enemyTurn.playerCountered
+                      ? "Counter! The fatal blow is turned aside."
+                      : "Enemy attack count reset.",
                   "success"
                 );
 
@@ -1625,7 +1765,6 @@ export default function BattlePixiStage({
 
             if (fatalTurn.finished) {
               if (fatalTurn.enemyDefeated) {
-                guaranteedWinCue = true;
                 handleEnemyDefeated();
               } else {
                 addBattleLog("Enemy Survived!", "fail");
@@ -1678,7 +1817,6 @@ export default function BattlePixiStage({
           }
 
           if (attackRollSource) {
-            guaranteedWinCue = attackAttemptSuccess;
             logEvent({
               kind: "attackRoll",
               detail: {
@@ -1736,20 +1874,18 @@ export default function BattlePixiStage({
           playSfx("vibration");
         }
 
-        if (guaranteedWinCue) {
-          window.dispatchEvent(
-            new CustomEvent("battle:guaranteed-win-blackout", {
-              detail: { durationMs: 720 },
-            })
-          );
-
-          guaranteedWinRevealTimer = window.setTimeout(() => {
-            guaranteedWinRevealTimer = null;
-            if (!cancelled) drawCardsFromHolder();
-          }, 720);
-        } else {
-          drawCardsFromHolder();
+        const isTripleBarWin =
+          currentBattleResult.barChance?.scope === "battle" &&
+          currentBattleResult.barChance.outcome === "success";
+        if (
+          pendingEnemyDefeatPresentation &&
+          (fatalModeWasActive || isTripleBarWin)
+        ) {
+          armFatalWinCabinetSignal();
+          notifyCabinetProgress("set");
         }
+
+        drawCardsFromHolder();
       };
 
       // Diagonal light sweep across the settled hand (celebration beat for
@@ -1882,16 +2018,84 @@ export default function BattlePixiStage({
         });
       };
 
-      // Perspective-mapped Chance impact. The bright near arc, thinner cool
-      // far arc, and short radial strokes establish the table's front/back
-      // direction while the angle-derived depth keeps the effect on the same
-      // physical plane as the card holder.
+      const runHolderElectricity = (
+        cardQuad: Quad,
+        alive: AnimationGuard
+      ) => {
+        const electricity = new Graphics();
+        electricity.blendMode = "add";
+        electricity.eventMode = "none";
+        stage.addChild(electricity);
+        const electricityStart = performance.now();
+        let lastRedraw = -1;
+        const corners = [
+          { x: cardQuad[0], y: cardQuad[1] },
+          { x: cardQuad[2], y: cardQuad[3] },
+          { x: cardQuad[4], y: cardQuad[5] },
+          { x: cardQuad[6], y: cardQuad[7] },
+        ];
+
+        const pointOnEdge = (edge: number, t: number) => {
+          const a = corners[edge % 4];
+          const b = corners[(edge + 1) % 4];
+          return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+        };
+
+        const electricityTicker = () => {
+          const elapsed = performance.now() - electricityStart;
+          const progress = Math.min(1, elapsed / 600);
+          const redraw = Math.floor(elapsed / 65);
+          if (redraw !== lastRedraw) {
+            lastRedraw = redraw;
+            electricity.clear();
+            for (let arc = 0; arc < 7; arc += 1) {
+              const edge = (arc + redraw) % 4;
+              const start = pointOnEdge(edge, (arc * 0.23 + redraw * 0.11) % 1);
+              const end = pointOnEdge(
+                edge,
+                Math.min(1, ((arc * 0.23 + redraw * 0.11) % 1) + 0.22)
+              );
+              electricity.moveTo(start.x, start.y);
+              for (let step = 1; step <= 4; step += 1) {
+                const t = step / 4;
+                const jitter = step === 4 ? 0 : (Math.random() - 0.5) * 12;
+                electricity.lineTo(
+                  start.x + (end.x - start.x) * t + jitter,
+                  start.y + (end.y - start.y) * t - jitter * 0.45
+                );
+              }
+              electricity.stroke({
+                width: 3,
+                color: 0xc9f7ff,
+                alpha: (1 - progress) * 0.45,
+              });
+              electricity.stroke({
+                width: 1.2,
+                color: 0xffffff,
+                alpha: (1 - progress) * 0.95,
+              });
+            }
+          }
+
+          if (progress >= 1 || !alive()) {
+            pixiApp.ticker.remove(electricityTicker);
+            if (electricity.parent === stage) stage.removeChild(electricity);
+            electricity.destroy();
+          }
+        };
+        pixiApp.ticker.add(electricityTicker);
+      };
+
+      // One-second white holder shockwave with a 60%-strength echo. Both rings
+      // and the short electrical arcs are derived from the holder quad, so the
+      // effect shares the table's vanishing point instead of reading as a flat
+      // screen-space oval.
       const runChanceImpactWave = (cardIndex: number) => {
         const alive = aliveGuard();
         const card = drawCards[cardIndex];
         const cardQuad = landedCardQuads[cardIndex];
 
-        [0, 115].forEach((delayMs, ring) => {
+        [0, 120].forEach((delayMs, ring) => {
           handTimeout(() => {
             if (!alive() || !card.visible) return;
 
@@ -1901,7 +2105,7 @@ export default function BattlePixiStage({
             stage.addChild(wave);
 
             const waveStart = performance.now();
-            const waveDuration = ring === 0 ? 520 : 440;
+            const waveDuration = 1000;
 
             const waveTicker = () => {
               const progress = Math.min(
@@ -1913,9 +2117,9 @@ export default function BattlePixiStage({
               // The depth opens with the cabinet angle. At 60 degrees this is
               // visibly deeper than the old flattened oval while remaining
               // locked to the same table-plane vanishing point.
-              const widthScale = 0.48 + eased * 2.05;
+              const widthScale = 0.48 + eased * 2.2;
               const depthScale =
-                (0.12 + eased * 0.5) * CABINET_TABLE_DEPTH_SCALE;
+                (0.12 + eased * 0.55) * CABINET_TABLE_DEPTH_SCALE;
               const fade = 1 - progress;
               const wholeRing = getPerspectiveEllipsePoints(
                 cardQuad,
@@ -1941,65 +2145,22 @@ export default function BattlePixiStage({
               );
 
               wave.clear();
+              const strength = ring === 0 ? 1 : 0.6;
               wave.poly(wholeRing, true).stroke({
-                width: Math.max(3, 18 * fade),
-                color: 0x5ee8ff,
-                alpha: fade * (ring === 0 ? 0.2 : 0.12),
+                width: Math.max(2, 13 * fade),
+                color: 0xffffff,
+                alpha: fade * strength * 0.48,
               });
               wave.poly(farArc, false).stroke({
-                width: Math.max(1, 3.5 * fade),
-                color: 0x80efff,
-                alpha: fade * (ring === 0 ? 0.72 : 0.46),
+                width: Math.max(1, 4 * fade),
+                color: 0xe9fbff,
+                alpha: fade * strength * 0.86,
               });
               wave.poly(nearArc, false).stroke({
-                width: Math.max(1.5, 8 * fade),
-                color: 0xffd36f,
-                alpha: fade * (ring === 0 ? 0.98 : 0.62),
+                width: Math.max(1.5, 7 * fade),
+                color: 0xffffff,
+                alpha: fade * strength,
               });
-
-              if (ring === 0 && progress < 0.58) {
-                const rayFade = 1 - progress / 0.58;
-                for (let rayIndex = 0; rayIndex < 10; rayIndex += 1) {
-                  const angle = (rayIndex / 10) * Math.PI * 2;
-                  const innerRadius = 0.54;
-                  const outerRadius = 0.7 + eased * 0.22;
-                  const inner = getPerspectiveQuadPoint(
-                    cardQuad,
-                    0.5 +
-                      Math.cos(angle) *
-                        widthScale *
-                        innerRadius *
-                        0.5,
-                    0.5 +
-                      Math.sin(angle) *
-                        depthScale *
-                        innerRadius *
-                        0.5
-                  );
-                  const outer = getPerspectiveQuadPoint(
-                    cardQuad,
-                    0.5 +
-                      Math.cos(angle) *
-                        widthScale *
-                        outerRadius *
-                        0.5,
-                    0.5 +
-                      Math.sin(angle) *
-                        depthScale *
-                        outerRadius *
-                        0.5
-                  );
-
-                  wave
-                    .moveTo(inner.x, inner.y)
-                    .lineTo(outer.x, outer.y)
-                    .stroke({
-                      width: rayIndex % 2 === 0 ? 3 : 2,
-                      color: rayIndex % 2 === 0 ? 0xffdfa0 : 0xa7f5ff,
-                      alpha: rayFade * 0.78,
-                    });
-                }
-              }
 
               if (progress >= 1 || !alive()) {
                 pixiApp.ticker.remove(waveTicker);
@@ -2011,6 +2172,647 @@ export default function BattlePixiStage({
             pixiApp.ticker.add(waveTicker);
           }, delayMs);
         });
+        runHolderElectricity(cardQuad, alive);
+      };
+
+      // Correct-target Attack interaction. The socket follows the table plane,
+      // while the sword remains upright to the player like a projected sign.
+      const runAttackTargetInteraction = (cardIndex: number) => {
+        const alive = aliveGuard();
+        const cardQuad = landedCardQuads[cardIndex];
+        const center = getQuadCenter(cardQuad);
+        const topWidth = Math.hypot(
+          cardQuad[2] - cardQuad[0],
+          cardQuad[3] - cardQuad[1]
+        );
+        const bottomWidth = Math.hypot(
+          cardQuad[4] - cardQuad[6],
+          cardQuad[5] - cardQuad[7]
+        );
+        const cardWidth = (topWidth + bottomWidth) * 0.5;
+
+        clearAttackTargetGlow();
+        const persistentGlowLayer = new Container();
+        persistentGlowLayer.eventMode = "none";
+        const socketGlow = new Graphics();
+        socketGlow.blendMode = "add";
+        persistentGlowLayer.addChild(socketGlow);
+        stage.addChild(persistentGlowLayer);
+        stage.setChildIndex(
+          persistentGlowLayer,
+          stage.children.length - 1
+        );
+        attackTargetGlowLayer = persistentGlowLayer;
+
+        const expandedQuad = (scale: number): Quad => {
+          const points = [...cardQuad] as Quad;
+          for (let index = 0; index < points.length; index += 2) {
+            points[index] = center.x + (points[index] - center.x) * scale;
+            points[index + 1] =
+              center.y + (points[index + 1] - center.y) * scale;
+          }
+          return points;
+        };
+
+        socketGlow.poly(expandedQuad(1.08), true).stroke({
+          width: 16,
+          color: 0x9e1608,
+          alpha: 0.18,
+        });
+        socketGlow.poly(expandedQuad(1.045), true).stroke({
+          width: 6,
+          color: 0xff3a0a,
+          alpha: 0.72,
+        });
+        socketGlow.poly(expandedQuad(1.025), true).stroke({
+          width: 2,
+          color: 0xffd06a,
+          alpha: 0.96,
+        });
+
+        const layer = new Container();
+        layer.eventMode = "none";
+        stage.addChild(layer);
+        stage.setChildIndex(layer, stage.children.length - 1);
+
+        const swordGlow = new Graphics();
+        swordGlow.blendMode = "add";
+        const swordCore = new Graphics();
+        swordCore.blendMode = "add";
+        const fragments = new Graphics();
+        fragments.blendMode = "add";
+
+        const sword = new Container();
+        sword.x = center.x;
+        sword.y = center.y - 42;
+        const swordScale = (cardWidth * 1.5) / 110;
+        sword.scale.set(swordScale);
+        sword.addChild(swordGlow, swordCore, fragments);
+        layer.addChild(sword);
+
+        const drawSword = (
+          graphics: Graphics,
+          color: number,
+          alpha: number,
+          expansion = 0
+        ) => {
+          graphics.clear();
+          graphics
+            .poly([
+              -12 - expansion, -62,
+              0, -82 - expansion,
+              12 + expansion, -62,
+              9 + expansion, 4,
+              -9 - expansion, 4,
+            ], true)
+            .fill({ color, alpha });
+          graphics
+            .poly([
+              -55 - expansion, 2,
+              55 + expansion, 2,
+              43 + expansion, 15 + expansion * 0.25,
+              -43 - expansion, 15 + expansion * 0.25,
+            ], true)
+            .fill({ color, alpha });
+          graphics
+            .roundRect(
+              -8 - expansion * 0.2,
+              14,
+              16 + expansion * 0.4,
+              35,
+              4
+            )
+            .fill({ color, alpha });
+          graphics
+            .circle(0, 55, 10 + expansion * 0.35)
+            .fill({ color, alpha });
+        };
+
+        const startedAt = performance.now();
+        const durationMs = 960;
+        let fragmentFrame = -1;
+
+        const interactionTicker = () => {
+          const progress = Math.min(
+            1,
+            (performance.now() - startedAt) / durationMs
+          );
+          const materialize = Math.min(1, progress / 0.18);
+          const dissolve = Math.max(0, (progress - 0.58) / 0.42);
+          const swordAlpha = materialize * (1 - dissolve);
+          const noiseGate =
+            progress < 0.18
+              ? 0.58 + Math.sin(fragmentFrame * 2.7) * 0.22
+              : 1;
+          drawSword(swordGlow, 0x5e0503, swordAlpha * 0.3 * noiseGate, 7);
+          drawSword(swordCore, 0xb51608, swordAlpha * 0.88 * noiseGate, 0.5);
+          swordCore
+            .poly([-3.2, -59, 0, -74, 3.2, -59, 2.5, 0, -2.5, 0], true)
+            .fill({ color: 0xff9d28, alpha: swordAlpha * 0.88 * noiseGate });
+          swordCore
+            .poly([-45, 5, 45, 5, 37, 11, -37, 11], true)
+            .fill({ color: 0xf05a13, alpha: swordAlpha * 0.8 * noiseGate });
+          swordCore
+            .roundRect(-3.2, 16, 6.4, 31, 2)
+            .fill({ color: 0xe85216, alpha: swordAlpha * 0.82 * noiseGate });
+          swordCore
+            .circle(0, 55, 4.5)
+            .fill({ color: 0xffb83e, alpha: swordAlpha * 0.86 * noiseGate });
+          sword.alpha = swordAlpha;
+          sword.scale.set(swordScale * (0.94 + materialize * 0.06));
+
+          const nextFragmentFrame = Math.floor(progress * 22);
+          if (nextFragmentFrame !== fragmentFrame) {
+            fragmentFrame = nextFragmentFrame;
+            fragments.clear();
+            const fragmentCount =
+              progress < 0.2 ? 20 : dissolve > 0 ? 30 : 7;
+
+            for (let index = 0; index < fragmentCount; index += 1) {
+              const spread =
+                progress < 0.2 ? (1 - materialize) * 38 : 8 + dissolve * 30;
+              const rise = dissolve * (18 + (index % 6) * 5);
+              const x = (Math.random() - 0.5) * (86 + spread);
+              const y = -56 + Math.random() * 112 - rise;
+              const size = 1.2 + Math.random() * 3.2;
+              const fragmentAlpha =
+                progress < 0.2
+                  ? (1 - materialize) * 0.9
+                  : dissolve > 0
+                    ? (1 - dissolve) * 0.95
+                    : 0.16;
+              fragments
+                .poly([
+                  x, y - size,
+                  x + size * 0.7, y,
+                  x, y + size,
+                  x - size * 0.7, y,
+                ], true)
+                .fill({
+                  color: index % 4 === 0 ? 0xffe29a : 0xff3a08,
+                  alpha: fragmentAlpha,
+                });
+            }
+          }
+
+          if (progress >= 1 || !alive()) {
+            pixiApp.ticker.remove(interactionTicker);
+            if (layer.parent === stage) stage.removeChild(layer);
+            layer.destroy({ children: true });
+          }
+        };
+
+        pixiApp.ticker.add(interactionTicker);
+      };
+
+      // Triple Defense table response. The hologram is deliberately upright
+      // while its base ellipse follows the table plane, matching the physical
+      // relationship used by the Attack sword interaction.
+      const runDefenseShieldTableInteraction = (
+        grade: DefenseShieldGrade,
+        transferToPlayer: boolean
+      ) => {
+        const alive = aliveGuard();
+        const center = getTableSurfacePoint(0.5, 0.48);
+        const baseQuad = landedCardQuads[1];
+        const layer = new Container();
+        layer.eventMode = "none";
+        stage.addChild(layer);
+        stage.setChildIndex(layer, stage.children.length - 1);
+
+        const groundLight = new Graphics();
+        groundLight.blendMode = "add";
+        layer.addChild(groundLight);
+
+        const bloom = new Graphics();
+        bloom.blendMode = "add";
+        const shield = new Graphics();
+        shield.blendMode = "add";
+        const scan = new Graphics();
+        scan.blendMode = "add";
+        const shieldGroup = new Container();
+        shieldGroup.x = center.x;
+        shieldGroup.y = center.y - 88;
+        shieldGroup.addChild(bloom, shield, scan);
+        layer.addChild(shieldGroup);
+
+        const shieldPath = [
+          0, -92,
+          74, -62,
+          68, 12,
+          50, 56,
+          0, 92,
+          -50, 56,
+          -68, 12,
+          -74, -62,
+        ];
+
+        bloom.poly(shieldPath, true).fill({ color: 0x249cff, alpha: 0.22 });
+        bloom.poly(shieldPath, true).stroke({
+          width: 18,
+          color: 0x2ba9ff,
+          alpha: 0.25,
+        });
+        shield.poly(shieldPath, true).fill({ color: 0x0a4b8b, alpha: 0.36 });
+        shield.poly(shieldPath, true).stroke({
+          width: 7,
+          color: 0x7ed8ff,
+          alpha: 0.96,
+        });
+        shield
+          .poly([0, -72, 50, -51, 46, 8, 33, 40, 0, 65, -33, 40, -46, 8, -50, -51], true)
+          .stroke({ width: 2.5, color: 0xd9f7ff, alpha: 0.8 });
+        shield
+          .moveTo(0, -71)
+          .lineTo(0, 66)
+          .stroke({ width: 2, color: 0x6acbff, alpha: 0.5 });
+
+        let transferStarted = false;
+        const startedAt = performance.now();
+        const durationMs = 980;
+        const ticker = () => {
+          const elapsed = performance.now() - startedAt;
+          const progress = Math.min(1, elapsed / durationMs);
+          const dissolve = Math.max(0, (progress - 0.56) / 0.44);
+          const pulse = 1 + Math.sin(elapsed / 68) * 0.022;
+
+          shieldGroup.scale.set(pulse * (1 - dissolve * 0.14));
+          shieldGroup.alpha = 1 - dissolve;
+
+          groundLight.clear();
+          groundLight
+            .poly(getPerspectiveEllipsePoints(baseQuad, 2.25, 0.42, 0.48), true)
+            .stroke({
+              width: 12 - dissolve * 7,
+              color: 0x289eff,
+              alpha: (1 - dissolve) * 0.32,
+            });
+          groundLight
+            .poly(getPerspectiveEllipsePoints(baseQuad, 1.75, 0.3, 0.48), true)
+            .stroke({
+              width: 3,
+              color: 0xdaf8ff,
+              alpha: (1 - dissolve) * 0.78,
+            });
+
+          scan.clear();
+          const scanY = -76 + ((elapsed / 40) % 1) * 146;
+          scan
+            .rect(-51, scanY, 102, 3)
+            .fill({ color: 0xdfffff, alpha: (1 - dissolve) * 0.56 });
+
+          if (transferToPlayer && !transferStarted && progress >= 0.56) {
+            transferStarted = true;
+            revealDefenseShield(grade);
+          }
+
+          if (progress >= 1 || !alive()) {
+            pixiApp.ticker.remove(ticker);
+            if (layer.parent === stage) stage.removeChild(layer);
+            layer.destroy({ children: true });
+          }
+        };
+
+        pixiApp.ticker.add(ticker);
+      };
+
+      // Reply is an informational result, so its table response stays small:
+      // 3-5 silent white sparks at random positions on the outer frame. The
+      // positions are sampled in table-space, keeping the side sparks aligned
+      // with the same vanishing point as the physical frame artwork.
+      const runReplyFrameSparks = () => {
+        const alive = aliveGuard();
+        const sparkCount = 3 + Math.floor(Math.random() * 3);
+        const startedAt = performance.now();
+        const durationMs = 300;
+        const sparkLifeMs = 105;
+
+        const sparks = Array.from({ length: sparkCount }, (_, index) => {
+          const edge = Math.floor(Math.random() * 4);
+          const edgePosition = 0.1 + Math.random() * 0.8;
+          const uv =
+            edge === 0
+              ? { u: edgePosition, v: 0.035 }
+              : edge === 1
+                ? { u: 0.975, v: edgePosition }
+                : edge === 2
+                  ? { u: edgePosition, v: 0.955 }
+                  : { u: 0.025, v: edgePosition };
+          const point = getTableSurfacePoint(uv.u, uv.v);
+
+          return {
+            x: point.x,
+            y: point.y,
+            startMs: index * 28 + Math.random() * 78,
+            rotation: Math.random() * Math.PI * 2,
+            size: 7 + Math.random() * 5,
+            seed: Math.random() * 10,
+          };
+        });
+
+        const graphics = new Graphics();
+        graphics.blendMode = "add";
+        graphics.eventMode = "none";
+        stage.addChild(graphics);
+        stage.setChildIndex(graphics, stage.children.length - 1);
+
+        let redrawFrame = -1;
+        const ticker = () => {
+          const elapsed = performance.now() - startedAt;
+          const nextFrame = Math.floor(elapsed / 24);
+
+          if (nextFrame !== redrawFrame) {
+            redrawFrame = nextFrame;
+            graphics.clear();
+
+            sparks.forEach((spark) => {
+              const age = elapsed - spark.startMs;
+              if (age < 0 || age > sparkLifeMs) return;
+
+              const life = age / sparkLifeMs;
+              const alpha = Math.sin(life * Math.PI);
+              const rayCount = 4 + ((redrawFrame + Math.floor(spark.seed)) % 3);
+
+              for (let ray = 0; ray < rayCount; ray += 1) {
+                const angle =
+                  spark.rotation +
+                  (ray / rayCount) * Math.PI * 2 +
+                  (Math.random() - 0.5) * 0.34;
+                const inner = spark.size * 0.15;
+                const outer = spark.size * (0.7 + Math.random() * 0.65);
+                const mid = (inner + outer) * 0.52;
+                const bend = (Math.random() - 0.5) * spark.size * 0.42;
+
+                graphics
+                  .moveTo(
+                    spark.x + Math.cos(angle) * inner,
+                    spark.y + Math.sin(angle) * inner
+                  )
+                  .lineTo(
+                    spark.x + Math.cos(angle) * mid - Math.sin(angle) * bend,
+                    spark.y + Math.sin(angle) * mid + Math.cos(angle) * bend
+                  )
+                  .lineTo(
+                    spark.x + Math.cos(angle) * outer,
+                    spark.y + Math.sin(angle) * outer
+                  )
+                  .stroke({
+                    width: 2.4,
+                    color: 0xdff8ff,
+                    alpha: alpha * 0.52,
+                  })
+                  .stroke({
+                    width: 0.9,
+                    color: 0xffffff,
+                    alpha,
+                  });
+              }
+
+              graphics.circle(spark.x, spark.y, 1.6).fill({
+                color: 0xffffff,
+                alpha,
+              });
+            });
+          }
+
+          if (elapsed >= durationMs || !alive()) {
+            pixiApp.ticker.remove(ticker);
+            if (graphics.parent === stage) stage.removeChild(graphics);
+            graphics.destroy();
+          }
+        };
+
+        pixiApp.ticker.add(ticker);
+      };
+
+      // Triple Chance completion: all frame sections illuminate together for
+      // one second. The steady near-white gold body is supplemented by short
+      // randomized electrical filaments, but there is no traveling direction
+      // or staged circuit around the frame.
+      const runTripleChanceFrameSurge = () => {
+        const alive = aliveGuard();
+        const startedAt = performance.now();
+        const durationMs = 1000;
+        const layer = new Container();
+        layer.eventMode = "none";
+        stage.addChild(layer);
+        stage.setChildIndex(layer, stage.children.length - 1);
+
+        const frameGlow = new Graphics();
+        frameGlow.blendMode = "add";
+        const electricity = new Graphics();
+        electricity.blendMode = "add";
+        layer.addChild(frameGlow, electricity);
+
+        const farLeft = getTableSurfacePoint(0.015, 0.025);
+        const farRight = getTableSurfacePoint(0.985, 0.025);
+        const nearLeftWidth = getTableSurfacePoint(0.015, 0.965);
+        const nearRightWidth = getTableSurfacePoint(0.985, 0.965);
+        const visibleFrontY = getTableSurfacePoint(0.5, 0.76).y;
+        // The Pixi surface extends below the rendered table so cards/effects
+        // have bleed room. Its side X coordinates still match the gold frame,
+        // but its full near-edge Y would outline that invisible bleed area.
+        // Combine the physical side width with the visible front-rail depth.
+        const frameCorners = [
+          farLeft,
+          farRight,
+          { x: nearRightWidth.x, y: visibleFrontY },
+          { x: nearLeftWidth.x, y: visibleFrontY },
+        ];
+        const frameQuad = frameCorners.flatMap((point) => [point.x, point.y]);
+        let redrawFrame = -1;
+
+        const pointOnFrame = (edge: number, position: number) => {
+          const from = frameCorners[edge % 4];
+          const to = frameCorners[(edge + 1) % 4];
+          return {
+            x: from.x + (to.x - from.x) * position,
+            y: from.y + (to.y - from.y) * position,
+          };
+        };
+
+        const ticker = () => {
+          const elapsed = performance.now() - startedAt;
+          const progress = Math.min(1, elapsed / durationMs);
+          const attack = Math.min(1, progress / 0.08);
+          const release = progress < 0.68 ? 1 : 1 - (progress - 0.68) / 0.32;
+          const intensity = attack * Math.max(0, release);
+          const pulse = 0.9 + Math.sin(elapsed / 42) * 0.1;
+
+          frameGlow.clear();
+          frameGlow.poly(frameQuad, true).stroke({
+            width: 42,
+            color: 0xffb52f,
+            alpha: intensity * pulse * 0.16,
+          });
+          frameGlow.poly(frameQuad, true).stroke({
+            width: 20,
+            color: 0xffd967,
+            alpha: intensity * pulse * 0.42,
+          });
+          frameGlow.poly(frameQuad, true).stroke({
+            width: 8,
+            color: 0xfff1ad,
+            alpha: intensity * 0.96,
+          });
+          frameGlow.poly(frameQuad, true).stroke({
+            width: 2.4,
+            color: 0xffffff,
+            alpha: intensity,
+          });
+
+          const nextFrame = Math.floor(elapsed / 52);
+          if (nextFrame !== redrawFrame) {
+            redrawFrame = nextFrame;
+            electricity.clear();
+
+            for (let arc = 0; arc < 14; arc += 1) {
+              const edge = (arc + redrawFrame) % 4;
+              const startPosition = (arc * 0.173 + redrawFrame * 0.071) % 0.86;
+              const endPosition = Math.min(0.98, startPosition + 0.08 + Math.random() * 0.12);
+              const from = pointOnFrame(edge, startPosition);
+              const to = pointOnFrame(edge, endPosition);
+
+              electricity.moveTo(from.x, from.y);
+              for (let step = 1; step <= 4; step += 1) {
+                const t = step / 4;
+                const jitter = step === 4 ? 0 : (Math.random() - 0.5) * 17;
+                electricity.lineTo(
+                  from.x + (to.x - from.x) * t + jitter,
+                  from.y + (to.y - from.y) * t - jitter * 0.45
+                );
+              }
+              electricity.stroke({
+                width: 5,
+                color: 0xffc23e,
+                alpha: intensity * 0.36,
+              });
+              electricity.stroke({
+                width: 1.4,
+                color: 0xffffff,
+                alpha: intensity * 0.98,
+              });
+            }
+          }
+          electricity.alpha = intensity;
+
+          if (progress >= 1 || !alive()) {
+            pixiApp.ticker.remove(ticker);
+            if (layer.parent === stage) stage.removeChild(layer);
+            layer.destroy({ children: true });
+          }
+        };
+
+        playTripleChanceSurgeSfx();
+        pixiApp.ticker.add(ticker);
+      };
+
+      const runBarCardLandingShake = (
+        cardIndex: number,
+        intensity: number
+      ) => {
+        const card = drawCards[cardIndex];
+        const alive = aliveGuard();
+        const originX = card.x;
+        const originY = card.y;
+        const originRotation = card.rotation;
+        const startedAt = performance.now();
+        const duration = 210;
+
+        const shakeTicker = () => {
+          const progress = Math.min(
+            1,
+            (performance.now() - startedAt) / duration
+          );
+          const decay = Math.pow(1 - progress, 2.2);
+          const phase = progress * Math.PI * 11;
+          card.x = originX + Math.sin(phase) * 5.5 * intensity * decay;
+          card.y = originY + Math.sin(phase * 1.37) * 1.8 * intensity * decay;
+          card.rotation =
+            originRotation + Math.sin(phase * 0.83) * 0.012 * intensity * decay;
+
+          if (progress >= 1 || !alive()) {
+            pixiApp.ticker.remove(shakeTicker);
+            card.x = originX;
+            card.y = originY;
+            card.rotation = originRotation;
+          }
+        };
+
+        pixiApp.ticker.add(shakeTicker);
+      };
+
+      const runBarImpactWave = (
+        cardIndex: number,
+        revealOrder: number,
+        success: boolean
+      ) => {
+        const alive = aliveGuard();
+        const cardQuad = landedCardQuads[cardIndex];
+        const strength = success ? 1.55 : revealOrder === 2 ? 1.18 : 1;
+
+        [0, 105].forEach((delayMs, echoIndex) => {
+          handTimeout(() => {
+            if (!alive()) return;
+            const wave = new Graphics();
+            wave.blendMode = "add";
+            wave.eventMode = "none";
+            stage.addChild(wave);
+
+            const startedAt = performance.now();
+            const duration = success ? 610 : 500;
+            const ticker = () => {
+              const progress = Math.min(
+                1,
+                (performance.now() - startedAt) / duration
+              );
+              const eased = 1 - Math.pow(1 - progress, 2);
+              const fade = 1 - progress;
+              const widthScale = 0.58 + eased * (success ? 3.35 : 2.15) * strength;
+              const depthScale =
+                (0.14 + eased * (success ? 0.88 : 0.58)) *
+                CABINET_TABLE_DEPTH_SCALE;
+              const ring = getPerspectiveEllipsePoints(
+                cardQuad,
+                widthScale,
+                depthScale,
+                0.5
+              );
+
+              wave.clear();
+              wave.poly(ring, true).stroke({
+                width: Math.max(2, (success ? 12 : 8) * fade),
+                color: echoIndex === 0 ? 0xfff4ce : 0xffc84a,
+                alpha: fade * (echoIndex === 0 ? 0.95 : 0.58),
+              });
+
+              if (echoIndex === 0 && progress < 0.5) {
+                const flash = 1 - progress / 0.5;
+                const tableRipple = getPerspectiveEllipsePoints(
+                  cardQuad,
+                  1.2 + eased * (success ? 6.8 : 4.4),
+                  (0.2 + eased * (success ? 1.5 : 0.95)) *
+                    CABINET_TABLE_DEPTH_SCALE,
+                  0.5
+                );
+                wave.poly(tableRipple, true).stroke({
+                  width: success ? 5 : 3,
+                  color: 0xffdf80,
+                  alpha: flash * (success ? 0.72 : 0.28),
+                });
+              }
+
+              if (progress >= 1 || !alive()) {
+                pixiApp.ticker.remove(ticker);
+                stage.removeChild(wave);
+                wave.destroy();
+              }
+            };
+
+            pixiApp.ticker.add(ticker);
+          }, delayMs);
+        });
+
       };
 
       // --- Combination flash: circuit traces across the table ----------------
@@ -2276,8 +3078,35 @@ export default function BattlePixiStage({
           const identicalHand =
             handCards[0] !== "Empty" &&
             handCards.every((symbol) => symbol === handCards[0]);
+          const tripleDefense =
+            identicalHand && handCards[0] === "Defense";
+          const tripleChance =
+            identicalHand && handCards[0] === "Chance";
 
-          if (identicalHand || handCards.includes("Chance")) {
+          if (tripleDefense) {
+            const grade = pendingTripleDefenseGrade ?? awardDefenseShield();
+            pendingTripleDefenseGrade = null;
+            const transferToPlayer =
+              getDefenseShieldState().grade === grade;
+
+            if (transferToPlayer) {
+              addBattleLog(
+                `${grade.toUpperCase()} Defense Shield stored.`,
+                "success"
+              );
+            }
+
+            runDefenseShieldTableInteraction(grade, transferToPlayer);
+          }
+
+          if (tripleChance) {
+            runTripleChanceFrameSurge();
+          }
+
+          if (
+            !currentBattleResult.barChance &&
+            (identicalHand || handCards.includes("Chance"))
+          ) {
             handTimeout(() => {
               playSfx("tableShine");
               runTableShineSweep();
@@ -2292,13 +3121,10 @@ export default function BattlePixiStage({
             currentBattleResult.targetSlot
           );
 
-          if (handFlash) {
+          if (handFlash && !currentBattleResult.barChance) {
             clearReelTenpai();
             handTimeout(() => {
               runComboTraceFlash(handFlash.intensity);
-              if (handFlash.kind === "attackOnTarget") {
-                playSfx("attackOnTarget");
-              }
             }, patchConfig.reelMechanics.flash.startDelayMs);
           }
           // v-Next patch (feature 3): the "normal" game has fully revealed —
@@ -2309,16 +3135,33 @@ export default function BattlePixiStage({
             }, patchConfig.resurrection.revealDelayMs);
           }
 
-          const enemyDefeatCommitted = pendingEnemyDefeatPresentation;
+          const enemyDefeatCommitted = pendingEnemyDefeatPresentation !== null;
           if (enemyDefeatCommitted) {
-            pendingEnemyDefeatPresentation = false;
             commitEnemyDefeated();
           }
 
           const bonusState = getBonusModeState();
           const bonusSequenceActive = bonusState.active || isNestedBonusActive();
 
-          if (enemyDefeatCommitted) {
+          if (
+            enemyDefeatCommitted &&
+            currentBattleResult.barChance?.scope === "battle"
+          ) {
+            const barChance = currentBattleResult.barChance;
+            if (barChance.freeze) {
+              handTimeout(
+                beginBarChanceDistortion,
+                barChance.freezeDelayMs
+              );
+            } else {
+              handTimeout(() => {
+                setBattlePresentationPhase(
+                  "next_round_ready",
+                  "bar-chance-success-ready"
+                );
+              }, 500);
+            }
+          } else if (enemyDefeatCommitted) {
             // The dedicated fatal insert owns this reveal beat. Bonus opening
             // is scheduled when the three-second scene finishes.
           } else if (bonusSequenceActive) {
@@ -2349,7 +3192,7 @@ export default function BattlePixiStage({
             cardsAreOut = false;
             setCardPhase("idle", "hand-cleared");
             syncDrawAvailability();
-          }, 500);
+          }, tripleDefense ? 1300 : tripleChance ? 1100 : 500);
         }
       };
 
@@ -2426,7 +3269,7 @@ export default function BattlePixiStage({
       const placeCardFromHover = (cardIndex: number) => {
         const card = drawCards[cardIndex];
         if (revealed[cardIndex] || !card.visible) return;
-        if (performance.now() < chanceWaitUntil) return;
+        if (getChanceWaitRemaining() > 0) return;
 
         setCardPhase("flipping", `place-card-${cardIndex + 1}`);
 
@@ -2437,8 +3280,9 @@ export default function BattlePixiStage({
         const isAttackOnTarget =
           cardIndex === result.targetSlot &&
           result.cards[cardIndex] === "Attack";
-        // The Attack-on-target card gets its own cue instead of the generic one.
-        playSfx(isAttackOnTarget ? "attackOnTarget" : "cardPlaced");
+        // The dedicated Attack-target sound will be supplied later. Until
+        // then every holder uses the normal physical placement cue.
+        playSfx("cardPlaced");
         // Reply / Coin are confirmed the instant the final card is flipped.
         const completesHand = revealed.filter(Boolean).length === 2;
         if (completesHand && result.result === "Reply") {
@@ -2488,6 +3332,11 @@ export default function BattlePixiStage({
         // reports a finished hand, so it fires once from handleRevealComplete
         // after all three cards are down, not as each one lands.
         const resolveReelTenpai = () => {
+          if (currentBattleResult.barChance) {
+            clearReelTenpai();
+            return;
+          }
+
           const tenpai = readReelTenpai(currentBattleResult.cards, revealed);
 
           if (tenpai) {
@@ -2503,6 +3352,40 @@ export default function BattlePixiStage({
 
         const finalizePlacement = () => {
           setCardPhase("placed", `settle-card-${cardIndex + 1}`);
+
+          const barChance = currentBattleResult.barChance;
+          const symbol = currentBattleResult.cards[cardIndex];
+          const revealOrder = revealedCount + 1;
+          notifyCabinetProgress(`flip${revealOrder}` as "flip1" | "flip2" | "flip3");
+          const barStateBefore = getBarChanceState();
+
+          if (
+            barChance &&
+            barStateBefore.phase === "active" &&
+            (symbol === "Bar" || symbol === "Empty")
+          ) {
+            const nextBarState = revealBarChanceSymbol(symbol);
+
+            if (symbol === "Empty") {
+              playSfx("barFailure", { volume: 0.55 });
+            } else {
+              const successfulThird = nextBarState.phase === "success";
+              const intensity = successfulThird
+                ? 1.35
+                : revealOrder === 2
+                  ? 1.14
+                  : 1;
+              runBarCardLandingShake(cardIndex, intensity);
+              runBarImpactWave(cardIndex, revealOrder, successfulThird);
+              playSfx("barImpact", {
+                volume: successfulThird
+                  ? 1.2
+                  : revealOrder === 2
+                    ? 0.95
+                    : 0.78,
+              });
+            }
+          }
 
           if (currentBattleResult.cards[cardIndex] === "Chance") {
             runChanceImpactWave(cardIndex);
@@ -2531,9 +3414,17 @@ export default function BattlePixiStage({
 
           resolveReelTenpai();
           handleRevealComplete();
+          if (revealOrder === 3) clearCabinetTurnSignals();
         };
         const startCabinetLanding = () => {
           if (!(card instanceof PerspectiveMesh)) return;
+
+          if (isAttackOnTarget) {
+            handTimeout(
+              () => runAttackTargetInteraction(cardIndex),
+              Math.round(settleDuration * 0.42)
+            );
+          }
 
           const targetQuad = toLocalQuad(
             cardQuad,
@@ -2626,6 +3517,7 @@ export default function BattlePixiStage({
         if (!cardsAreOut || cardsReleased) return;
 
         cardsReleased = true;
+        notifyCabinetProgress("release");
         setCardPhase("releasing", "release-cards-to-table");
         // Cards are released from the disk out to the table.
         playSfx("drawCard");
@@ -2719,12 +3611,33 @@ const globalY = cardGroup.y + card.y;
           }, launchDelay);
 
           handTimeout(() => {
+            const replyArrival = currentBattleResult.result === "Reply";
+            const finalArrival = index === drawCards.length - 1;
+
+            // Reply reacts to the complete three-card arrival, not to a flip.
+            // Hold all three pick targets until the last card has settled so
+            // the player cannot reveal one before the frame sparks begin.
+            if (replyArrival && !finalArrival) return;
+
+            if (replyArrival) {
+              runReplyFrameSparks();
+              drawCards.forEach((replyCard, replyIndex) => {
+                if (revealed[replyIndex]) return;
+                replyCard.eventMode = "static";
+                replyCard.cursor = "pointer";
+                setCardPickable(replyIndex, true);
+                startHoverFloat(replyIndex);
+              });
+              setCardPhase("hovering", "reply-cards-ready-for-pick");
+              return;
+            }
+
             if (!revealed[index]) {
               card.eventMode = "static";
               card.cursor = "pointer";
               setCardPickable(index, true);
               startHoverFloat(index);
-              if (index === drawCards.length - 1) {
+              if (finalArrival) {
                 setCardPhase("hovering", "cards-ready-for-pick");
               }
             }
@@ -2732,7 +3645,7 @@ const globalY = cardGroup.y + card.y;
             launchDelay +
               travelMs +
               10 +
-              Math.max(0, chanceWaitUntil - performance.now())
+              getChanceWaitRemaining()
           );
         });
 
@@ -2756,6 +3669,7 @@ const globalY = cardGroup.y + card.y;
       };
 
       const runDrawRequest = (confirmBonusResult = false) => {
+        clearBarChance();
         // The previous game's chance reveal clears here, on the first draw
         // press of the next turn. It has to happen at this funnel rather than
         // in the fakeout branch below: a turn that presents nothing would
@@ -2793,6 +3707,10 @@ const globalY = cardGroup.y + card.y;
       const requestDraw = () => {
         if (!canRequestBattleDraw() || cardsAreOut) return;
 
+        // Failure and no-freeze success results clear on the next accepted
+        // Draw click, even when the cabinet's 4.1s wait holds the new deal.
+        clearBarChance();
+
         if (pendingNextRound) {
           preparePendingNextRound();
           queuedDrawAfterRoundIntro = true;
@@ -2823,6 +3741,8 @@ const globalY = cardGroup.y + card.y;
         if (getBonusModeState().waitingForResultConfirm) return;
         if (getNestedBonusState().waitingForResultConfirm) return;
 
+        clearBarChance();
+
         if (pendingNextRound) {
           preparePendingNextRound();
           queuedDrawAfterRoundIntro = true;
@@ -2850,7 +3770,7 @@ const globalY = cardGroup.y + card.y;
                 }, 1300);
               }, 680);
             }, 680);
-          }, 760 + Math.max(0, chanceWaitUntil - performance.now()));
+          }, 760 + getChanceWaitRemaining());
         }, 1300);
       };
 
@@ -2977,10 +3897,6 @@ const globalY = cardGroup.y + card.y;
         waitHoldTimer = null;
       }
 
-      if (guaranteedWinRevealTimer) {
-        clearTimeout(guaranteedWinRevealTimer);
-        guaranteedWinRevealTimer = null;
-      }
 
       removeExternalDrawControl?.();
       removeExternalDrawControl = null;

@@ -24,6 +24,11 @@ import { startNewBattleSession } from "@/lib/events/gameEventStore";
 import { resetBattlePresentationFlow } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import { ensureMinimumPoints } from "@/lib/wallet/walletStore";
 import { patchConfig } from "@/lib/game-config/patchConfig";
+import { clearBarChance } from "@/lib/battle-pixi/state/barChanceStore";
+import { clearCabinetSignals } from "@/lib/battle-pixi/state/cabinetSignalStore";
+import { resetBarProgression } from "@/lib/battle-pixi/state/barProgressionStore";
+import { clearDefenseShield } from "@/lib/battle-pixi/state/defenseShieldStore";
+import { resetEnemyAttackMode } from "@/lib/battle-pixi/state/enemyAttackModeStore";
 
 export function resetBattleRun() {
   resetBattlePresentationFlow();
@@ -53,6 +58,11 @@ export function resetBattleRun() {
   resetBattleSessionPoints();
   resetDrawCost();
   clearResurrection();
+  clearBarChance();
+  clearCabinetSignals();
+  resetBarProgression();
+  clearDefenseShield();
+  resetEnemyAttackMode();
   resetBattleMode();
   resetDrawSequenceGuard();
 

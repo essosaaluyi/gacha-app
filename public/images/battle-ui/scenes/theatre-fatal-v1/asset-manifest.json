@@ -1,0 +1,81 @@
+{
+  "package": "theatre-fatal-v1",
+  "version": 1,
+  "targetStage": {
+    "cabinet": "1920x1080",
+    "battleViewport": "1250x618",
+    "coordinateSystem": "SVG viewBox 0 0 1250 618"
+  },
+  "qa": {
+    "verifiedOn": "2026-07-19",
+    "xmlValidation": "passed",
+    "browserStaticAssetRendering": "passed",
+    "liveCabinetViewportFit": "passed",
+    "logicFilesChanged": false
+  },
+  "assets": [
+    {
+      "id": "scene-day-field-souten-senya",
+      "file": "scene-day-field-souten-senya-v1.svg",
+      "publicPath": "/images/battle-ui/scenes/theatre-fatal-v1/scene-day-field-souten-senya-v1.svg",
+      "scene": "initialDayField",
+      "recommendedDurationMs": 980,
+      "screenReaderLabel": "Act One, Blue Vault",
+      "palette": [
+        "#07111b",
+        "#8fd6e9",
+        "#f7dda0"
+      ],
+      "format": "transparent SVG",
+      "runtimeRequired": true,
+      "title": "BLUE VAULT"
+    },
+    {
+      "id": "scene-player-fatal-meimyaku-danzetsu",
+      "file": "scene-player-fatal-meimyaku-danzetsu-v1.svg",
+      "publicPath": "/images/battle-ui/scenes/theatre-fatal-v1/scene-player-fatal-meimyaku-danzetsu-v1.svg",
+      "scene": "playerFatal",
+      "recommendedDurationMs": 820,
+      "screenReaderLabel": "Lifeline Cut, player fatal",
+      "palette": [
+        "#070306",
+        "#ff234b",
+        "#aeb6be"
+      ],
+      "format": "transparent SVG",
+      "runtimeRequired": true,
+      "title": "LIFELINE CUT"
+    },
+    {
+      "id": "scene-enemy-fatal-shuumaku-shikkou",
+      "file": "scene-enemy-fatal-shuumaku-shikkou-v1.svg",
+      "publicPath": "/images/battle-ui/scenes/theatre-fatal-v1/scene-enemy-fatal-shuumaku-shikkou-v1.svg",
+      "scene": "enemyFatal",
+      "recommendedDurationMs": 820,
+      "screenReaderLabel": "Final Curtain, enemy fatal",
+      "palette": [
+        "#070d12",
+        "#e6c36d",
+        "#98f5ff"
+      ],
+      "format": "transparent SVG",
+      "runtimeRequired": true,
+      "title": "FINAL CURTAIN"
+    }
+  ],
+  "reusedAssets": [
+    {
+      "file": "/images/battle-ui/production/v1/transparent/enemy-threat-ring-frame-v1.png",
+      "purpose": "Counter 2 and counter 1 escalation; no duplicate aura bitmap is needed."
+    },
+    {
+      "file": "/images/battle-ui/production/v1/transparent/points-plaque-frame-v1.png",
+      "purpose": "Keep the current plaque and tighten only live-content spacing."
+    },
+    {
+      "file": "/images/battle-ui/production/v1/transparent/aether-stage-roadmap-seven-frame-v2.png",
+      "purpose": "Keep the current seven-node roadmap and correct digit center coordinates."
+    }
+  ],
+  "rightsNote": "Original UI geometry and titles created for this project. No protected logo, character art, or exact source artwork is included."
+}

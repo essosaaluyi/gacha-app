@@ -28,6 +28,25 @@ export type BattleResult = {
   result: BattleOutcome;
   cards: BattleCardSymbol[];
   targetSlot: 0 | 1 | 2;
+  barChance?: {
+    outcome: BarChanceOutcome;
+    tone: BarChanceTone;
+    scope: "battle" | "bonus";
+    freeze: boolean;
+    freezeDelayMs: number;
+    bonusType: "regular" | "super" | "superMax";
+  };
+};
+
+export type BarChanceOutcome = "success" | "fake";
+export type BarChanceTone = "blue" | "green" | "red";
+
+export type DrawBattleResultOptions = {
+  barChance?: "main" | "none";
+  barOdds?: {
+    successChance: number;
+    fakeChance: number;
+  };
 };
 
 type WeightedBattleResult = {
@@ -145,6 +164,12 @@ function pickWeighted<T extends { weight: number }>(items: readonly T[]): T {
 export function pickBattleResult(): BattleOutcome {
   return pickWeighted(getBattleResultWeights()).result;
 }
+
+function pickBattleResultWithoutBar(): BattleOutcome {
+  return pickWeighted(
+    getBattleResultWeights().filter((item) => item.result !== "Bar")
+  ).result;
+}
 function shuffleCards(cards: readonly BattleCardSymbol[]): BattleCardSymbol[] {
   return [...cards].sort(() => Math.random() - 0.5);
 }
@@ -214,8 +239,111 @@ if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
   };
 }
 
-export function drawBattleResult(): BattleResult {
-  const result = pickBattleResult();
+function pickBarTone(outcome: BarChanceOutcome): BarChanceTone {
+  const weights =
+    outcome === "success"
+      ? { blue: 10, green: 30, red: 90 }
+      : { blue: 80, green: 50, red: 5 };
+  const entries = Object.entries(weights) as [BarChanceTone, number][];
+  return pickWeighted(entries.map(([tone, weight]) => ({ tone, weight }))).tone;
+}
+
+export function createBarChanceResult(
+  outcome: BarChanceOutcome,
+  scope: "battle" | "bonus",
+  targetSlot: 0 | 1 | 2 = generateTargetSlot()
+): BattleResult {
+  const freeze = scope === "battle" && outcome === "success" && Math.random() < 0.5;
+  const bonusType = freeze
+    ? Math.random() < 0.6
+      ? "super"
+      : "superMax"
+    : "regular";
+
+  return {
+    result: outcome === "success" ? "Bar" : "Empty",
+    cards:
+      outcome === "success"
+        ? ["Bar", "Bar", "Bar"]
+        : shuffleCards(["Bar", "Bar", "Empty"]),
+    targetSlot,
+    barChance: {
+      outcome,
+      tone: pickBarTone(outcome),
+      scope,
+      freeze,
+      freezeDelayMs: freeze ? Math.random() * 2000 : 0,
+      bonusType,
+    },
+  };
+}
+
+function rollMainBarChance(
+  odds: DrawBattleResultOptions["barOdds"] = {
+    successChance: 1 / 128,
+    fakeChance: 1 / 78,
+  }
+): BarChanceOutcome | null {
+  if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+    const forced = new URLSearchParams(window.location.search).get("bar-chance");
+    if (forced === "success" || forced === "fake") return forced;
+  }
+
+  // Independent flags; when both land, the successful triple takes priority.
+  const success = Math.random() < odds.successChance;
+  const fake = Math.random() < odds.fakeChance;
+  return success ? "success" : fake ? "fake" : null;
+}
+
+export function drawBattleResult(
+  options: DrawBattleResultOptions = { barChance: "main" }
+): BattleResult {
+  if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+    const query = new URLSearchParams(window.location.search);
+
+    if (query.get("defense-shield") === "true") {
+      return {
+        result: "Defense",
+        cards: ["Defense", "Defense", "Defense"],
+        targetSlot: 1,
+      };
+    }
+
+    if (query.get("reply-frame") === "true") {
+      return {
+        result: "Reply",
+        cards: ["Reply", "Reply", "Reply"],
+        targetSlot: 1,
+      };
+    }
+
+    if (query.get("triple-chance") === "true") {
+      return {
+        result: "TripleChance",
+        cards: ["Chance", "Chance", "Chance"],
+        targetSlot: 1,
+      };
+    }
+
+    if (query.get("attack-target") === "true") {
+      const cards = generateCardsFromResult("Attack");
+      const attackIndex = cards.indexOf("Attack");
+      return {
+        result: "Attack",
+        cards,
+        targetSlot: Math.max(0, attackIndex) as 0 | 1 | 2,
+      };
+    }
+  }
+
+  const barOutcome =
+    options.barChance === "none" ? null : rollMainBarChance(options.barOdds);
+
+  if (barOutcome) return createBarChanceResult(barOutcome, "battle");
+
+  // BAR is governed solely by the dedicated flags above. Excluding the legacy
+  // spreadsheet BAR weight prevents an unannounced second path to triple BAR.
+  const result = pickBattleResultWithoutBar();
 
   return {
     result,

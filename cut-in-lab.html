@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Interruption Cut-In Lab</title>
+<style>
+  /* ===== lab chrome (not part of the effect) ===== */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    background: #0b0c10; color: #e7e9ee;
+    font: 13px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: .04em; }
+  .hint { color: #7d8497; font-size: 12px; margin: 0; }
+
+  /* Locked to the real battle cabinet screen (BattleScreen.tsx: 1250 x 618). */
+  #stage {
+    position: relative; width: min(96vw, 1250px); aspect-ratio: 1250 / 618;
+    overflow: hidden; border-radius: 8px; border: 1px solid #23262f;
+  }
+  /* Checkerboard makes the transparent background of the effect visible. */
+  #stage.bg-checker {
+    background-color: #2a2d36;
+    background-image:
+      linear-gradient(45deg, #1a1c23 25%, transparent 25%, transparent 75%, #1a1c23 75%),
+      linear-gradient(45deg, #1a1c23 25%, transparent 25%, transparent 75%, #1a1c23 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 12px 12px;
+  }
+  #stage.bg-game { background: radial-gradient(circle at 50% 40%, #1b2340, #05060c 70%); }
+  #stage.bg-black { background: #000; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+  button, select, input[type=text], input[type=color] {
+    background: #171a22; color: #e7e9ee; border: 1px solid #2c3040;
+    border-radius: 5px; padding: 7px 11px; font: inherit;
+  }
+  button { cursor: pointer; font-weight: 700; }
+  button.primary { background: #fff; color: #000; border-color: #fff; }
+  button.on { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  input[type=color] { padding: 2px; width: 42px; height: 32px; }
+  label.file input { display: none; }
+  label.file span {
+    display: inline-block; background: #171a22; border: 1px solid #2c3040;
+    border-radius: 5px; padding: 7px 11px; font-weight: 700; cursor: pointer;
+  }
+
+  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 6px 18px; width: min(96vw, 980px); }
+  .fieldset { border: 1px solid #23262f; border-radius: 6px; padding: 10px 12px; }
+  .fieldset > h2 { margin: 0 0 8px; font-size: 11px; letter-spacing: .16em;
+                   text-transform: uppercase; color: #6d7488; font-weight: 800; }
+  .row { display: grid; grid-template-columns: 1fr 52px; gap: 8px; align-items: center; margin-bottom: 5px; }
+  .row span { color: #a6adbf; font-size: 12px; }
+  .row output { text-align: right; color: #fff; font-variant-numeric: tabular-nums; font-size: 12px; }
+  .row input[type=range] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: #3b82f6; }
+  .row.wide { grid-template-columns: 1fr; }
+
+  #scrubWrap { width: min(96vw, 980px); display: flex; gap: 10px; align-items: center; }
+  #scrub { flex: 1; accent-color: #f59e0b; }
+  #scrubVal { width: 96px; text-align: right; color: #f59e0b;
+              font-variant-numeric: tabular-nums; font-size: 12px; }
+  #phase { width: 92px; font-size: 11px; letter-spacing: .1em; color: #f59e0b; text-transform: uppercase; }
+
+  #cssOut {
+    width: min(96vw, 980px); height: 230px; background: #06070b; color: #9fb4d8;
+    border: 1px solid #23262f; border-radius: 6px; padding: 10px;
+    font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; resize: vertical;
+  }
+
+  /* =========================================================================
+     THE EFFECT. Structural rules live here; every @keyframes block and the
+     tunable values are generated into <style id="gen"> by the controls below,
+     so what you see in the CSS box is exactly what is running.
+     ========================================================================= */
+  .battle-interrupt-cut-in {
+    /* Unitless on purpose: the band is this many percent of the stage, and the
+       art window divides by it to size itself back up to the full stage. */
+    --bicut-band-pct: 46;
+    --bicut-dur: 1600ms;
+    --bicut-accent: rgba(255,255,255,.95);
+    --bicut-line: 3px;
+    --bicut-art-scale: 1;
+    --bicut-art-x: 0%;
+    --bicut-art-y: 0%;
+    --bicut-art-fit: cover;
+    position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  }
+
+  .bicut-flash {
+    position: absolute; inset: 0; opacity: 0; mix-blend-mode: screen;
+    background: radial-gradient(circle at 50% 50%, #fff, rgba(255,255,255,.35) 45%, rgba(255,255,255,0) 72%);
+  }
+
+  .bicut-band {
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: calc(var(--bicut-band-pct) * 1%); transform: translateY(-50%);
+    overflow: hidden; clip-path: inset(50% 0 50% 0);
+  }
+
+  /* The window is the full stage, not the band. The band only masks it — so the
+     art keeps the stage's aspect and scale/move reframe it behind the opening,
+     instead of the art being pre-squashed into a letterbox by object-fit.
+     Transparent, so whatever sits behind shows through where art does not. */
+  .bicut-window {
+    position: absolute; left: 0; right: 0; top: 50%;
+    height: calc(100% / var(--bicut-band-pct) * 100);
+    transform: translateY(-50%);
+    isolation: isolate; background: transparent;
+  }
+
+  .bicut-art {
+    display: block; width: 100%; height: 100%;
+    object-fit: var(--bicut-art-fit); transform-origin: 50% 50%;
+  }
+
+  .bicut-art-placeholder {
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,.08) 0 2px, rgba(255,255,255,0) 2px 22px),
+      radial-gradient(circle at 50% 40%, #1d2a5c, #05060c 70%);
+  }
+
+  /* Each edge is a zero-content box growing away from the centre line; only its
+     border paints, so the border rides the opening edge of the band exactly. */
+  .bicut-edge { position: absolute; left: 0; right: 0; height: 0; transform: scaleX(0); }
+  /* The glow lives on the thin ::before strip, not on the growing box. Putting it
+     on the box makes its inner side — which stays pinned at the 50% centre line —
+     cast a third glow down the middle of the reveal. */
+  .bicut-edge::before {
+    content: ""; position: absolute; left: 0; right: 0;
+    height: var(--bicut-line); background: var(--bicut-accent);
+    box-shadow: 0 0 18px var(--bicut-accent), 0 0 42px var(--bicut-accent);
+  }
+  .bicut-edge-top { bottom: 50%; }
+  .bicut-edge-top::before { top: 0; }
+  .bicut-edge-bottom { top: 50%; }
+  .bicut-edge-bottom::before { bottom: 0; }
+</style>
+</head>
+<body>
+
+<h1>Interruption Cut-In Lab</h1>
+<p class="hint">Line slashes in &rarr; splits into two shutters &rarr; character revealed &rarr; snaps shut. Drag the amber scrub bar to freeze any frame.</p>
+
+<div id="stage" class="bg-checker">
+  <div class="battle-interrupt-cut-in" id="fx">
+    <div class="bicut-flash"></div>
+    <div class="bicut-band">
+      <div class="bicut-window">
+        <img class="bicut-art" id="art" alt="" />
+        <div class="bicut-art bicut-art-placeholder" id="artFallback" style="display:none"></div>
+      </div>
+    </div>
+    <div class="bicut-edge bicut-edge-top"></div>
+    <div class="bicut-edge bicut-edge-bottom"></div>
+  </div>
+</div>
+
+<div id="scrubWrap">
+  <span id="phase">idle</span>
+  <input id="scrub" type="range" min="0" max="1000" value="0" />
+  <span id="scrubVal">0 ms</span>
+</div>
+
+<div class="bar">
+  <button class="primary" id="play">▶ PLAY</button>
+  <button id="loop">LOOP</button>
+  <label class="file"><input type="file" id="file" accept="image/*" /><span>LOAD IMAGE</span></label>
+  <input type="text" id="src" size="34" placeholder="image path" />
+  <input type="color" id="accent" value="#ffffff" />
+  <select id="stageBg">
+    <option value="bg-checker">checker bg</option>
+    <option value="bg-game">game bg</option>
+    <option value="bg-black">black bg</option>
+  </select>
+  <button id="reset">RESET</button>
+</div>
+
+<div class="panels">
+  <div class="fieldset">
+    <h2>Timing</h2>
+    <div class="row"><span>Duration</span><output id="o_dur"></output>
+      <input type="range" id="dur" min="600" max="4000" step="50" /></div>
+    <div class="row"><span>Slash in ends</span><output id="o_tSlash"></output>
+      <input type="range" id="tSlash" min="1" max="30" step="1" /></div>
+    <div class="row"><span>Fully open at</span><output id="o_tOpen"></output>
+      <input type="range" id="tOpen" min="8" max="60" step="1" /></div>
+    <div class="row"><span>Hold ends</span><output id="o_tHold"></output>
+      <input type="range" id="tHold" min="30" max="95" step="1" /></div>
+    <div class="row"><span>Fully closed at</span><output id="o_tClose"></output>
+      <input type="range" id="tClose" min="40" max="99" step="1" /></div>
+  </div>
+
+  <div class="fieldset">
+    <h2>Shutter</h2>
+    <div class="row"><span>Band height</span><output id="o_band"></output>
+      <input type="range" id="band" min="10" max="100" step="1" /></div>
+    <div class="row"><span>Line width</span><output id="o_line"></output>
+      <input type="range" id="line" min="1" max="12" step="1" /></div>
+    <div class="row wide"><span>Open easing</span>
+      <select id="easeOpen">
+        <option value="cubic-bezier(.16,1,.3,1)">expo out (snap)</option>
+        <option value="cubic-bezier(.34,1.56,.64,1)">back out (overshoot)</option>
+        <option value="cubic-bezier(.22,.61,.36,1)">quad out (soft)</option>
+        <option value="linear">linear</option>
+        <option value="steps(3,end)">steps (chunky)</option>
+      </select></div>
+    <div class="row wide"><span>Close easing</span>
+      <select id="easeClose">
+        <option value="cubic-bezier(.7,0,.84,0)">expo in (snap)</option>
+        <option value="cubic-bezier(.55,.06,.68,.19)">quad in</option>
+        <option value="linear">linear</option>
+        <option value="steps(3,end)">steps (chunky)</option>
+      </select></div>
+  </div>
+
+  <div class="fieldset">
+    <h2>Image framing</h2>
+    <div class="row"><span>Scale</span><output id="o_aScale"></output>
+      <input type="range" id="aScale" min="20" max="300" step="1" /></div>
+    <div class="row"><span>Move X</span><output id="o_aX"></output>
+      <input type="range" id="aX" min="-100" max="100" step="1" /></div>
+    <div class="row"><span>Move Y</span><output id="o_aY"></output>
+      <input type="range" id="aY" min="-100" max="100" step="1" /></div>
+    <div class="row wide"><span>Fit</span>
+      <select id="aFit">
+        <option value="cover">cover (fill band, crop)</option>
+        <option value="contain">contain (whole image)</option>
+      </select></div>
+  </div>
+
+  <div class="fieldset">
+    <h2>Punch</h2>
+    <div class="row"><span>Zoom at open</span><output id="o_sIn"></output>
+      <input type="range" id="sIn" min="100" max="180" step="1" /></div>
+    <div class="row"><span>Zoom during hold</span><output id="o_sHold"></output>
+      <input type="range" id="sHold" min="90" max="140" step="1" /></div>
+    <div class="row"><span>Zoom at close</span><output id="o_sOut"></output>
+      <input type="range" id="sOut" min="90" max="180" step="1" /></div>
+    <div class="row"><span>Entry brightness</span><output id="o_bright"></output>
+      <input type="range" id="bright" min="100" max="500" step="10" /></div>
+    <div class="row"><span>Shake</span><output id="o_shake"></output>
+      <input type="range" id="shake" min="0" max="24" step="1" /></div>
+    <div class="row"><span>Flash</span><output id="o_flash"></output>
+      <input type="range" id="flash" min="0" max="100" step="1" /></div>
+  </div>
+</div>
+
+<p class="hint">Live CSS below &mdash; edit it and hit APPLY, or copy it straight into <code>app/globals.css</code>.</p>
+<textarea id="cssOut" spellcheck="false"></textarea>
+<div class="bar">
+  <button id="apply">APPLY EDITED CSS</button>
+  <button id="copy">COPY</button>
+  <button id="regen">REGENERATE FROM SLIDERS</button>
+</div>
+
+<style id="gen"></style>
+
+<script>
+(() => {
+  const DEFAULTS = {
+    dur: 2000, tSlash: 6, tOpen: 22, tHold: 74, tClose: 90,
+    band: 45, line: 5,
+    aScale: 183, aX: 26, aY: 39, aFit: 'cover',
+    sIn: 119, sHold: 106, sOut: 118, bright: 220, shake: 13, flash: 89,
+    easeOpen: 'cubic-bezier(.16,1,.3,1)', easeClose: 'cubic-bezier(.7,0,.84,0)',
+    accent: '#ffffff',
+    src: 'public/images/cards/player/R1/card.webp'
+  };
+
+  const fx = document.getElementById('fx');
+  const gen = document.getElementById('gen');
+  const cssOut = document.getElementById('cssOut');
+  const art = document.getElementById('art');
+  const artFallback = document.getElementById('artFallback');
+  const scrub = document.getElementById('scrub');
+  const scrubVal = document.getElementById('scrubVal');
+  const phaseEl = document.getElementById('phase');
+  const stage = document.getElementById('stage');
+
+  const NUM = ['dur','tSlash','tOpen','tHold','tClose','band','line',
+               'aScale','aX','aY','sIn','sHold','sOut','bright','shake','flash'];
+  const SEL = ['easeOpen','easeClose','aFit'];
+
+  const el = {};
+  [...NUM, ...SEL, 'accent', 'src'].forEach(k => el[k] = document.getElementById(k));
+
+  const UNITS = { dur:'ms', tSlash:'%', tOpen:'%', tHold:'%', tClose:'%', band:'%', line:'px',
+                  aScale:'%', aX:'%', aY:'%',
+                  sIn:'%', sHold:'%', sOut:'%', bright:'%', shake:'px', flash:'%' };
+
+  let looping = false, loopTimer = null, scrubbing = false;
+
+  const v = k => Number(el[k].value);
+
+  /* Keep the timing sliders monotonic so the sequence can never invert. */
+  function clampOrder() {
+    if (v('tOpen') <= v('tSlash')) el.tOpen.value = v('tSlash') + 1;
+    if (v('tHold') <= v('tOpen'))  el.tHold.value = v('tOpen') + 1;
+    if (v('tClose') <= v('tHold')) el.tClose.value = v('tHold') + 1;
+  }
+
+  function hexToRgba(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+
+  function buildCSS() {
+    const p = {};
+    NUM.forEach(k => p[k] = v(k));
+    const eO = el.easeOpen.value, eC = el.easeClose.value;
+    const accent = hexToRgba(el.accent.value, .95);
+    const shake = p.shake;
+    const flash = p.flash / 100;
+    // Framing is folded into every art keyframe so scale/move compose with the
+    // push without needing a second transform layer.
+    const frame = s => `translate(var(--bicut-art-x), var(--bicut-art-y)) scale(calc(var(--bicut-art-scale) * ${s}))`;
+
+    return `.battle-interrupt-cut-in {
+  --bicut-band-pct: ${p.band};
+  --bicut-dur: ${p.dur}ms;
+  --bicut-accent: ${accent};
+  --bicut-line: ${p.line}px;
+  --bicut-art-scale: ${(p.aScale/100).toFixed(2)};
+  --bicut-art-x: ${p.aX}%;
+  --bicut-art-y: ${p.aY}%;
+  --bicut-art-fit: ${el.aFit.value};
+}
+
+.battle-interrupt-cut-in.run              { animation: bicutShake var(--bicut-dur) linear both; }
+.battle-interrupt-cut-in.run .bicut-flash { animation: bicutFlash var(--bicut-dur) linear both; }
+.battle-interrupt-cut-in.run .bicut-band  { animation: bicutBandOpen var(--bicut-dur) both; }
+.battle-interrupt-cut-in.run .bicut-art   { animation: bicutArtPush var(--bicut-dur) both; }
+.battle-interrupt-cut-in.run .bicut-edge  {
+  animation: bicutEdgeOpen var(--bicut-dur) both,
+             bicutEdgeSlash var(--bicut-dur) both;
+}
+
+/* Band gap and edge height share one progression, so the glowing lines stay
+   welded to the opening edges at every frame. */
+@keyframes bicutBandOpen {
+  0%, ${p.tSlash}%          { clip-path: inset(50% 0 50% 0); animation-timing-function: ${eO}; }
+  ${p.tOpen}%, ${p.tHold}%  { clip-path: inset(0% 0 0% 0);   animation-timing-function: ${eC}; }
+  ${p.tClose}%, 100%        { clip-path: inset(50% 0 50% 0); }
+}
+
+@keyframes bicutEdgeOpen {
+  0%, ${p.tSlash}%          { height: 0; animation-timing-function: ${eO}; }
+  ${p.tOpen}%, ${p.tHold}%  { height: calc(var(--bicut-band-pct) * .5%); animation-timing-function: ${eC}; }
+  ${p.tClose}%, 100%        { height: 0; }
+}
+
+@keyframes bicutEdgeSlash {
+  0%                          { transform: scaleX(0); opacity: 0; }
+  ${Math.max(1, Math.round(p.tSlash/3))}% { opacity: 1; }
+  ${p.tSlash}%, ${Math.round(p.tClose + (100-p.tClose)*0.2)}% { transform: scaleX(1); opacity: 1; }
+  100%                        { transform: scaleX(0); opacity: 0; }
+}
+
+@keyframes bicutArtPush {
+  0%                        { transform: ${frame((p.sIn/100).toFixed(2))}; filter: brightness(${(p.bright/100).toFixed(2)}) saturate(1.35); }
+  ${Math.round(p.tOpen*0.55)}% { filter: brightness(1) saturate(1.05); }
+  ${p.tOpen}%               { transform: ${frame('1.02')}; }
+  ${p.tHold}%               { transform: ${frame((p.sHold/100).toFixed(2))}; }
+  100%                      { transform: ${frame((p.sOut/100).toFixed(2))}; filter: brightness(1.9); }
+}
+
+@keyframes bicutFlash {
+  0%                        { opacity: 0; }
+  ${Math.max(1, Math.round(p.tSlash*0.7))}% { opacity: ${flash.toFixed(2)}; }
+  ${Math.round(p.tOpen*0.7)}%, ${p.tHold + Math.round((p.tClose-p.tHold)*0.75)}% { opacity: 0; }
+  ${p.tClose}%              { opacity: ${(flash*0.66).toFixed(2)}; }
+  100%                      { opacity: 0; }
+}
+
+@keyframes bicutShake {
+  0%, ${Math.round(p.tSlash*0.85)}% { transform: translate3d(0,0,0); }
+  ${p.tSlash + 1}%  { transform: translate3d(${-shake}px, ${Math.round(shake*.45)}px, 0); }
+  ${p.tSlash + 3}%  { transform: translate3d(${Math.round(shake*.85)}px, ${-Math.round(shake*.6)}px, 0); }
+  ${p.tSlash + 5}%  { transform: translate3d(${-Math.round(shake*.55)}px, ${-Math.round(shake*.3)}px, 0); }
+  ${p.tSlash + 7}%, ${p.tHold - 2}% { transform: translate3d(0,0,0); }
+  ${p.tHold + 2}%   { transform: translate3d(${Math.round(shake*.7)}px, ${-Math.round(shake*.45)}px, 0); }
+  ${p.tHold + 5}%   { transform: translate3d(${-Math.round(shake*.55)}px, ${Math.round(shake*.3)}px, 0); }
+  ${Math.min(99, p.tHold + 8)}%, 100% { transform: translate3d(0,0,0); }
+}`;
+  }
+
+  function applyCSS(text) { gen.textContent = text; }
+
+  function syncOutputs() {
+    NUM.forEach(k => {
+      const out = document.getElementById('o_' + k);
+      if (out) out.textContent = v(k) + UNITS[k];
+    });
+    scrub.max = v('dur');
+  }
+
+  function regen() {
+    clampOrder();
+    syncOutputs();
+    applyCSS(buildCSS());
+    cssOut.value = gen.textContent;
+  }
+
+  /* ---- playback ---- */
+  function anims() { return fx.getAnimations({ subtree: true }); }
+
+  function play() {
+    scrubbing = false;
+    fx.classList.remove('run');
+    void fx.offsetWidth;          // force reflow so the animations restart
+    fx.classList.add('run');
+    anims().forEach(a => a.play());
+    track();
+  }
+
+  function track() {
+    if (scrubbing) return;
+    const main = anims().find(a => a.animationName === 'bicutBandOpen');
+    if (main && main.playState === 'running') {
+      const t = Number(main.currentTime) || 0;
+      scrub.value = Math.min(t, v('dur'));
+      paint(t / v('dur'));
+      requestAnimationFrame(track);
+    } else {
+      paint(1);
+      if (looping) loopTimer = setTimeout(play, 260);
+    }
+  }
+
+  function seek(ms) {
+    scrubbing = true;
+    if (!fx.classList.contains('run')) fx.classList.add('run');
+    anims().forEach(a => { a.pause(); a.currentTime = ms; });
+    paint(ms / v('dur'));
+  }
+
+  function paint(p) {
+    scrubVal.textContent = Math.round(p * v('dur')) + ' ms';
+    const pct = p * 100;
+    phaseEl.textContent =
+      pct < v('tSlash') ? 'slash' :
+      pct < v('tOpen')  ? 'opening' :
+      pct < v('tHold')  ? 'hold' :
+      pct < v('tClose') ? 'closing' : 'collapse';
+  }
+
+  /* ---- art ---- */
+  function setArt(src) {
+    art.src = src;
+    art.style.display = '';
+    artFallback.style.display = 'none';
+  }
+  art.addEventListener('error', () => {
+    art.style.display = 'none';
+    artFallback.style.display = '';
+  });
+
+  /* ---- wiring ---- */
+  function loadDefaults() {
+    Object.entries(DEFAULTS).forEach(([k, val]) => { if (el[k]) el[k].value = val; });
+    setArt(DEFAULTS.src);
+    regen();
+  }
+
+  [...NUM, ...SEL, 'accent'].forEach(k => {
+    el[k].addEventListener('input', () => {
+      regen();
+      if (scrubbing) seek(Number(scrub.value));
+    });
+  });
+
+  el.src.addEventListener('change', () => setArt(el.src.value));
+
+  document.getElementById('file').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    setArt(URL.createObjectURL(f));
+    el.src.value = f.name;
+  });
+
+  document.getElementById('stageBg').addEventListener('change', e => {
+    stage.className = e.target.value;
+  });
+
+  scrub.addEventListener('input', () => seek(Number(scrub.value)));
+
+  document.getElementById('play').addEventListener('click', play);
+  document.getElementById('loop').addEventListener('click', e => {
+    looping = !looping;
+    e.currentTarget.classList.toggle('on', looping);
+    if (looping) play(); else clearTimeout(loopTimer);
+  });
+  document.getElementById('apply').addEventListener('click', () => { applyCSS(cssOut.value); play(); });
+  document.getElementById('regen').addEventListener('click', regen);
+  document.getElementById('copy').addEventListener('click', async e => {
+    try { await navigator.clipboard.writeText(cssOut.value); e.currentTarget.textContent = 'COPIED'; }
+    catch { cssOut.select(); e.currentTarget.textContent = 'SELECTED — Ctrl+C'; }
+    setTimeout(() => e.currentTarget.textContent = 'COPY', 1400);
+  });
+  document.getElementById('reset').addEventListener('click', () => {
+    looping = false;
+    document.getElementById('loop').classList.remove('on');
+    loadDefaults(); play();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.code === 'Space') { e.preventDefault(); play(); }
+  });
+
+  loadDefaults();
+  play();
+})();
+</script>
+</body>
+</html>

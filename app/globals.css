@@ -6005,13 +6005,18 @@ body.page-video-active .trust-page {
 
 /* --- Left panel: memory board --- */
 .bcab-memboard {
+  --bcab-signal-white: linear-gradient(180deg, #fff 0%, #dfefff 48%, #fff 100%);
+  --bcab-signal-blue: linear-gradient(180deg, #dff7ff 0%, #45a9ff 50%, #154ca7 100%);
+  --bcab-signal-green: linear-gradient(180deg, #eaffdb 0%, #52dc87 48%, #0d7048 100%);
+  --bcab-signal-red: linear-gradient(180deg, #fff0da 0%, #ff604d 48%, #9b101b 100%);
+  --bcab-signal-gold: linear-gradient(180deg, #fff8ca 0%, #ffc84b 48%, #9c5d08 100%);
   --bcab-memory-led-fill: linear-gradient(
     180deg,
     #d8b85f 0%,
-    #3f9f8c 25%,
-    #5479b5 50%,
-    #8b64aa 75%,
-    #bd735e 100%
+    #718644 28%,
+    #1e5d45 54%,
+    #8d7a36 78%,
+    #d8b85f 100%
   );
   position: absolute;
   top: 88px;
@@ -6048,16 +6053,16 @@ body.page-video-active .trust-page {
 
 .bcab-memboard-led-color {
   z-index: 2;
-  opacity: 0.92;
+  opacity: 1;
   mix-blend-mode: normal;
-  filter: saturate(0.84) brightness(0.88);
+  filter: saturate(1.18) brightness(1.42) contrast(1.08);
 }
 
 .bcab-memboard-led-glow {
   z-index: 1;
-  opacity: 0.14;
+  opacity: 0.42;
   mix-blend-mode: screen;
-  filter: blur(3.2px) saturate(0.66);
+  filter: blur(4.5px) saturate(1.05) brightness(1.55);
 }
 
 .bcab-memboard-led-texture {
@@ -6086,6 +6091,13 @@ body.page-video-active .trust-page {
   );
   mix-blend-mode: screen;
   filter: blur(1.2px);
+}
+
+/* Keep the LED signal steady; the chance state is carried by its color and
+   brightness rather than a moving band across the panel. */
+.bcab-memboard-chance-sweep,
+.bcab-memboard-chance-wait .bcab-memboard-chance-sweep {
+  display: none;
 }
 
 .bcab-memboard-chance-wait .bcab-memboard-chance-sweep {
@@ -6147,6 +6159,104 @@ body.page-video-active .trust-page {
   inset: 0;
   pointer-events: none;
   background: linear-gradient(115deg, rgba(255, 255, 255, 0.16) 0%, transparent 22%, transparent 78%, rgba(255, 255, 255, 0.05) 100%);
+}
+
+/* Triple-Defense transfer and the stored fatal-survival marker. Coordinates
+   are in the cabinet's fixed 1920x1080 stage so the streak still meets the
+   table and fighter when the whole cabinet is responsively scaled. */
+.defense-shield-overlay {
+  --defense-shield-color: #54a8ff;
+  --defense-shield-rgb: 84, 168, 255;
+  position: absolute;
+  inset: 0;
+  z-index: 82;
+  pointer-events: none;
+}
+
+.defense-shield-green {
+  --defense-shield-color: #4de18d;
+  --defense-shield-rgb: 77, 225, 141;
+}
+
+.defense-shield-red {
+  --defense-shield-color: #ff4d4d;
+  --defense-shield-rgb: 255, 77, 77;
+}
+
+.defense-shield-purple {
+  --defense-shield-color: #bd72ff;
+  --defense-shield-rgb: 189, 114, 255;
+}
+
+.defense-shield-transfer {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: visible;
+}
+
+.defense-shield-transfer path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 128 820;
+  stroke-dashoffset: 0;
+  animation: defenseShieldTravel 620ms cubic-bezier(.2,.72,.28,1) both;
+}
+
+.defense-shield-transfer-bloom {
+  stroke: rgba(var(--defense-shield-rgb), 0.55);
+  stroke-width: 24;
+  filter: blur(9px);
+}
+
+.defense-shield-transfer-core {
+  stroke: #dff7ff;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 8px var(--defense-shield-color));
+}
+
+@keyframes defenseShieldTravel {
+  from { stroke-dashoffset: 128; opacity: 0; }
+  8% { opacity: 1; }
+  78% { opacity: 1; }
+  to { stroke-dashoffset: -820; opacity: 0; }
+}
+
+.defense-shield-marker {
+  position: absolute;
+  left: 490px;
+  top: 596px;
+  width: 58px;
+  height: 70px;
+  color: var(--defense-shield-color);
+  filter: drop-shadow(0 0 6px rgba(var(--defense-shield-rgb), 0.72));
+}
+
+.defense-shield-marker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.defense-shield-marker path:first-child {
+  fill: currentColor;
+  opacity: 0.96;
+}
+
+.defense-shield-marker path:last-child {
+  fill: #071218;
+  opacity: 0.82;
+}
+
+.defense-shield-overlay[data-phase="traveling"] .defense-shield-marker {
+  animation: defenseShieldMarkerArrive 620ms ease-out both;
+}
+
+@keyframes defenseShieldMarkerArrive {
+  0%, 72% { opacity: 0; transform: scale(1.75); }
+  82% { opacity: 1; transform: scale(1.16); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* --- Right panel: LED / logotype / ticker / DATA / statue / grille --- */
@@ -6257,7 +6367,6 @@ body.page-video-active .trust-page {
 .bcab-mascot {
   position: relative;
   margin-top: 14px;
-  animation: bcabBob 4.5s ease-in-out infinite;
   transform-origin: 50% 100%;
 }
 
@@ -6277,9 +6386,20 @@ body.page-video-active .trust-page {
   background: radial-gradient(ellipse, rgba(0, 0, 0, 0.6), transparent 70%);
 }
 
-@keyframes bcabBob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+.bcab-mascot-active {
+  animation: bcabMascotSignalMove 2000ms cubic-bezier(.2,.72,.24,1) 1 both;
+}
+
+.bcab-mascot-active.bcab-signal-white img { filter: drop-shadow(0 0 14px #fff) brightness(1.2); }
+.bcab-mascot-active.bcab-signal-blue img { filter: drop-shadow(0 0 16px #42aaff) brightness(1.15); }
+.bcab-mascot-active.bcab-signal-green img { filter: drop-shadow(0 0 16px #42df7f) brightness(1.15); }
+.bcab-mascot-active.bcab-signal-red img { filter: drop-shadow(0 0 18px #ff4438) brightness(1.18); }
+.bcab-mascot-active.bcab-signal-gold img { filter: drop-shadow(0 0 18px #ffd35a) brightness(1.2); }
+
+@keyframes bcabMascotSignalMove {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.045); }
+  100% { transform: translateY(0) scale(1); }
 }
 
 .bcab-grille {
@@ -6341,6 +6461,47 @@ body.page-video-active .trust-page {
   transition: opacity 90ms linear, filter 140ms ease-out;
 }
 
+.bcab-panel-pulse {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.bcab-memboard > .bcab-panel-pulse {
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: 6;
+  opacity: 0;
+  background: #fff;
+  mix-blend-mode: screen;
+  -webkit-mask: url("/images/cabinet/production/memory-board-pachislot-led-lamps-v2.png") center / 100% 100% no-repeat;
+  mask: url("/images/cabinet/production/memory-board-pachislot-led-lamps-v2.png") center / 100% 100% no-repeat;
+}
+
+.bcab-memboard > .bcab-panel-pulse-light {
+  animation: bcabPanelLightPulse var(--bcab-pulse-ms, 1000ms) steps(1) 1 !important;
+}
+
+.bcab-memboard > .bcab-panel-pulse-onOff {
+  animation: bcabPanelOnOffPulse var(--bcab-pulse-ms, 600ms) steps(1) 1 !important;
+}
+
+.bcab-lower-led-panel:has(.bcab-panel-pulse-onOff) .bcab-lower-led-state-on {
+  animation: bcabPanelOnOffPulse var(--bcab-pulse-ms, 600ms) steps(1) 1 !important;
+}
+
+@keyframes bcabPanelLightPulse {
+  0%, 18%, 50%, 68%, 100% { opacity: 0; filter: brightness(1); }
+  19%, 49%, 69%, 88% { opacity: 1; filter: brightness(2.15) saturate(.35); }
+}
+
+@keyframes bcabPanelOnOffPulse {
+  0%, 16%, 34%, 50%, 68%, 84%, 100% { opacity: 1; filter: brightness(1.55) saturate(.55); }
+  17%, 33%, 51%, 67%, 85%, 99% { opacity: 0; filter: none; }
+}
+
 .bcab-lower-led-bridge {
   z-index: 0;
 }
@@ -6348,6 +6509,7 @@ body.page-video-active .trust-page {
 .bcab-deck[data-led-state="off"] .bcab-lower-led-state-on {
   opacity: 0 !important;
   animation: none !important;
+  transition: none !important;
 }
 
 /* Same switch for the top-left memory board. Killing the animation as well as
@@ -6364,7 +6526,7 @@ body.page-video-active .trust-page {
 .bcab-memboard-led-color,
 .bcab-memboard-led-glow,
 .bcab-memboard-led-texture {
-  transition: opacity 220ms ease-out;
+  transition: none;
 }
 
 /* Traveling-card layer (Phase 2). z 15: below disk, above table. */
@@ -8088,6 +8250,197 @@ body.page-video-active .trust-page {
     0 0 34px rgba(var(--reel-halo), 0.7);
 }
 
+/* BAR CHANCE occupies the live LCD beneath its persistent HUD. The cabinet,
+   fighters and stage continue running; this is only the presentation glass. */
+.bar-chance-layer {
+  --bar-core: #4ea7ff;
+  --bar-deep: #082c65;
+  --bar-rim: #b9e7ff;
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  overflow: hidden;
+  pointer-events: none;
+  background: #02060b;
+  clip-path: inset(0 0 0 0);
+  animation: barChanceWipeIn 180ms cubic-bezier(.12,.78,.22,1) both;
+}
+
+.bar-chance-tone-green {
+  --bar-core: #35e79a;
+  --bar-deep: #064c35;
+  --bar-rim: #c9ffe8;
+}
+
+.bar-chance-tone-red {
+  --bar-core: #ff4d4d;
+  --bar-deep: #6c0710;
+  --bar-rim: #ffe0c2;
+}
+
+.bar-chance-character {
+  position: absolute;
+  inset: -7%;
+  background-position: 50% 34%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: contrast(1.1) saturate(.9) brightness(.78);
+  transform-origin: 50% 42%;
+  transition: transform 240ms cubic-bezier(.2,.72,.22,1);
+}
+
+.bar-chance-character::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.62), transparent 34%, transparent 65%, rgba(0,0,0,.48)),
+    linear-gradient(0deg, rgba(0,0,0,.62), transparent 46%),
+    radial-gradient(circle at 50% 43%, transparent 0 22%, color-mix(in srgb, var(--bar-core) 28%, transparent) 70%);
+  box-shadow: inset 0 0 70px color-mix(in srgb, var(--bar-core) 26%, transparent);
+}
+
+.bar-chance-stream {
+  position: absolute;
+  inset: -25%;
+  z-index: 2;
+  opacity: .62;
+  mix-blend-mode: screen;
+  background: repeating-linear-gradient(
+    168deg,
+    transparent 0 34px,
+    color-mix(in srgb, var(--bar-core) 58%, transparent) 35px 39px,
+    transparent 40px 72px
+  );
+  animation: barChanceStream 650ms linear infinite;
+}
+
+.bar-chance-command {
+  position: absolute;
+  right: 4.5%;
+  bottom: 8%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transform: rotate(-3deg);
+  transform-origin: 100% 100%;
+  white-space: nowrap;
+}
+
+.bar-chance-chevrons {
+  display: flex;
+  color: var(--bar-rim);
+  font: 900 70px/.65 Impact, "Arial Narrow", sans-serif;
+  text-shadow: 0 0 10px var(--bar-core), 0 4px 0 var(--bar-deep);
+}
+
+.bar-chance-chevrons span {
+  animation: barChanceChevron 480ms ease-in-out infinite;
+}
+
+.bar-chance-chevrons span:nth-child(2) { animation-delay: 70ms; }
+.bar-chance-chevrons span:nth-child(3) { animation-delay: 140ms; }
+
+.bar-chance-command-text {
+  color: var(--bar-core);
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: clamp(58px, 7vw, 100px);
+  font-style: italic;
+  font-weight: 900;
+  line-height: .86;
+  letter-spacing: 0;
+  -webkit-text-stroke: 1px var(--bar-rim);
+  text-shadow:
+    0 2px 0 var(--bar-rim),
+    0 6px 0 var(--bar-deep),
+    0 12px 18px rgba(0,0,0,.82);
+}
+
+.bar-chance-success-mark {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(255,244,194,.38), rgba(0,0,0,.8) 60%);
+}
+
+.bar-chance-success-mark img {
+  width: min(68%, 720px);
+  max-height: 78%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(255,255,255,.95)) drop-shadow(0 0 34px rgba(255,190,54,.9));
+  animation: barChanceSuccessPulse 240ms ease-in-out infinite alternate;
+}
+
+.bar-chance-failure-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: rgba(0,0,0,.2);
+}
+
+.bar-chance-distortion {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  opacity: .9;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.18) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(90deg, rgba(75,220,255,.25) 0 9px, rgba(255,42,94,.2) 9px 17px, transparent 17px 31px);
+  mix-blend-mode: screen;
+  animation: barChanceDistort 80ms steps(2) infinite;
+}
+
+.bar-chance-freeze video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bcab-deck.bcab-bar-failure .bcab-table-space {
+  filter: brightness(.8);
+}
+
+.bcab-bar-success-strobe .bcab-lower-led-state-on,
+.bcab-bar-success-strobe .bcab-memboard-led-color,
+.bcab-bar-success-strobe .bcab-memboard-led-glow,
+.bcab-bar-success-strobe .bcab-memboard-led-texture {
+  animation: bcabBarSuccessStrobe 120ms steps(1) infinite !important;
+}
+
+@keyframes barChanceWipeIn {
+  from { clip-path: inset(0 0 0 100%); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes barChanceStream {
+  from { transform: translateX(10%); }
+  to { transform: translateX(-10%); }
+}
+
+@keyframes barChanceChevron {
+  0%, 100% { opacity: .42; transform: translateX(5px); }
+  50% { opacity: 1; transform: translateX(-5px); }
+}
+
+@keyframes barChanceSuccessPulse {
+  from { transform: scale(.94); opacity: .76; }
+  to { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes barChanceDistort {
+  0% { transform: translate(0, 0) skewX(0); filter: contrast(1.3); }
+  33% { transform: translate(-7px, 2px) skewX(2deg); filter: contrast(2); }
+  66% { transform: translate(6px, -2px) skewX(-2deg); filter: contrast(1.6); }
+}
+
+@keyframes bcabBarSuccessStrobe {
+  0%, 49% { opacity: 1; filter: brightness(2.8) saturate(.35) sepia(.25); }
+  50%, 100% { opacity: .24; filter: brightness(.72) saturate(.5); }
+}
+
 @keyframes reelTenpaiIn {
   from { opacity: 0; transform: translateX(-50%) scale(0.86); }
   to { opacity: 1; transform: translateX(-50%) scale(1); }
@@ -8624,5 +8977,3 @@ body.page-video-active .trust-page {
     animation-duration: 1ms;
   }
 }
-
-

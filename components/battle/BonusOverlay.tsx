@@ -14,6 +14,12 @@ import {
 import { playSfx } from "@/lib/audio/sfxStore";
 import { patchConfig } from "@/lib/game-config/patchConfig";
 import BattleDigitStrip from "./BattleDigitStrip";
+import {
+  beginSuperBonusBlackout,
+  beginSuperMaxBlackout,
+  finishSuperBonusBlackout,
+} from "@/lib/battle-pixi/state/cabinetSignalStore";
+import { cabinetSignalConfig } from "@/lib/game-config/cabinetSignalConfig";
 
 type SafeCompletionVideoProps = {
   src: string;
@@ -81,7 +87,10 @@ export default function BonusOverlay() {
 
   useEffect(() => subscribeBonusPresentation(() => setState(getBonusPresentationState())), []);
 
-  const finishOpening = useCallback(() => finishBonusOpeningPresentation(), []);
+  const finishOpening = useCallback(() => {
+    finishSuperBonusBlackout();
+    finishBonusOpeningPresentation();
+  }, []);
   const finishReveal = useCallback(() => finishActiveBonusRevealVideo(), []);
 
   // Same identity the reveal <video> remounts on, so the cue fires once per
@@ -126,10 +135,10 @@ export default function BonusOverlay() {
       const latest =
         durationMs === null ? minMs : Math.max(minMs, durationMs - tailGuardMs);
 
-      timer = window.setTimeout(
-        enterBonusFreeze,
-        minMs + Math.random() * (latest - minMs)
-      );
+      timer = window.setTimeout(() => {
+        beginSuperMaxBlackout();
+        enterBonusFreeze();
+      }, minMs + Math.random() * (latest - minMs));
     };
 
     probe.onloadedmetadata = () => {
@@ -137,6 +146,47 @@ export default function BonusOverlay() {
       schedule(Number.isFinite(ms) && ms > 0 ? ms : null);
     };
     probe.onerror = () => schedule(null);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      probe.onloadedmetadata = null;
+      probe.onerror = null;
+    };
+  }, [
+    state.bonusOpeningVisible,
+    state.bonusOpeningType,
+    state.bonusOpeningStage,
+  ]);
+
+  // Super Bonus has one 50% blackout roll per opening. When selected, it may
+  // begin at any point in the opening clip and remains dark until that clip
+  // completes. Super MAX is handled by the freeze scheduler above.
+  useEffect(() => {
+    if (!state.bonusOpeningVisible) return;
+    if (state.bonusOpeningType !== "super") return;
+    if (state.bonusOpeningStage !== "main") return;
+    if (Math.random() >= cabinetSignalConfig.superBonusBlackout.chance) return;
+
+    let timer = 0;
+    let cancelled = false;
+    const probe = document.createElement("video");
+    probe.preload = "metadata";
+    probe.src = getBonusOpeningVideo();
+
+    const schedule = (durationMs: number) => {
+      if (cancelled) return;
+      timer = window.setTimeout(
+        beginSuperBonusBlackout,
+        Math.random() * Math.max(0, durationMs - 250)
+      );
+    };
+
+    probe.onloadedmetadata = () => {
+      const durationMs = probe.duration * 1000;
+      schedule(Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 4000);
+    };
+    probe.onerror = () => schedule(4000);
 
     return () => {
       cancelled = true;

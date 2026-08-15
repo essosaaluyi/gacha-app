@@ -12,6 +12,7 @@
 import type { BattleState } from "@/lib/battle-pixi/state/battleStateStore";
 import type { BattleMode } from "@/lib/battle-pixi/state/battleModeStore";
 import type { EnemyId } from "@/lib/battle-pixi/config/enemyConfig";
+import type { DefenseShieldGrade } from "@/lib/battle-pixi/state/defenseShieldStore";
 
 const STORAGE_KEY = "battle_session_snapshot";
 const EXPIRY_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -27,6 +28,15 @@ export type BattleSessionSnapshot = {
   battleMode: BattleMode;
   /** Index of the active card in the player's deck, so resume keeps deck progress. */
   playerCardIndex: number;
+  barProgression?: {
+    boostedGamesRemaining: number;
+    pendingUr1Boost: boolean;
+    bonusStock: number;
+  };
+  defenseShield?: {
+    grade: DefenseShieldGrade;
+    round: number;
+  } | null;
   bonus: {
     active: boolean;
     phase: "opening" | "bonus" | null;

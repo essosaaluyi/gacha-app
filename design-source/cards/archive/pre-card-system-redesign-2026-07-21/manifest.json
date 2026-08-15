@@ -1,0 +1,354 @@
+{
+  "created": "2026-07-21",
+  "description": "Pre-redesign rendered card archive",
+  "files": [
+    {
+      "source": "public/images/cards/player/R1/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R1/card.png",
+      "bytes": 815760,
+      "sha256": "79c168ca0daf41fec382e12167a033f20bf9c7a8de31f2ab6b0b7f7920fbcd6a"
+    },
+    {
+      "source": "public/images/cards/player/R1/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R1/card.webp",
+      "bytes": 59016,
+      "sha256": "a26088d772039d5ccec0ec6f974606a1fee50e21dd68fa0e81271956d74c7092"
+    },
+    {
+      "source": "public/images/cards/player/R2/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R2/card.png",
+      "bytes": 841735,
+      "sha256": "87d3fd2db17c0bded97e0ec4a2435e0fc46f5bdadd19e52d6728b780ba294006"
+    },
+    {
+      "source": "public/images/cards/player/R2/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R2/card.webp",
+      "bytes": 62384,
+      "sha256": "c5f6592f40fe6e02252445857a023ce56dc532840ad3e4e076d206b91dc0c72e"
+    },
+    {
+      "source": "public/images/cards/player/R3/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R3/card.png",
+      "bytes": 978081,
+      "sha256": "27023243deb5e59904821701c59cbf0a07f218942d186428f14309bcb28aa70b"
+    },
+    {
+      "source": "public/images/cards/player/R3/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R3/card.webp",
+      "bytes": 72812,
+      "sha256": "e7900aba8b0a0a01de02b82fd30e831eee54efa2eba900efcd32bca0a48b2d47"
+    },
+    {
+      "source": "public/images/cards/player/R4/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R4/card.png",
+      "bytes": 732956,
+      "sha256": "0fc6d05e69657cc533f71164fe1030ba729af0d137517f49810215c8b6abe9ed"
+    },
+    {
+      "source": "public/images/cards/player/R4/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/R4/card.webp",
+      "bytes": 41748,
+      "sha256": "7a78033aaf7476318484d15dc9dc92a03163c9d9d9ebc2a3d2426d310613845d"
+    },
+    {
+      "source": "public/images/cards/player/SR1/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR1/card.png",
+      "bytes": 1041604,
+      "sha256": "cf95cb622674d5676d44a86617799b768b4e9c5269c8c34d23d852eada5ea862"
+    },
+    {
+      "source": "public/images/cards/player/SR1/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR1/card.webp",
+      "bytes": 89212,
+      "sha256": "5aedfb136989a5ae40116b39465348e062093683b691e35afb38364219f8f736"
+    },
+    {
+      "source": "public/images/cards/player/SR2/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR2/card.png",
+      "bytes": 991515,
+      "sha256": "0a3acaeb0212b901f09f1c5a0319473c56eb87aaa89a6f8afe4b4f028639a172"
+    },
+    {
+      "source": "public/images/cards/player/SR2/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR2/card.webp",
+      "bytes": 79088,
+      "sha256": "cdd787f88059142a73ee69488fa7caffaf670dbefdfbc5e0f446fb64e0691262"
+    },
+    {
+      "source": "public/images/cards/player/SR3/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR3/card.png",
+      "bytes": 731683,
+      "sha256": "fb64bb3b83995bde3859dcf15b54e867a09928c02631bda03ea0bb28fc6c76ab"
+    },
+    {
+      "source": "public/images/cards/player/SR3/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR3/card.webp",
+      "bytes": 42682,
+      "sha256": "0637bb1149629a97c8c15bc04857fc3952ca78a59ba195b250314e2b74e88e9d"
+    },
+    {
+      "source": "public/images/cards/player/SR4/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR4/card.png",
+      "bytes": 872492,
+      "sha256": "7e485459f288708227ecc605c3a1e274958705bba3e10e3d9ca4834c048b714d"
+    },
+    {
+      "source": "public/images/cards/player/SR4/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SR4/card.webp",
+      "bytes": 62454,
+      "sha256": "81f7849205c3f622239a8f336715041e50690ea6b036fa070dfb66381fb2f3e9"
+    },
+    {
+      "source": "public/images/cards/player/SSR1/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR1/card.png",
+      "bytes": 1042575,
+      "sha256": "59950f30d3ec646e64db007429bea382491ffd7564b47cda05a02c729994a8ad"
+    },
+    {
+      "source": "public/images/cards/player/SSR1/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR1/card.webp",
+      "bytes": 86522,
+      "sha256": "02cef8b94b264c801921c1d5b87096db776f5e2aabae5f58442d2bf22086fef6"
+    },
+    {
+      "source": "public/images/cards/player/SSR2/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR2/card.png",
+      "bytes": 965166,
+      "sha256": "cb1846661af0d72191861e8cd8d0f8edef8367d5ede96a41397a85e2c53221d1"
+    },
+    {
+      "source": "public/images/cards/player/SSR2/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR2/card.webp",
+      "bytes": 71120,
+      "sha256": "29fb87b6aa11db45df313637b73933a7a24afc96d87fdd9418879a3741ac6d18"
+    },
+    {
+      "source": "public/images/cards/player/SSR3/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR3/card.png",
+      "bytes": 1046066,
+      "sha256": "8df0e88a72369b905977cc40d1cf4a309376fdce34d61ced2e190d4694aab548"
+    },
+    {
+      "source": "public/images/cards/player/SSR3/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR3/card.webp",
+      "bytes": 86380,
+      "sha256": "2c37e0592010835c08486825f4a55eaab94d7d06d88fc078789cb629ada364a5"
+    },
+    {
+      "source": "public/images/cards/player/SSR4/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR4/card.png",
+      "bytes": 1112238,
+      "sha256": "42ea56495743f5138f44bfa31db789b357e0f16dbdaa3332c63b642805fa890a"
+    },
+    {
+      "source": "public/images/cards/player/SSR4/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/SSR4/card.webp",
+      "bytes": 112604,
+      "sha256": "2b364277144bbd2780b18d42c72bc9e49bdac2c633f517fb99d99f2a28555041"
+    },
+    {
+      "source": "public/images/cards/player/UR1/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/UR1/card.png",
+      "bytes": 1064011,
+      "sha256": "af8ace687221da76563506893fe32a4118e8f988e48a29821a3eac7dcf45d675"
+    },
+    {
+      "source": "public/images/cards/player/UR1/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/UR1/card.webp",
+      "bytes": 93326,
+      "sha256": "30deea8f09a8668f86a0b7edfb7e7c4e92e2bab86f73781c1236ad756f1d2410"
+    },
+    {
+      "source": "public/images/cards/player/UR2/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/UR2/card.png",
+      "bytes": 1048533,
+      "sha256": "6b1ebf06333613cab231be55ca9a7bcd9282357a1e325add5a4c70657e1e6b4a"
+    },
+    {
+      "source": "public/images/cards/player/UR2/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/UR2/card.webp",
+      "bytes": 97630,
+      "sha256": "0f71c7493938f67930adcbcdeb5365a59a40a2df325c390fe8592701fb9b60d1"
+    },
+    {
+      "source": "public/images/cards/player/UR3/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/UR3/card.png",
+      "bytes": 808278,
+      "sha256": "ce6b41851c037a5c6e157b55847c0eb4c07c1cbc7f226f95ab5fffbb677306e4"
+    },
+    {
+      "source": "public/images/cards/player/UR3/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/UR3/card.webp",
+      "bytes": 59948,
+      "sha256": "7dccfe1b6be8a5f19585382d1795ee968abea00469e1f2be78b1b2aa08331c93"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy1/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy1/card.png",
+      "bytes": 797058,
+      "sha256": "d7a35008d945be0f882cab59940e00b51e84c49a3efe245fadafda6665a706b1"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy1/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy1/card.webp",
+      "bytes": 64416,
+      "sha256": "ca60e891d248e6b170fba048f2410f3341e3a414485f0c2bda91f46abc4cb9aa"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy2/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy2/card.png",
+      "bytes": 891101,
+      "sha256": "f606f2a4a73b1a68f8639f005746fd6d782467c0b6fca3188c2bff7080f77c34"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy2/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy2/card.webp",
+      "bytes": 52878,
+      "sha256": "f1bdfacb1faa3997d553799b17ac8a925de370c4d8cd31ae452868651ea11dc5"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy3/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy3/card.png",
+      "bytes": 924334,
+      "sha256": "30a11b770296e1e0681a28a7b477fe52e4fcc37c797083c9363f2d401d861228"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy3/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy3/card.webp",
+      "bytes": 76148,
+      "sha256": "050b9eaf1e399906eacbc51fac1d6c87c9c07b268521c3d426c2e6bd9e49c862"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy4/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy4/card.png",
+      "bytes": 789043,
+      "sha256": "706eec21970a0f916f907204ac101359ea45c2a7351ccc9c0faeb4ab0a63ab75"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy4/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy4/card.webp",
+      "bytes": 64390,
+      "sha256": "13182ca4b8e07db7ec49e714496cdf89741bf678ff5ec629b3cc1fb427489eac"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy5/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy5/card.png",
+      "bytes": 884619,
+      "sha256": "56958fe9b1f93ff665ac3ae1d791c58b1aa4552c7f0cfd4d7b230f3a26bd2a71"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy5/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy5/card.webp",
+      "bytes": 54114,
+      "sha256": "1481df6240701d97c76a130124e9060bcbc5cbc221eaeb55b693f6d41eece931"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy6/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy6/card.png",
+      "bytes": 808372,
+      "sha256": "9392cec8fde105e8e9c869a2c78a3be9f255e57f342c65fde23ad46c9236136f"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy6/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy6/card.webp",
+      "bytes": 55806,
+      "sha256": "b38c6130face56782e10b4ceb259795cf69e758bc06352765b01b976ca1a9bdc"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy7/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy7/card.png",
+      "bytes": 882716,
+      "sha256": "a6a6f96b2acb4f576605294611c85e74f358a155c4302c6be6889687512199b8"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy7/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy7/card.webp",
+      "bytes": 53924,
+      "sha256": "aea439e880463e235789a9b07a84109ada9732e6caa9634e751be00b8bb71a9f"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy8/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy8/card.png",
+      "bytes": 767733,
+      "sha256": "845abd92fbe5d6334685b4db1f8b075acdf27bdff4e932088d63f30ef2db87f0"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy8/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy8/card.webp",
+      "bytes": 45322,
+      "sha256": "3312171c05d9483786ce6cc57bcdb41585469a56ad1dc338edd12131f2bb550e"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy9/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy9/card.png",
+      "bytes": 915057,
+      "sha256": "0c20d4ccbecd3fa34e80166245d411846efc5aeccd5e71d67106180ff83ad7fc"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy9/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy9/card.webp",
+      "bytes": 60824,
+      "sha256": "a1a40465c971d8e6f8f4aca67cf2244725f41a7a89fde942707c35521b2c6450"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy10/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy10/card.png",
+      "bytes": 981731,
+      "sha256": "48f9aaab62765f4b08248cadef76d2b5b98ba2ce2b3f57ac42dc07288283c5e9"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy10/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy10/card.webp",
+      "bytes": 79838,
+      "sha256": "81551d239ff5c06a4a40e8ed9847fd99128c3074f1ae661b51933599aaea9ec8"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy11/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy11/card.png",
+      "bytes": 923545,
+      "sha256": "b7e5aef3525734e98a53f379fe9cde9b648afd47f3cb50ebaaad161264672ce9"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy11/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy11/card.webp",
+      "bytes": 66644,
+      "sha256": "ac08fe933bf2601fb45ea0bd196e2554ab0aded93283809b24e65f37f30fe199"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy12/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy12/card.png",
+      "bytes": 944617,
+      "sha256": "39d20d30ab31b1a697303c17d87f4264f6b3f560690a392af4e7086e4c40ec6e"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy12/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy12/card.webp",
+      "bytes": 77906,
+      "sha256": "44fd63fa249ea2bd3230ff49d1a98d83b29e0406a06b1bcadcbbf5c59fce6b21"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy13/card.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy13/card.png",
+      "bytes": 834876,
+      "sha256": "80304591fb15ed5a2f0e6303b043641efed6a11c1e306b5f415ee1fc76b06edf"
+    },
+    {
+      "source": "public/images/cards/enemy/enemy13/card.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/enemy/enemy13/card.webp",
+      "bytes": 55602,
+      "sha256": "22f990e9862358af42014b8df866eb6bda471db67af484ee618218c636a0cae1"
+    },
+    {
+      "source": "public/images/card-back.png",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/legacy-shared-card-back.png",
+      "bytes": 629029,
+      "sha256": "e8d59cd946619684711b9e7b9111b1ed029f0072a1d8b42781769e3829f26837"
+    },
+    {
+      "source": "public/images/card-back.webp",
+      "archive": "design-source/cards/archive/pre-card-system-redesign-2026-07-21/player/legacy-shared-card-back.webp",
+      "bytes": 52940,
+      "sha256": "1c9d9586f5847e64dfce02c3824e457fdc78e55993f44ac42431581901d52712"
+    }
+  ]
+}

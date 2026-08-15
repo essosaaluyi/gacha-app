@@ -29,18 +29,6 @@ export function rollChanceIconOverlay(hasChanceCard: boolean) {
   overlayKey += 1;
   playSfx("chanceIcon");
 
-  // Pachislot cabinets react as one machine: when something is announced on
-  // screen, the surrounding hardware answers. Pick one prop at random so the
-  // reaction never looks scripted, and let the shell run the animation.
-  if (typeof window !== "undefined") {
-    const props = ["led", "statue", "memboard"] as const;
-    window.dispatchEvent(
-      new CustomEvent("battle:cabinet-react", {
-        detail: { prop: props[Math.floor(Math.random() * props.length)] },
-      })
-    );
-  }
-
   notify();
 }
 

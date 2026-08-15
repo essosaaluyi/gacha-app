@@ -248,6 +248,13 @@ export function dismissCollectionResult() {
   persist();
   notify();
 
+  // UR1's three-game BAR boost starts only after the complete Pick a Bonus
+  // cycle, and waits if another stocked bonus is queued.
+  void import("@/lib/battle-pixi/state/barProgressionStore").then(
+    ({ settleProgressionAfterCollection }) =>
+      settleProgressionAfterCollection()
+  );
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("battle:collection-dismissed", {

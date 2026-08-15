@@ -42,10 +42,20 @@ import { hideBonusOverlay } from "@/lib/battle-pixi/state/bonusPresentationStore
 import { clearResurrection } from "@/lib/battle-pixi/state/resurrectionStore";
 import { resetBattlePresentationFlow } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import { resetBattleLogs } from "@/lib/battle-pixi/state/battleLogStore";
+import {
+  getBarProgressionState,
+  restoreBarProgression,
+} from "@/lib/battle-pixi/state/barProgressionStore";
+import { clearCabinetSignals } from "@/lib/battle-pixi/state/cabinetSignalStore";
+import {
+  getDefenseShieldState,
+  restoreDefenseShield,
+} from "@/lib/battle-pixi/state/defenseShieldStore";
 
 export function buildBattleSnapshot(): BattleSessionSnapshot {
   const enemy = getCurrentEnemy();
   const bonusState = getBonusModeState();
+  const defenseShield = getDefenseShieldState();
 
   return {
     savedAt: Date.now(),
@@ -57,6 +67,11 @@ export function buildBattleSnapshot(): BattleSessionSnapshot {
     enemyId: enemy?.id ?? null,
     battleMode: getBattleMode(),
     playerCardIndex: getPlayerBattleCardIndex(),
+    barProgression: { ...getBarProgressionState() },
+    defenseShield:
+      defenseShield.grade && defenseShield.round !== null
+        ? { grade: defenseShield.grade, round: defenseShield.round }
+        : null,
     bonus: bonusState.active
       ? {
           active: true,
@@ -72,6 +87,7 @@ export function buildBattleSnapshot(): BattleSessionSnapshot {
 export function restoreBattleFromSnapshot(snapshot: BattleSessionSnapshot) {
   // Clear all presentation state (overlays, animations) so nothing is stale.
   resetBattlePresentationFlow();
+  clearCabinetSignals();
   resetBattleLogs();
   hideBattleCutIn();
   hideMagicCircle();
@@ -93,6 +109,8 @@ export function restoreBattleFromSnapshot(snapshot: BattleSessionSnapshot) {
 
   // Older snapshots predate deck-index persistence; default to the deck start.
   setPlayerBattleCardIndex(snapshot.playerCardIndex ?? 0);
+  restoreBarProgression(snapshot.barProgression);
+  restoreDefenseShield(snapshot.defenseShield);
 
   if (snapshot.enemyId !== null) {
     restoreEnemy(snapshot.enemyId);

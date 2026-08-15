@@ -1,0 +1,28 @@
+{
+  "created": "2026-07-21",
+  "description": "Byte-identical reconstruction of the SR1/SR2 production files immediately before approved polished-composite promotion",
+  "files": [
+    {
+      "card": "SR1",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-sr1-sr2-promotion-2026-07-21/player/SR1/card.png",
+        "webp": "design-source/cards/archive/pre-polished-sr1-sr2-promotion-2026-07-21/player/SR1/card.webp"
+      },
+      "sha256": {
+        "png": "44663959dad004ef7a15140332f1af1af0e06e7058ace3aa9d177406112a25b7",
+        "webp": "e20e956fe77c65c852f876d1b19bab2fca33c22c4182f1d9549f427c77bd8699"
+      }
+    },
+    {
+      "card": "SR2",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-sr1-sr2-promotion-2026-07-21/player/SR2/card.png",
+        "webp": "design-source/cards/archive/pre-polished-sr1-sr2-promotion-2026-07-21/player/SR2/card.webp"
+      },
+      "sha256": {
+        "png": "214112d51f54d4aa9723b451498c7e6161b4396dd15d6f90988bfc6c11eff902",
+        "webp": "35490fd1057cd25dead23f3612362be5cf743e98b22043f25985c6416e198211"
+      }
+    }
+  ]
+}
