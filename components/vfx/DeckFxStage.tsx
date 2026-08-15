@@ -27,6 +27,8 @@ type Props = {
    */
   targetRef: RefObject<HTMLElement | null>;
   handleRef: RefObject<DeckFxHandle | null>;
+  /** The deck's silhouette. A disc gets a round glow and glitter inside it. */
+  deckShape?: "rect" | "disc";
   glitterTone?: "white" | "gold";
   onReady?: () => void;
 };
@@ -44,12 +46,17 @@ export default function DeckFxStage({
   deckRef,
   targetRef,
   handleRef,
+  deckShape = "rect",
   glitterTone = "gold",
   onReady,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fxRef = useRef<{
-    armDraw: (el: HTMLElement, outcome: string, radius?: number) => boolean;
+    armDraw: (
+      el: HTMLElement,
+      outcome: string,
+      options?: { shape?: "rect" | "disc"; radius?: number }
+    ) => boolean;
     drawCard: (deck: HTMLElement, landing: HTMLElement, outcome: string, d?: number) => void;
     cardLanded: (el: HTMLElement, outcome: string) => void;
     cancelDraw: () => void;
@@ -68,7 +75,7 @@ export default function DeckFxStage({
     () => ({
       armDraw: (outcome) => {
         if (!fxRef.current || !deckRef.current) return false;
-        return fxRef.current.armDraw(deckRef.current, outcome, 14);
+        return fxRef.current.armDraw(deckRef.current, outcome, { shape: deckShape });
       },
       drawCard: (outcome, durationSeconds) => {
         if (!fxRef.current || !deckRef.current || !targetRef.current) return;
@@ -81,7 +88,7 @@ export default function DeckFxStage({
       cancelDraw: () => fxRef.current?.cancelDraw(),
       clear: () => fxRef.current?.clear(),
     }),
-    [deckRef, targetRef]
+    [deckRef, targetRef, deckShape]
   );
 
   useEffect(() => {

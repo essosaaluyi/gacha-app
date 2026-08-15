@@ -93,23 +93,23 @@ export default function DeckEffectsPage() {
             background: "radial-gradient(120% 90% at 50% 115%, #17203a 0%, #0a0c14 62%)",
           }}
         >
-          {/* Where the card lands. */}
+          {/* The board the card lands on, top-left, with the deck below it. */}
           <div
             ref={targetRef}
-            className="absolute left-1/2 -translate-x-1/2 top-10 w-[116px] h-[164px] rounded-xl border-2 border-dashed border-zinc-700/70"
+            className="absolute left-12 top-8 w-[116px] h-[164px] rounded-xl border-2 border-dashed border-zinc-700/70"
           />
 
           {/*
             The dealt card, transform-only so it never triggers layout.
 
-            Centring is left to `-translate-x-1/2`, which in Tailwind v4 is the
-            standalone `translate` property — it composes with `transform`
-            rather than replacing it, so repeating the -50% here would shift the
-            card by half its own width.
+            Note that Tailwind v4 emits its translate utilities as the standalone
+            `translate` property, which composes with `transform` rather than
+            replacing it — so a translate class and an inline transform both
+            apply, and the card ends up double-shifted.
           */}
           <div
             ref={cardRef}
-            className="absolute left-1/2 -translate-x-1/2 top-10 w-[116px] h-[164px] rounded-xl bg-cover bg-center shadow-2xl transition-opacity"
+            className="absolute left-12 top-8 w-[116px] h-[164px] rounded-xl bg-cover bg-center shadow-2xl transition-opacity"
             style={{
               backgroundImage: "url(/images/SSR1.png)",
               opacity: phase === "dealing" || phase === "landed" ? 1 : 0,
@@ -123,16 +123,28 @@ export default function DeckEffectsPage() {
             }}
           />
 
-          {/* The deck. */}
+          {/*
+            The deck the player draws from — a stand-in for the real one, which
+            lives in the game itself. Round, with a green and gold frame, sat
+            below the board's top-left corner.
+
+            Everything the effects need comes from getBoundingClientRect(), so
+            swapping this for the real disc is a matter of pointing deckRef at
+            it. The only thing that has to match is `deckShape`, which decides
+            whether the aura hugs a circle or a rounded box.
+          */}
           <div
             ref={deckRef}
-            className="absolute left-1/2 -translate-x-1/2 bottom-10 w-[124px] h-[176px] rounded-[14px] border border-[#38425c] grid place-items-center"
+            className="absolute left-10 bottom-10 w-[132px] h-[132px] rounded-full grid place-items-center"
             style={{
-              background: "linear-gradient(150deg, #2b3346 0%, #1a2030 52%, #131826 100%)",
-              boxShadow: "0 18px 40px rgba(0,0,0,0.55)",
+              background:
+                "radial-gradient(circle at 38% 32%, #2e6f4e 0%, #1b4531 46%, #0e2a1e 100%)",
+              border: "3px solid #d9b45b",
+              boxShadow:
+                "0 0 0 1px rgba(0,0,0,0.5), inset 0 0 22px rgba(0,0,0,0.55), 0 14px 34px rgba(0,0,0,0.55)",
             }}
           >
-            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[#6b7690]">
+            <span className="font-mono text-[10px] tracking-[0.22em] uppercase text-[#d9b45b]">
               Deck
             </span>
           </div>
@@ -142,6 +154,7 @@ export default function DeckEffectsPage() {
             deckRef={deckRef}
             targetRef={targetRef}
             handleRef={fxRef}
+            deckShape="disc"
             glitterTone="gold"
             onReady={() => setReady(true)}
           />
