@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1250 618" role="img" aria-labelledby="title desc">
+  <title id="title">Blue Vault scene title insert</title>
+  <desc id="desc">An original theatrical blue, ivory, and gold title card for the daytime battle field.</desc>
+  <defs>
+    <linearGradient id="veil" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#07111b" stop-opacity="0"/>
+      <stop offset=".16" stop-color="#07111b" stop-opacity=".88"/>
+      <stop offset=".5" stop-color="#102638" stop-opacity=".94"/>
+      <stop offset=".84" stop-color="#07111b" stop-opacity=".88"/>
+      <stop offset="1" stop-color="#07111b" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eefcff"/>
+      <stop offset=".3" stop-color="#8fd6e9"/>
+      <stop offset=".58" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#5a8fa4"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#76501c"/>
+      <stop offset=".22" stop-color="#f7dda0"/>
+      <stop offset=".5" stop-color="#b98735"/>
+      <stop offset=".78" stop-color="#fff0b9"/>
+      <stop offset="1" stop-color="#76501c"/>
+    </linearGradient>
+    <radialGradient id="skyBurst">
+      <stop offset="0" stop-color="#77e8ff" stop-opacity=".5"/>
+      <stop offset=".36" stop-color="#2b8fbd" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#03111a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blueGlow" x="-30%" y="-40%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <path d="M0 105L282 138H968L1250 105V513L965 480H285L0 513Z" fill="url(#veil)"/>
+  <ellipse cx="625" cy="309" rx="410" ry="250" fill="url(#skyBurst)"/>
+  <g opacity=".26" stroke="#9deaff" stroke-width="1">
+    <path d="M120 442L506 154M202 483L586 150M1048 483L664 150M1130 442L744 154"/>
+    <path d="M274 200H976M226 418H1024" stroke-dasharray="5 10"/>
+  </g>
+
+  <g fill="none" stroke="url(#gold)">
+    <path d="M84 213L197 178H1053L1166 213" stroke-width="3"/>
+    <path d="M84 405L197 440H1053L1166 405" stroke-width="3"/>
+    <path d="M207 190H1043" stroke-width="1" opacity=".8"/>
+    <path d="M207 428H1043" stroke-width="1" opacity=".8"/>
+  </g>
+  <g fill="#0b1822" stroke="#dcb869" stroke-width="2">
+    <path d="M68 213L99 195L130 213L99 231Z"/>
+    <path d="M1182 213L1151 195L1120 213L1151 231Z"/>
+    <path d="M68 405L99 387L130 405L99 423Z"/>
+    <path d="M1182 405L1151 387L1120 405L1151 423Z"/>
+  </g>
+  <g fill="#88eaff" filter="url(#blueGlow)">
+    <path d="M99 204L108 213L99 222L90 213Z"/>
+    <path d="M1151 204L1160 213L1151 222L1142 213Z"/>
+  </g>
+
+  <g font-family="'Yu Mincho','Hiragino Mincho ProN','Noto Serif JP',serif" text-anchor="middle">
+    <text x="625" y="225" fill="#f3d995" font-size="22" font-weight="700" letter-spacing="10">ACT ONE</text>
+    <text x="625" y="358" fill="#07141d" stroke="#07141d" stroke-width="12" font-size="76" font-weight="900" letter-spacing="8" paint-order="stroke">BLUE VAULT</text>
+    <text x="625" y="358" fill="url(#steel)" stroke="#fff8da" stroke-width="2" font-size="76" font-weight="900" letter-spacing="8" paint-order="stroke">BLUE VAULT</text>
+  </g>
+  <path d="M347 383H903" stroke="url(#gold)" stroke-width="2"/>
+  <g font-family="Georgia,'Times New Roman',serif" text-anchor="middle">
+    <text x="625" y="410" fill="#bdeeff" font-size="15" font-weight="700" letter-spacing="7">FIELD OF THE BLUE VAULT</text>
+    <text x="625" y="457" fill="#d5b56e" font-size="10" letter-spacing="5">SCENE 01 / DAYLIGHT FRONT</text>
+  </g>
+  <g fill="none" stroke="#dcb869" stroke-width="2" opacity=".78">
+    <circle cx="163" cy="309" r="43"/>
+    <circle cx="1087" cy="309" r="43"/>
+    <path d="M163 253V365M107 309H219M1087 253V365M1031 309H1143"/>
+  </g>
+</svg>

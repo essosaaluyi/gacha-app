@@ -2,170 +2,93 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import TopBar from "@/components/TopBar";
 import { playBgm } from "@/lib/audio/bgmStore";
+import LegalFooter from "@/components/trust/LegalFooter";
+import { initializeWallet } from "@/lib/wallet/walletStore";
+import { hasSavedBattleSession, clearBattleSession } from "@/lib/battle-pixi/state/battleSessionStore";
+
+/** Set once the guest has acknowledged how guest saves work. */
+const GUEST_NOTICE_SEEN_KEY = "guest_notice_seen";
 
 export default function MenuPage() {
-  const [email, setEmail] = useState<string | null>(null);
-  const [points, setPoints] = useState<number>(0);
+  const router = useRouter();
   const [guestNoticeOpen, setGuestNoticeOpen] = useState(false);
-  const [dailyMessage, setDailyMessage] = useState("");
-  const [dailyReward, setDailyReward] = useState(0);
-  const [isGuest, setIsGuest] = useState(false);
+  const [canResume, setCanResume] = useState(false);
 
-  useEffect(() => {
-    loadUser();
-    playBgm();
-  }, []);
-
-  const loadUser = async () => {
+  // Balance display and daily claim live in TopBar via the unified wallet.
+  async function loadUser() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (user) {
       localStorage.removeItem("guest_mode");
-      setIsGuest(false);
-      setEmail(`User ${user.id.slice(0, 8)}`);
-
-      const { data } = await supabase
-        .from("user_points")
-        .select("points")
-        .eq("user_id", user.id)
-        .single();
-
-      setPoints(data?.points ?? 0);
-
-      const reward = await getPointSetting("member_daily_points", 300);
-      setDailyReward(reward);
-
-      return;
-    }
-
-    const guestMode = localStorage.getItem("guest_mode");
-
-    if (guestMode === "true") {
-      setIsGuest(true);
-      setEmail("Guest");
-
-      const guestPoints = localStorage.getItem("guest_points");
-      setPoints(Number(guestPoints ?? 0));
-
-      const reward = await getPointSetting("guest_daily_points", 100);
-      setDailyReward(reward);
-
+    } else if (
+      localStorage.getItem("guest_mode") === "true" &&
+      localStorage.getItem(GUEST_NOTICE_SEEN_KEY) !== "true"
+    ) {
+      // Once per browser, not once per visit to the menu -- it is a one-time
+      // explanation of how guest saves work, and re-showing it on every return
+      // to the menu just trains people to dismiss it without reading.
       setGuestNoticeOpen(true);
-
-      return;
     }
 
-    setEmail(null);
-    setPoints(0);
+    await initializeWallet();
+    setCanResume(hasSavedBattleSession());
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadUser();
+      playBgm();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const handleResume = () => {
+    localStorage.setItem("battle_resume_requested", "true");
+    router.push("/battle");
   };
 
-  const getPointSetting = async (key: string, fallback: number) => {
-    const { data } = await supabase
-      .from("point_settings")
-      .select("setting_value")
-      .eq("setting_key", key)
-      .single();
-
-    return data?.setting_value ?? fallback;
-  };
-
-  const canClaimDaily = (lastClaim: string | null) => {
-    if (!lastClaim) return true;
-
-    const last = new Date(lastClaim).getTime();
-    const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
-
-    return now - last >= oneDay;
-  };
-
-  const claimDailyReward = async () => {
-    setDailyMessage("");
-
-    const now = new Date().toISOString();
-
-    if (isGuest) {
-      const lastClaim = localStorage.getItem("guest_last_daily_claim");
-
-      if (!canClaimDaily(lastClaim)) {
-        setDailyMessage("Daily reward already claimed.");
-        return;
-      }
-
-      const reward = await getPointSetting("guest_daily_points", 100);
-      const before = points;
-      const after = before + reward;
-
-      localStorage.setItem("guest_points", String(after));
-      localStorage.setItem("guest_last_daily_claim", now);
-
-      setPoints(after);
-      setDailyReward(reward);
-      setDailyMessage(`Daily reward claimed: ${before} → ${after}`);
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setDailyMessage("Please log in first.");
-      return;
-    }
-
-    const { data: pointRow } = await supabase
-      .from("user_points")
-      .select("points, last_daily_claim")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!canClaimDaily(pointRow?.last_daily_claim ?? null)) {
-      setDailyMessage("Daily reward already claimed.");
-      return;
-    }
-
-    const reward = await getPointSetting("member_daily_points", 300);
-    const before = pointRow?.points ?? 0;
-    const after = before + reward;
-
-    await supabase
-      .from("user_points")
-      .update({
-        points: after,
-        last_daily_claim: now,
-      })
-      .eq("user_id", user.id);
-
-    setPoints(after);
-    setDailyReward(reward);
-    setDailyMessage(`Daily reward claimed: ${before} → ${after}`);
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("guest_mode");
-    window.location.href = "/";
+  const handleDismissResume = () => {
+    clearBattleSession();
+    setCanResume(false);
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-6 relative">
-      <div className="absolute top-6 left-6 right-6 z-20">
-  <TopBar />
-</div>
+    <main className="min-h-screen bg-zinc-950 text-white pb-6 relative flex flex-col">
+      <TopBar />
 
       {/* Main content */}
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+      <div className="flex-1 flex flex-col items-center justify-center px-4">
         <img
-          src="/images/gachabanner.png"
+          src="/images/gachabanner.webp"
           alt="Gacha Banner"
           className="w-full max-w-3xl object-contain mb-6 rounded-2xl"
         />
+
+        {canResume && (
+          <div className="mb-4 w-full max-w-md flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResume}
+              className="w-full bg-amber-600 hover:bg-amber-500 px-8 py-4 rounded-2xl text-2xl font-bold text-center transition-transform duration-200 hover:scale-105 active:scale-95"
+            >
+              Continue Battle
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissResume}
+              className="text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              Dismiss saved session
+            </button>
+          </div>
+        )}
 
         <Link
           href="/gacha"
@@ -174,7 +97,21 @@ export default function MenuPage() {
           Pull and Play
         </Link>
 
-        
+        <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm text-zinc-400">
+          <Link href="/how-to-play" className="hover:text-white">
+            How To Play
+          </Link>
+          <Link href="/rules" className="hover:text-white">
+            Rules / Odds
+          </Link>
+          <Link href="/support" className="hover:text-white">
+            Support
+          </Link>
+        </div>
+      </div>
+
+      <div className="absolute bottom-4 left-4 right-4">
+        <LegalFooter compact />
       </div>
 
       {guestNoticeOpen && (
@@ -198,7 +135,10 @@ export default function MenuPage() {
             </div>
 
             <button
-              onClick={() => setGuestNoticeOpen(false)}
+              onClick={() => {
+                localStorage.setItem(GUEST_NOTICE_SEEN_KEY, "true");
+                setGuestNoticeOpen(false);
+              }}
               className="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-semibold"
             >
               OK

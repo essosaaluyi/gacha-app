@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { resolvePlayerCardBack } from "@/lib/cards/cardAssets";
 
 type Card = {
   name: string;
   rarity: string;
   image: string;
+  backImage?: string;
 };
 
 type BackGlow = "none" | "blue" | "gold" | "rainbow";
@@ -57,28 +59,38 @@ function getBackGlowClass(glow: BackGlow) {
 }
 
 export default function ResultGrid({ results, setSelectedImage }: Props) {
-  const [revealedIndexes, setRevealedIndexes] = useState<number[]>([]);
-  const [backGlows, setBackGlows] = useState<BackGlow[]>([]);
-  const flipAudio = typeof Audio !== "undefined"
-  ? new Audio("/audio/card-flip-se.wav")
-  : null;
+  const resultKey = useMemo(
+    () => results.map((card) => `${card.name}:${card.rarity}:${card.image}`).join("|"),
+    [results]
+  );
+  const [revealState, setRevealState] = useState<{
+    key: string;
+    indexes: number[];
+  }>({ key: "", indexes: [] });
+  const backGlows = useMemo(
+    () => results.map((card) => chooseBackGlow(card)),
+    [results]
+  );
+  const flipAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    setRevealedIndexes([]);
-    setBackGlows(results.map((card) => chooseBackGlow(card)));
-
     if (results.length === 0) return;
+
+    if (!flipAudioRef.current) {
+      flipAudioRef.current = new Audio("/audio/card-flip-se.wav");
+    }
 
     const timers = results.map((_, index) =>
       window.setTimeout(() => {
-        if (flipAudio) {
-  flipAudio.currentTime = 0;
-  flipAudio.volume = 0.7;
-  flipAudio.play();
+        if (flipAudioRef.current) {
+  flipAudioRef.current.currentTime = 0;
+  flipAudioRef.current.volume = 0.7;
+  flipAudioRef.current.play();
 }
-        setRevealedIndexes((prev) => {
-          if (prev.includes(index)) return prev;
-          return [...prev, index];
+        setRevealState((prev) => {
+          const indexes = prev.key === resultKey ? prev.indexes : [];
+          if (indexes.includes(index)) return { key: resultKey, indexes };
+          return { key: resultKey, indexes: [...indexes, index] };
         });
       }, 500 + index * 350)
     );
@@ -86,14 +98,15 @@ export default function ResultGrid({ results, setSelectedImage }: Props) {
     return () => {
       timers.forEach((timer) => window.clearTimeout(timer));
     };
-  }, [results]);
+  }, [resultKey, results]);
 
   if (results.length === 0) return null;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
       {results.map((card, index) => {
-        const revealed = revealedIndexes.includes(index);
+        const revealed =
+          revealState.key === resultKey && revealState.indexes.includes(index);
         const backGlow = backGlows[index] ?? "none";
 
         return (
@@ -115,7 +128,7 @@ export default function ResultGrid({ results, setSelectedImage }: Props) {
                   )}`}
                 >
                   <img
-                    src="/images/card-back.png"
+                    src={resolvePlayerCardBack(card.backImage)}
                     alt="Card Back"
                     className="w-full h-full object-contain rounded-2xl"
                   />

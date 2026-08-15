@@ -1,0 +1,7 @@
+interface:
+  display_name: "90s Anime Style"
+  short_description: "Retro anime cel shading for vivid game art"
+  default_prompt: "Use $90s-anime-style to re-render this asset with bold lineart, hard cel shadows, vivid controlled color, and strong game-scale readability."
+
+policy:
+  allow_implicit_invocation: true

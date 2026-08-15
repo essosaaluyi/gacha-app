@@ -1,0 +1,25 @@
+{
+  "canvas": {
+    "width": 1672,
+    "height": 941
+  },
+  "frameCount": 24,
+  "frameDurationMs": 42,
+  "fps": 24,
+  "spritesheet": {
+    "columns": 6,
+    "rows": 4,
+    "frameWidth": 1672,
+    "frameHeight": 941
+  },
+  "anchor": {
+    "x": 836,
+    "y": 470,
+    "note": "Move this particle layer together with middle-impact-line-alpha.png when teasing advantage left/right."
+  },
+  "suggestedMotion": {
+    "lineTranslateX": "-32px to 32px",
+    "charactersWiggleX": "4px to 10px alternating",
+    "charactersWiggleRotation": "-0.4deg to 0.4deg"
+  }
+}

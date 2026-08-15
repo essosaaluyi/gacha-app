@@ -1,8 +1,13 @@
 "use client";
 import TopBar from "@/components/TopBar";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  addPoints,
+  getWalletState,
+  initializeWallet,
+  subscribeWallet,
+} from "@/lib/wallet/walletStore";
 
 type RawCard = {
   id: string;
@@ -26,7 +31,7 @@ export default function InventoryPage() {
   const [sellOpen, setSellOpen] = useState(false);
   const [points, setPoints] = useState(0);
 
-   const [email, setEmail] = useState<string | null>(null);
+   const [, setEmail] = useState<string | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
   const [pointBefore, setPointBefore] = useState(0);
   const [pointAfter, setPointAfter] = useState(0);
@@ -42,11 +47,7 @@ export default function InventoryPage() {
     {}
   );
 
-  useEffect(() => {
-    loadInventory();
-  }, []);
-
-  const loadInventory = async () => {
+  async function loadInventory() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -57,11 +58,7 @@ export default function InventoryPage() {
   if (guestMode === "true") {
     setEmail("Guest");
 
-    const guestPoints = Number(
-      localStorage.getItem("guest_points") ?? 0
-    );
-
-    setPoints(guestPoints);
+    await initializeWallet();
 
     const guestInventory = JSON.parse(
       localStorage.getItem("guest_inventory") ?? "[]"
@@ -95,13 +92,7 @@ export default function InventoryPage() {
 }
 
 
-    const { data: pointRow } = await supabase
-      .from("user_points")
-      .select("points")
-      .eq("user_id", user.id)
-      .single();
-
-    setPoints(pointRow?.points ?? 0);
+    await initializeWallet();
 
     const { data: settings } = await supabase
       .from("point_settings")
@@ -154,7 +145,22 @@ export default function InventoryPage() {
 
     setCards(Object.values(grouped));
     setMessage("");
-  };
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadInventory();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // Unified wallet: mirror the shared balance into this page's display.
+  useEffect(() => {
+    const syncPoints = () => setPoints(getWalletState().points);
+    syncPoints();
+    return subscribeWallet(syncPoints);
+  }, []);
 
 
   const setSellCount = (cardName: string, amount: number, max: number) => {
@@ -208,12 +214,6 @@ export default function InventoryPage() {
     });
 
     const before = points;
-    const after = before + totalSellPoints;
-
-    await supabase
-      .from("user_points")
-      .update({ points: after })
-      .eq("user_id", user.id);
 
     const { error: sellError } = await supabase
   .from("pull_results")
@@ -225,9 +225,10 @@ if (sellError) {
   return;
 }
 
-    setPoints(after);
+    await addPoints(totalSellPoints, "card_sell");
+
     setPointBefore(before);
-    setPointAfter(after);
+    setPointAfter(before + totalSellPoints);
     setResultOpen(true);
     setMessage("");
 
@@ -248,11 +249,11 @@ if (sellError) {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* TOP BAR */}
-        <TopBar />
+    <main className="min-h-screen bg-zinc-950 text-white pb-6">
+      {/* TOP BAR */}
+      <TopBar />
 
+      <div className="max-w-5xl mx-auto px-6">
         <h1 className="text-3xl font-bold mb-4">Inventory</h1>
 
         {message && <p className="text-zinc-300 mb-4">{message}</p>}

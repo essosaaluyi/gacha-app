@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 350" role="img" aria-labelledby="title desc">
+  <title id="title">Destiny Wars lower cabinet LED panel — powered on</title>
+  <desc id="desc">Original blackened glass pachislot lower panel with restrained teal and amber LEDs, dark fantasy etching, and a central Destiny Wars title plate.</desc>
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#171b20"/>
+      <stop offset=".18" stop-color="#0a0d11"/>
+      <stop offset=".62" stop-color="#101419"/>
+      <stop offset="1" stop-color="#050608"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#343942"/>
+      <stop offset=".22" stop-color="#0c0e12"/>
+      <stop offset=".5" stop-color="#252a31"/>
+      <stop offset=".78" stop-color="#080a0d"/>
+      <stop offset="1" stop-color="#323741"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#132b2e"/>
+      <stop offset=".22" stop-color="#071316"/>
+      <stop offset=".7" stop-color="#081113"/>
+      <stop offset="1" stop-color="#030708"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#594015"/>
+      <stop offset=".2" stop-color="#d5ae59"/>
+      <stop offset=".48" stop-color="#f4dda0"/>
+      <stop offset=".72" stop-color="#bd8b36"/>
+      <stop offset="1" stop-color="#4e3712"/>
+    </linearGradient>
+    <linearGradient id="titleGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff1bd"/>
+      <stop offset=".42" stop-color="#cba04d"/>
+      <stop offset="1" stop-color="#78521e"/>
+    </linearGradient>
+    <linearGradient id="cyanRail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#113c3d" stop-opacity="0"/>
+      <stop offset=".18" stop-color="#42d7cc" stop-opacity=".45"/>
+      <stop offset=".5" stop-color="#9dfcff" stop-opacity=".9"/>
+      <stop offset=".82" stop-color="#42d7cc" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#113c3d" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="centerBloom">
+      <stop offset="0" stop-color="#34d6cf" stop-opacity=".18"/>
+      <stop offset=".45" stop-color="#1b7674" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="scan" width="7" height="7" patternUnits="userSpaceOnUse">
+      <path d="M0 6.5H7" stroke="#d9ffff" stroke-opacity=".022"/>
+    </pattern>
+    <pattern id="micro" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M0 16H11L16 11V0M32 16H21L16 21V32" fill="none" stroke="#78eee4" stroke-opacity=".045" stroke-width="1"/>
+      <circle cx="16" cy="16" r="1.4" fill="#d9fffb" fill-opacity=".09"/>
+    </pattern>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" seed="19" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 .055 0"/>
+      <feBlend in="SourceGraphic" mode="soft-light"/>
+    </filter>
+    <filter id="tealGlow" x="-100%" y="-200%" width="300%" height="500%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="goldGlow" x="-100%" y="-200%" width="300%" height="500%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="windowClip">
+      <path d="M374 38L405 12H1515L1546 38V317L1518 340H402L374 317Z"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1920" height="350" fill="url(#base)"/>
+  <rect width="1920" height="350" fill="url(#scan)"/>
+  <g filter="url(#grain)">
+    <path d="M0 0H1920V51H1562L1535 28H385L358 51H0Z" fill="url(#metal)" stroke="#050607" stroke-width="2"/>
+    <path d="M0 350V52H344L368 76V318L339 350Z" fill="url(#metal)" stroke="#020304" stroke-width="3"/>
+    <path d="M1920 350V52H1576L1552 76V318L1581 350Z" fill="url(#metal)" stroke="#020304" stroke-width="3"/>
+    <path d="M349 350L377 322H1543L1571 350Z" fill="url(#metal)" stroke="#030405" stroke-width="3"/>
+  </g>
+
+  <path d="M374 38L405 12H1515L1546 38V317L1518 340H402L374 317Z" fill="url(#glass)" stroke="#091012" stroke-width="6"/>
+  <path d="M383 42L410 20H1510L1537 42V311L1512 331H408L383 311Z" fill="none" stroke="url(#gold)" stroke-width="2" opacity=".82"/>
+  <g clip-path="url(#windowClip)">
+    <rect x="374" y="12" width="1172" height="328" fill="url(#micro)"/>
+    <ellipse cx="960" cy="208" rx="520" ry="255" fill="url(#centerBloom)"/>
+    <path d="M430 -24L840 350H640L310 45Z" fill="#fff" opacity=".025"/>
+    <path d="M1060 -35L1430 350H1335L980 22Z" fill="#fff" opacity=".018"/>
+    <path d="M385 88H1535M385 262H1535" stroke="url(#cyanRail)" stroke-width="1" opacity=".7"/>
+  </g>
+
+  <!-- Quiet fantasy etching: readable only as cabinet texture beneath live cards. -->
+  <g fill="none" stroke="#83c8bf" stroke-width="2" opacity=".095">
+    <path d="M523 293C552 247 574 210 572 166C596 183 612 205 615 238C635 214 656 202 687 200C661 230 655 263 668 298M540 300L576 255L600 302"/>
+    <path d="M1397 294C1368 244 1347 205 1353 158C1325 182 1310 207 1309 240C1285 213 1262 201 1233 202C1260 231 1267 263 1252 298M1380 300L1343 254L1319 301"/>
+    <path d="M686 309C724 276 748 246 757 211M1234 309C1196 276 1172 246 1163 211" stroke-dasharray="4 8"/>
+  </g>
+
+  <!-- Upper marquee rail. -->
+  <path d="M53 21H341L365 44H1555L1579 21H1867" fill="none" stroke="#4e3c1c" stroke-width="9"/>
+  <path d="M53 21H341L365 44H1555L1579 21H1867" fill="none" stroke="url(#gold)" stroke-width="2"/>
+  <g filter="url(#tealGlow)" fill="#72f4ed">
+    <rect x="438" y="39" width="78" height="4" rx="2" opacity=".58"/>
+    <rect x="548" y="39" width="118" height="4" rx="2" opacity=".76"/>
+    <rect x="704" y="39" width="165" height="4" rx="2" opacity=".9"/>
+    <rect x="897" y="39" width="126" height="4" rx="2" opacity="1"/>
+    <rect x="1051" y="39" width="165" height="4" rx="2" opacity=".9"/>
+    <rect x="1254" y="39" width="118" height="4" rx="2" opacity=".76"/>
+    <rect x="1404" y="39" width="78" height="4" rx="2" opacity=".58"/>
+  </g>
+
+  <!-- Side keyed light windows remain outside draw/table/hand focus areas. -->
+  <g>
+    <g transform="translate(350 92)">
+      <path d="M0 12L12 0H57L69 12V43L57 55H12L0 43Z" fill="#05090a" stroke="#715726" stroke-width="2"/>
+      <rect x="13" y="16" width="43" height="23" rx="3" fill="#41d9d1" opacity=".7" filter="url(#tealGlow)"/>
+      <path d="M18 20H51" stroke="#d9ffff" stroke-width="2" opacity=".7"/>
+    </g>
+    <g transform="translate(1501 92)">
+      <path d="M0 12L12 0H57L69 12V43L57 55H12L0 43Z" fill="#05090a" stroke="#715726" stroke-width="2"/>
+      <rect x="13" y="16" width="43" height="23" rx="3" fill="#41d9d1" opacity=".7" filter="url(#tealGlow)"/>
+      <path d="M18 20H51" stroke="#d9ffff" stroke-width="2" opacity=".7"/>
+    </g>
+  </g>
+
+  <!-- Low-energy circuit routes stop before the live card focus. -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M35 103H184L215 134H327" stroke="#375b57" stroke-width="5" opacity=".45"/>
+    <path d="M35 103H184L215 134H327" stroke="#4de8d2" stroke-width="1" opacity=".55" filter="url(#tealGlow)"/>
+    <path d="M35 249H215L247 218H329" stroke="#66512a" stroke-width="5" opacity=".45"/>
+    <path d="M35 249H215L247 218H329" stroke="#e0ad4c" stroke-width="1" opacity=".52" filter="url(#goldGlow)"/>
+    <path d="M1885 103H1736L1705 134H1593" stroke="#375b57" stroke-width="5" opacity=".45"/>
+    <path d="M1885 103H1736L1705 134H1593" stroke="#4de8d2" stroke-width="1" opacity=".55" filter="url(#tealGlow)"/>
+    <path d="M1885 249H1705L1673 218H1591" stroke="#66512a" stroke-width="5" opacity=".45"/>
+    <path d="M1885 249H1705L1673 218H1591" stroke="#e0ad4c" stroke-width="1" opacity=".52" filter="url(#goldGlow)"/>
+  </g>
+
+  <!-- Original Destiny Wars title/emblem plate; intentionally restrained beneath cards. -->
+  <g transform="translate(734 238)">
+    <path d="M0 26L26 0H426L452 26V88L426 112H26L0 88Z" fill="#06090b" fill-opacity=".84" stroke="#1d292c" stroke-width="5"/>
+    <path d="M9 30L30 9H422L443 30V83L422 103H30L9 83Z" fill="none" stroke="url(#gold)" stroke-width="2" opacity=".72"/>
+    <g transform="translate(226 25)" fill="none" stroke="#7feee7" stroke-width="2" opacity=".78" filter="url(#tealGlow)">
+      <path d="M0 -17L10 -5L0 7L-10 -5Z"/>
+      <path d="M-35 0L-18 14L0 7L18 14L35 0"/>
+      <path d="M-23 20L0 7L23 20"/>
+    </g>
+    <text x="226" y="71" text-anchor="middle" fill="url(#titleGold)" stroke="#25170a" stroke-width="1.2" paint-order="stroke" font-family="Cinzel, Georgia, serif" font-size="34" font-weight="800" letter-spacing="6">DESTINY WARS</text>
+    <text x="226" y="92" text-anchor="middle" fill="#79c8c1" opacity=".63" font-family="'Share Tech Mono', Consolas, monospace" font-size="9" letter-spacing="5">FATE CIRCUIT / ARMED</text>
+  </g>
+
+  <!-- Hardware and edge retention. -->
+  <g fill="#08090b" stroke="#6d5529" stroke-width="2">
+    <circle cx="30" cy="28" r="8"/><circle cx="1890" cy="28" r="8"/>
+    <circle cx="30" cy="322" r="8"/><circle cx="1890" cy="322" r="8"/>
+    <circle cx="356" cy="332" r="6"/><circle cx="1564" cy="332" r="6"/>
+  </g>
+  <g stroke="#b58b42" stroke-width="1" opacity=".65">
+    <path d="M25 28H35M30 23V33M1885 28H1895M1890 23V33M25 322H35M30 317V327M1885 322H1895M1890 317V327"/>
+  </g>
+  <path d="M0 346H1920" stroke="#ad8642" stroke-width="2" opacity=".52"/>
+</svg>

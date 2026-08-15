@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./public/images/**)",
+      "Read(./public/videos/**)",
+      "Read(./public/audio/**)",
+      "Read(./public/previews/**)",
+      "Read(./node_modules/**)",
+      "Read(./.next/**)",
+      "Read(./out/**)",
+      "Read(./build/**)",
+      "Read(./outputs/**)",
+      "Read(./output/**)",
+      "Read(./.claude/worktrees/**)",
+      "Read(./game-config/*.xlsx)",
+      "Read(**/*.png)",
+      "Read(**/*.webp)",
+      "Read(**/*.jpg)",
+      "Read(**/*.mp4)",
+      "Read(**/*.mp3)",
+      "Read(**/*.wav)",
+      "Read(**/*.psd)"
+    ]
+  }
+}

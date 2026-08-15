@@ -1,0 +1,402 @@
+[
+  {
+    "url": "/",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "NEWS",
+      "font": "Arial",
+      "size": "18px",
+      "weight": "700",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "BGM: OFF",
+        "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)",
+        "radius": "12px",
+        "font": "Arial"
+      },
+      {
+        "text": "Volume",
+        "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)",
+        "radius": "12px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "16px",
+      "border": "oklab(0.999994 0.0000455678 0.0000200868 / 0.2)",
+      "bg": "oklab(0 0 0 / 0.55)"
+    },
+    "pageHeight": 934
+  },
+  {
+    "url": "/menu",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": null,
+    "buttons": [
+      {
+        "text": "Daily Gift",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Gift Box",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Login",
+        "bg": "rgba(255, 255, 255, 0.08)",
+        "radius": "6px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "16px",
+      "border": "rgb(255, 255, 255)",
+      "bg": "rgba(0, 0, 0, 0)"
+    },
+    "pageHeight": 982
+  },
+  {
+    "url": "/gacha",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "TODAY'S LINEUP",
+      "font": "Arial",
+      "size": "18px",
+      "weight": "900",
+      "color": "lab(96.1634 0.0993013 -0.364029)"
+    },
+    "buttons": [
+      {
+        "text": "Daily Gift",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Gift Box",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Login",
+        "bg": "rgba(255, 255, 255, 0.08)",
+        "radius": "6px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "16px",
+      "border": "rgb(255, 255, 255)",
+      "bg": "rgba(0, 0, 0, 0)"
+    },
+    "pageHeight": 1346
+  },
+  {
+    "url": "/battle",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "Battle Log",
+      "font": "Arial",
+      "size": "18px",
+      "weight": "700",
+      "color": "lab(83.2664 8.65132 106.895)"
+    },
+    "buttons": [
+      {
+        "text": "Quit Game",
+        "bg": "lab(48.4493 77.4328 61.5452)",
+        "radius": "12px",
+        "font": "Arial"
+      },
+      {
+        "text": "BGM: OFF",
+        "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)",
+        "radius": "12px",
+        "font": "Arial"
+      },
+      {
+        "text": "Volume",
+        "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)",
+        "radius": "12px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "16px",
+      "border": "lab(26.8019 1.35386 -4.68303)",
+      "bg": "rgb(0, 0, 0)"
+    },
+    "pageHeight": 850
+  },
+  {
+    "url": "/inventory",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "Inventory",
+      "font": "Arial",
+      "size": "30px",
+      "weight": "700",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "Daily Gift",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Gift Box",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Login",
+        "bg": "rgba(255, 255, 255, 0.08)",
+        "radius": "6px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "12px",
+      "border": "lab(26.8019 1.35386 -4.68303)",
+      "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)"
+    },
+    "pageHeight": 934
+  },
+  {
+    "url": "/history",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "Pull History",
+      "font": "Arial",
+      "size": "30px",
+      "weight": "700",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "Daily Gift",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Gift Box",
+        "bg": "rgba(10, 15, 25, 0.66)",
+        "radius": "6px",
+        "font": "Arial"
+      },
+      {
+        "text": "Login",
+        "bg": "rgba(255, 255, 255, 0.08)",
+        "radius": "6px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "12px",
+      "border": "lab(26.8019 1.35386 -4.68303)",
+      "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)"
+    },
+    "pageHeight": 934
+  },
+  {
+    "url": "/giftbox",
+    "bodyBg": "rgb(0, 0, 0)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "404",
+      "font": "system-ui",
+      "size": "24px",
+      "weight": "500",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "BGM: OFF",
+        "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)",
+        "radius": "12px",
+        "font": "Arial"
+      },
+      {
+        "text": "Volume",
+        "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)",
+        "radius": "12px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "12px",
+      "border": "lab(26.8019 1.35386 -4.68303)",
+      "bg": "oklab(0.209999 0.00163992 -0.00576563 / 0.8)"
+    },
+    "pageHeight": 934
+  },
+  {
+    "url": "/rules",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "Rules / Odds / Point Rules",
+      "font": "Arial",
+      "size": "54.64px",
+      "weight": "400",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "How To Play",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Rules / Odds",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Support",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "10px",
+      "border": "rgba(45, 212, 191, 0.18)",
+      "bg": "rgba(0, 0, 0, 0)"
+    },
+    "pageHeight": 2558
+  },
+  {
+    "url": "/how-to-play",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "How To Play",
+      "font": "Arial",
+      "size": "54.64px",
+      "weight": "400",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "How To Play",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Rules / Odds",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Support",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "10px",
+      "border": "rgb(248, 250, 252)",
+      "bg": "rgba(8, 12, 24, 0.88)"
+    },
+    "pageHeight": 2246
+  },
+  {
+    "url": "/support",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "Support / Contact",
+      "font": "Arial",
+      "size": "54.64px",
+      "weight": "400",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "How To Play",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Rules / Odds",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Support",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "10px",
+      "border": "rgb(248, 250, 252)",
+      "bg": "rgba(8, 12, 24, 0.88)"
+    },
+    "pageHeight": 2903
+  },
+  {
+    "url": "/privacy",
+    "bodyBg": "rgb(10, 10, 10)",
+    "bodyFont": "Arial",
+    "heading": {
+      "text": "Privacy Policy",
+      "font": "Arial",
+      "size": "54.64px",
+      "weight": "400",
+      "color": "rgb(255, 255, 255)"
+    },
+    "buttons": [
+      {
+        "text": "How To Play",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Rules / Odds",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      },
+      {
+        "text": "Support",
+        "bg": "rgba(255, 255, 255, 0.04)",
+        "radius": "7px",
+        "font": "Arial"
+      }
+    ],
+    "panelSample": {
+      "radius": "10px",
+      "border": "rgb(248, 250, 252)",
+      "bg": "rgba(15, 18, 28, 0.92)"
+    },
+    "pageHeight": 2386
+  }
+]

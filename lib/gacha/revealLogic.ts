@@ -34,6 +34,14 @@ export function weightedPick(options: { video: string; weight: number }[]) {
 export async function chooseRevealVideo(results: Card[]) {
   const settings = await getSettingMap();
 
+  return chooseRevealVideoFromSettings(results, settings);
+}
+
+export function chooseRevealVideoFromSettings(
+  results: Card[],
+  settings: Record<string, number>
+) {
+
   const hasUR = results.some((card) => card.rarity === "UR");
   const hasSSR = results.some((card) => card.rarity === "SSR");
 
@@ -76,6 +84,15 @@ export async function getFreezeSettings() {
   const settings = await getSettingMap();
 
   return {
+    freezeChance: settings.reveal_freeze_chance ?? 25,
+  };
+}
+
+export async function chooseRevealPlan(results: Card[]) {
+  const settings = await getSettingMap();
+
+  return {
+    video: chooseRevealVideoFromSettings(results, settings),
     freezeChance: settings.reveal_freeze_chance ?? 25,
   };
 }

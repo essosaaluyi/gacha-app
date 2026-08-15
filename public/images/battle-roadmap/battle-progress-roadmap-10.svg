@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="72" viewBox="0 0 720 72" fill="none">
+  <defs>
+    <linearGradient id="outerMetal" x1="24" y1="10" x2="696" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#201925"/>
+      <stop offset=".12" stop-color="#D7A85A"/>
+      <stop offset=".22" stop-color="#39281B"/>
+      <stop offset=".5" stop-color="#0E1119"/>
+      <stop offset=".78" stop-color="#39281B"/>
+      <stop offset=".9" stop-color="#D7A85A"/>
+      <stop offset="1" stop-color="#19131D"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="44" y1="16" x2="676" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101827"/>
+      <stop offset=".22" stop-color="#1F3650"/>
+      <stop offset=".5" stop-color="#142536"/>
+      <stop offset=".82" stop-color="#101827"/>
+      <stop offset="1" stop-color="#080B12"/>
+    </linearGradient>
+    <linearGradient id="liquid" x1="51" y1="25" x2="244" y2="47" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#46DCE9"/>
+      <stop offset=".4" stop-color="#2E82E6"/>
+      <stop offset=".72" stop-color="#6E53D7"/>
+      <stop offset="1" stop-color="#A66CFF"/>
+    </linearGradient>
+    <linearGradient id="emptyCell" x1="0" y1="23" x2="0" y2="49" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2A3443"/>
+      <stop offset=".5" stop-color="#131A25"/>
+      <stop offset="1" stop-color="#05070D"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#FFFFFF" stop-opacity=".72"/>
+      <stop offset=".35" stop-color="#FFFFFF" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-4%" y="-40%" width="108%" height="180%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#02040A" flood-opacity=".8"/>
+    </filter>
+  </defs>
+  <rect width="720" height="72" fill="none"/>
+  <g filter="url(#shadow)">
+    <path d="M28 13H692L705 36 692 59H28L15 36 28 13Z" fill="url(#outerMetal)"/>
+    <path d="M35 18H685L694 36 685 54H35L26 36 35 18Z" fill="#05070D"/>
+    <path d="M44 22H676L683 36 676 50H44L37 36 44 22Z" fill="url(#glass)" stroke="#6FEAFF" stroke-opacity=".58" stroke-width="1.4"/>
+    <path d="M51 26H244L250 36 244 46H51L45 36 51 26Z" fill="url(#liquid)"/>
+    <path d="M45 24H675L680 34H40L45 24Z" fill="url(#shine)" opacity=".64"/>
+    <path d="M47 47H674" stroke="#01040A" stroke-opacity=".8" stroke-width="2"/>
+    <path d="M51 26H244L250 36 244 46H51L45 36 51 26Z" stroke="#D7FEFF" stroke-opacity=".52" stroke-width="1"/>
+    <g stroke="#02050A" stroke-opacity=".7" stroke-width="2">
+      <path d="M103 23V50"/>
+      <path d="M166 23V50"/>
+      <path d="M229 23V50"/>
+      <path d="M292 23V50"/>
+      <path d="M355 23V50"/>
+      <path d="M418 23V50"/>
+      <path d="M481 23V50"/>
+      <path d="M544 23V50"/>
+      <path d="M607 23V50"/>
+    </g>
+    <g stroke="#9BD8F2" stroke-opacity=".22" stroke-width="1">
+      <path d="M103 25V48"/>
+      <path d="M166 25V48"/>
+      <path d="M229 25V48"/>
+      <path d="M292 25V48"/>
+      <path d="M355 25V48"/>
+      <path d="M418 25V48"/>
+      <path d="M481 25V48"/>
+      <path d="M544 25V48"/>
+      <path d="M607 25V48"/>
+    </g>
+    <g fill="#DCECF5" font-family="Georgia, 'Times New Roman', serif" font-size="12" font-weight="700" text-anchor="middle">
+      <text x="73" y="40">1</text>
+      <text x="135" y="40">2</text>
+      <text x="198" y="40">3</text>
+      <text x="261" y="40" opacity=".72">4</text>
+      <text x="324" y="40" opacity=".72">5</text>
+      <text x="387" y="40" opacity=".72">6</text>
+      <text x="450" y="40" opacity=".72">7</text>
+      <text x="513" y="40" opacity=".72">8</text>
+      <text x="576" y="40" opacity=".72">9</text>
+      <text x="639" y="40" fill="#F5C76A">10</text>
+    </g>
+    <path d="M190 18 205 36 190 54 212 48 223 36 212 24 190 18Z" fill="#FFF9C8" opacity=".18"/>
+    <path d="M631 27 648 36 631 45 639 36 631 27Z" fill="#F5C76A" opacity=".75"/>
+  </g>
+</svg>

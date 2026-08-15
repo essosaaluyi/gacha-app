@@ -1,0 +1,54 @@
+/* Kept separate so battle-effect iterations are not trapped behind the large
+   global stylesheet's development cache. */
+.attack-land-sweep-player {
+  animation-duration: 3000ms;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+.attack-land-sweep-enemy {
+  animation-duration: 3000ms;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+.attack-land-struggle .attack-land-impact-divider {
+  animation-duration: 3000ms;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+.attack-land-struggle .attack-land-white-flash {
+  animation-duration: 3000ms;
+}
+
+.attack-land-radial-speed-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  mix-blend-mode: plus-lighter;
+}
+
+.attack-land-radial-speed-overlay video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  filter: contrast(1.2) brightness(1.12) saturate(1.08);
+}
+
+.attack-land-struggle .attack-land-radial-speed-overlay {
+  opacity: 0.78;
+  animation: attackLandRadialOverlayIn 260ms ease-out both;
+}
+
+.attack-land-resolve .attack-land-radial-speed-overlay {
+  display: none;
+}
+
+@keyframes attackLandRadialOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 0.78; }
+}

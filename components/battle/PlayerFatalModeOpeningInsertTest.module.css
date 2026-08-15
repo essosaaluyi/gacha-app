@@ -1,0 +1,29 @@
+/* Player fatal-mode opening insert.
+ *
+ * This used to be ~640 lines compositing the insert live out of layered
+ * plates, shards, an energy divider and an SVG chromatic-aberration pass. All
+ * of that is gone: the insert is now an authored frame sequence painted to a
+ * single canvas, so the only styling left is placing that canvas over the
+ * cabinet screen. See PlayerFatalModeOpeningInsertTest.tsx.
+ */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9997;
+  overflow: hidden;
+  pointer-events: none;
+  isolation: isolate;
+  contain: layout paint;
+  background: transparent;
+}
+
+/* The frames are authored at the screen's own 1250x618, so this is a 1:1 fit
+   at the design size and scales with the cabinet on any other. */
+.sequenceCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}

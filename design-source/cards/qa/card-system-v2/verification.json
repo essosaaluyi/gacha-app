@@ -1,0 +1,372 @@
+{
+  "cardSize": [
+    600,
+    900
+  ],
+  "enemyBackCreated": false,
+  "playerFronts": {
+    "R1": {
+      "png": "public/images/cards/player/R1/card.png",
+      "webp": "public/images/cards/player/R1/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "5d0e935efc6948ee7d8068bbfce7195ae3240f11cb92171951de64f94ee1156a",
+      "webpSha256": "61c6b9a34747caefb05c71b87f85a4fe7048367bdb240cbe2ba2ea7ad08fbf3c",
+      "artSource": "public/images/cards/player/R1/references/triplets-baby-dragon-original-polished-premium-hdr-v1.png",
+      "artSourceSha256": "a52f36532f35156a85135cd4850e8577d94ea44a7498669838760c937a5a032b",
+      "artInputSize": [
+        1088,
+        1445
+      ],
+      "artPlacement": [
+        30,
+        98,
+        570,
+        655
+      ]
+    },
+    "R2": {
+      "png": "public/images/cards/player/R2/card.png",
+      "webp": "public/images/cards/player/R2/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "1fa46e107c60abd089797178513d93b4ca62b7de46807f895a27f871261cef82",
+      "webpSha256": "30c0ba5007cc900146b3a28ac7930e10e7952222308f5399fbd9e498e6d81f0b",
+      "artSource": "public/images/cards/player/R2/references/green-scale-dragon-original-polished-premium-hdr-v1.png",
+      "artSourceSha256": "220faea4160047c37b1fca1737fd2c0c94fc5255f67a9a7145e2801a16ffb117",
+      "artInputSize": [
+        1089,
+        1445
+      ],
+      "artPlacement": [
+        30,
+        98,
+        570,
+        655
+      ]
+    },
+    "R3": {
+      "png": "public/images/cards/player/R3/card.png",
+      "webp": "public/images/cards/player/R3/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "f781e6ee8e1238f390dfc5e30834c42971709c258f6d21810119e2af50208b9e",
+      "webpSha256": "bb7df76b386a66d248d3f0ea3867fa085481dd7e00221b2a42d386c11d38fb6e",
+      "artSource": "public/images/cards/player/R3/references/dragon-raider-original-polished-premium-hdr-v2-face-proportion.png",
+      "artSourceSha256": "70ea23df675f3de7d2e183dd4a4e378fdd9380e3b64e9fe304bbb553ba19ab1c",
+      "artInputSize": [
+        1088,
+        1445
+      ],
+      "artPlacement": [
+        30,
+        98,
+        570,
+        655
+      ]
+    },
+    "R4": {
+      "png": "public/images/cards/player/R4/card.png",
+      "webp": "public/images/cards/player/R4/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "40d9af4e8ae17cc528deaf8c84e95959d9e0baa6b8d3a57d885773c6f6307584",
+      "webpSha256": "24de0e2255b6a86b6b2a0300a976fe81ca3806a82fac582dfbb014b7532ee936",
+      "artSource": "public/images/cards/player/R4/references/young-knight-original-faithful-polished-premium-hdr-v2.png",
+      "artSourceSha256": "d072fde3220b2da1f5b12411de6b9ee5cfc8add14ac7e98a79763febbb2b62ce",
+      "artInputSize": [
+        1086,
+        1448
+      ],
+      "artPlacement": [
+        30,
+        98,
+        570,
+        655
+      ]
+    },
+    "SR1": {
+      "png": "public/images/cards/player/SR1/card.png",
+      "webp": "public/images/cards/player/SR1/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SR1/card-redesign-polished-v1.png",
+      "approvedCompositeSha256": "c6b0fec4d83b30e69fb84b61ec79b485ea2f934ca7992974a9e8fb8fe4e5e423",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "0f153ea05a6962b32431e9395ee77d15e81d468d79e2df4b4327224b83d69e09",
+      "webpSha256": "07c347bb1d8d786d00343f0e6039cae0fcb3bc5639b2c0d873e6c240872ca24d"
+    },
+    "SR2": {
+      "png": "public/images/cards/player/SR2/card.png",
+      "webp": "public/images/cards/player/SR2/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SR2/card-redesign-polished-v1.png",
+      "approvedCompositeSha256": "7d11c6daab844c0c189940b5793b0d33fe00f132c07dd52c05ecad40f7091541",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "ee898bdbb45e54fcd34ac8881e3c3aad7c87726d619d3b67498469dc30c4277d",
+      "webpSha256": "35c3405255b921621c44ba4b2a9084e263b1f50cc677a0307b13ab5cc3c4e801"
+    },
+    "SR3": {
+      "png": "public/images/cards/player/SR3/card.png",
+      "webp": "public/images/cards/player/SR3/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SR3/card-redesign-polished-v2.png",
+      "approvedCompositeSha256": "184f13f4f60db2f57b644848a22d945ce45b1a91995604a89c2115c322aaf3d7",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "10b1690f63a8b4ae271bdb1220b65ac93efb5f05b96dad2c1e58cfefd39ca554",
+      "webpSha256": "ae54c863b6f223843c2871249008ac1b4b731d1f7afa1b01a07ba42a8dafb4be"
+    },
+    "SR4": {
+      "png": "public/images/cards/player/SR4/card.png",
+      "webp": "public/images/cards/player/SR4/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SR4/card-redesign-polished-v2.png",
+      "approvedCompositeSha256": "0d96fdb926f06364cf4102a2e46ea83460c72d47a7317a7372b46edf044e97a0",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "34d117604184ead4d890cf9fac78ac1ab34bc90dc1ac85a11c9228cd083b7f56",
+      "webpSha256": "d42ef73ee3a2a3f1ceb52d34d0d710d3dc3beba20753b15f7917b130b2f28f84"
+    },
+    "SSR1": {
+      "png": "public/images/cards/player/SSR1/card.png",
+      "webp": "public/images/cards/player/SSR1/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SSR1/card-redesign-polished-v3.png",
+      "approvedCompositeSha256": "daedda8ca3fcb19c50b6064d489fd271e2461516319b716ce09ebe60f4258032",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "a9a371145c9bde365864738cac596c75d42f65000125507c26172b2134de41bb",
+      "webpSha256": "59ae4a763ab6a08b9174fb6e44913ebaf4967974dd76bca1312fd8501198d84d"
+    },
+    "SSR2": {
+      "png": "public/images/cards/player/SSR2/card.png",
+      "webp": "public/images/cards/player/SSR2/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SSR2/card-redesign-polished-v3.png",
+      "approvedCompositeSha256": "5a0af9f7fd423f75c0987cced3daaf5911bea6370aed77a1eeb7279a86fb61f5",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "bfc49546afa1baf1d60ac8cc2055a7178d5c3108d16b8b9d5fb7e7b2e9aefc1e",
+      "webpSha256": "e04d39a855bf3ca215ae6e5a86a40e4ae364fb0e7981f63d441ec2aacbf43388"
+    },
+    "SSR3": {
+      "png": "public/images/cards/player/SSR3/card.png",
+      "webp": "public/images/cards/player/SSR3/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SSR3/card-redesign-polished-v2.png",
+      "approvedCompositeSha256": "29565281eee3d11e1be2ae899e009b7ea2ac3cd6418230bd4ccab71e3df6a01e",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "3b23e114d0a4c44bc8a8eec64e968df5fdbbc6af4a3fd27bb97006464ab2cc4c",
+      "webpSha256": "f824477f351edd536db000d8af2f4faa04fa08a36e53b128c8cdec4aa666cfca"
+    },
+    "SSR4": {
+      "png": "public/images/cards/player/SSR4/card.png",
+      "webp": "public/images/cards/player/SSR4/card.webp",
+      "width": 600,
+      "height": 900,
+      "approvedComposite": "public/images/cards/player/SSR4/card-redesign-polished-v3.png",
+      "approvedCompositeSha256": "7b5bc0778158476c3b12a3b1ebba689c5345a301b355b831e6a6916b79bab16f",
+      "approvedCompositeInputSize": [
+        1024,
+        1536
+      ],
+      "pngSha256": "a6e452d4529bde6055527c40cea28ad9d009b530662bb04afb8b7635019da950",
+      "webpSha256": "20ea80b23580fb7014f772a111d37315bc0ac18af0c27ae36d1fc5ef0bd4f377"
+    },
+    "UR1": {
+      "png": "public/images/cards/player/UR1/card.png",
+      "webp": "public/images/cards/player/UR1/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "ba51086127d7f4f4cf91468c281b3a127c144ecf0c40d43508c418c111d99161",
+      "webpSha256": "6963208771a3b886804f50b280af0948b25ec5b28f7d46e62fd60f0cb3b73517"
+    },
+    "UR2": {
+      "png": "public/images/cards/player/UR2/card.png",
+      "webp": "public/images/cards/player/UR2/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "1967cc6d22a86b2a89f99361bfbc3e2d1d29536c70fc812169018432a6430bfc",
+      "webpSha256": "ce635f998502de0aeae34eb06614edf96ce5a453ce0202da6ec594bab9486a90"
+    },
+    "UR3": {
+      "png": "public/images/cards/player/UR3/card.png",
+      "webp": "public/images/cards/player/UR3/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "406f42a0f09ce3514f6f876c408fbd918ac799747dfe7b166cbacea2c45b1481",
+      "webpSha256": "085dfb5e774bf88fa01b2d9568726c24ddd9e9043eb7add7d452ddb83680669e"
+    }
+  },
+  "enemyFronts": {
+    "enemy1": {
+      "png": "public/images/cards/enemy/enemy1/card.png",
+      "webp": "public/images/cards/enemy/enemy1/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "5597d7e7e53b6ac8b1ccdf74a4eae63a3a4750750fe18e9e100576c5078dbda4",
+      "webpSha256": "84b7efa206adb989ee552dee0211a11dac6b2364d76b737490dc0b19a48594fc"
+    },
+    "enemy2": {
+      "png": "public/images/cards/enemy/enemy2/card.png",
+      "webp": "public/images/cards/enemy/enemy2/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "3faa98a07b8b8bcf508022a9412c3b00fd293d8908d78647827394c2f9732406",
+      "webpSha256": "e9c048824ee1a37f8d311422a169888cd4425b71128a6e869bdf42587908ebba"
+    },
+    "enemy3": {
+      "png": "public/images/cards/enemy/enemy3/card.png",
+      "webp": "public/images/cards/enemy/enemy3/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "5deef5b873b44000080aacca9de94f94eadf804b169b1b402ba9a9b58ec3bfb4",
+      "webpSha256": "0b5ae66d1635cfadc9fe3a225df3802f43c24ab010452161fb4593b67ee0d99c"
+    },
+    "enemy4": {
+      "png": "public/images/cards/enemy/enemy4/card.png",
+      "webp": "public/images/cards/enemy/enemy4/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "e965dc4cf71898e70ba72f0ba7b48b75b21b82b5c1565bb79a37b1787811ac17",
+      "webpSha256": "ea087f21938202bdbb602fe69ebecc24764a532815777576bd5caa1ba807c28f"
+    },
+    "enemy5": {
+      "png": "public/images/cards/enemy/enemy5/card.png",
+      "webp": "public/images/cards/enemy/enemy5/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "5981317111e0c268028e4059ef4a05d4d8270b46d659da7f45dc14c6e258387e",
+      "webpSha256": "ccf8db2507ce090a50450cfa0ff3c27743ebef9826829a23e4ba94ec80f76d82"
+    },
+    "enemy6": {
+      "png": "public/images/cards/enemy/enemy6/card.png",
+      "webp": "public/images/cards/enemy/enemy6/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "069b5811f131fd6763f1b88a3e044fc8d3db69d2a928b907a90fdaa50260aa52",
+      "webpSha256": "0f3010ca750cd392633a095b6bece5e8a65c5d1abdbba5b3fc5816158b7699d8"
+    },
+    "enemy7": {
+      "png": "public/images/cards/enemy/enemy7/card.png",
+      "webp": "public/images/cards/enemy/enemy7/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "e4b1f1de79ddbb5095f5df420ad4c64132206b8e4b12f39ff32ab5fa12707502",
+      "webpSha256": "f44136aa2eb0153611135d7433ad4682d48e3012b1b15ee33024b2b2a189fae7"
+    },
+    "enemy8": {
+      "png": "public/images/cards/enemy/enemy8/card.png",
+      "webp": "public/images/cards/enemy/enemy8/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "eccc803d8d504a71e57e02909a1d59d57e80a42fce8bfd1f3da154a60cce0d8a",
+      "webpSha256": "623280f1d215e801ca9b7c360f6423dc5eb3ec15409adf4770dbd755cd48f7c9"
+    },
+    "enemy9": {
+      "png": "public/images/cards/enemy/enemy9/card.png",
+      "webp": "public/images/cards/enemy/enemy9/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "ac532bb35fdc8b6ee2f58a7989e8ed18f6dd3306254f35c013d741fb40da0f96",
+      "webpSha256": "a6c40d465a6dd71cb075bfd2c4c472d3c0618ce1295c65fc9bad85091389c835"
+    },
+    "enemy10": {
+      "png": "public/images/cards/enemy/enemy10/card.png",
+      "webp": "public/images/cards/enemy/enemy10/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "cfc45c4877939cf70c4818098f526af7d085521c96beaa9344d2ee98ff182593",
+      "webpSha256": "081bb574fce10807681d8ee12b4cb487a8eaf9be0494987b6df2e95905d1d555"
+    },
+    "enemy11": {
+      "png": "public/images/cards/enemy/enemy11/card.png",
+      "webp": "public/images/cards/enemy/enemy11/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "1c8c4334ab293641d068eb19ccd69e5fe6e373d725e6096a095b27bc4054fa2e",
+      "webpSha256": "814996387ffd0f4d57c1c5dccfcbb73ad3df1a5fc965904fe2643029422bc2d7"
+    },
+    "enemy12": {
+      "png": "public/images/cards/enemy/enemy12/card.png",
+      "webp": "public/images/cards/enemy/enemy12/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "e1ad5be834382766b7ae6bed0823e0d237e252b30059fc328fa8a82a1a3a55c6",
+      "webpSha256": "30f7fe1c801eb31daed43157415035868018219b9e98d7ca609688e0b22f5ea3"
+    },
+    "enemy13": {
+      "png": "public/images/cards/enemy/enemy13/card.png",
+      "webp": "public/images/cards/enemy/enemy13/card.webp",
+      "width": 600,
+      "height": 900,
+      "protectedArtworkPixelExact": true,
+      "pngSha256": "f841d01bc2af9867d3cc0f57b103317ec7bd9a11bcbd086fff0da2e17c4b6cc4",
+      "webpSha256": "9a5f93c0e1314804e825a0f91b1fadea2b12590293619dce2333ce818c2118de"
+    }
+  },
+  "playerBack": {
+    "png": "public/images/cards/player/card-back.png",
+    "webp": "public/images/cards/player/card-back.webp",
+    "width": 600,
+    "height": 900,
+    "pngSha256": "ee1db75de8d52de09828094168a9b748be0438d78d8025c6cf07a889543bb024",
+    "webpSha256": "2b1c81ed0bca7a37d84cb932efae2cb4c6eaa5cb9d340e0e42d7a95d8b506ed0"
+  },
+  "qaSheets": [
+    "design-source/cards/qa/card-system-v2/all-fronts-and-player-back-grid.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-01.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-02.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-03.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-04.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-05.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-06.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-07.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-08.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-09.png",
+    "design-source/cards/qa/card-system-v2/full-size-review-10.png"
+  ]
+}

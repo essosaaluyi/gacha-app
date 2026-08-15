@@ -1,0 +1,581 @@
+.workstation {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 0;
+  color: #f8fafc;
+  background: #09111f;
+}
+
+.stageShell {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.stageHeader {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.94);
+}
+
+.stageHeader h1,
+.stageHeader p,
+.panel h2 {
+  margin: 0;
+}
+
+.stageHeader h1 {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.stageHeader p {
+  margin-top: 5px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.stageHeaderActions,
+.buttonRow {
+  display: flex;
+  gap: 8px;
+}
+
+.previewTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 6px;
+  background: rgba(2, 6, 23, 0.64);
+}
+
+.previewTabs button {
+  min-height: 30px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 11px;
+  color: #94a3b8;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.previewTabs .previewTabActive {
+  color: #f8fafc;
+  background: #2563eb;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.stageHeaderActions button,
+.buttonRow button,
+.copyButton {
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 6px;
+  padding: 0 12px;
+  color: #e2e8f0;
+  background: #172033;
+  cursor: pointer;
+}
+
+.stageHeaderActions button:hover,
+.buttonRow button:hover,
+.copyButton:hover {
+  border-color: rgba(125, 211, 252, 0.7);
+  background: #1c2a42;
+}
+
+.stageViewport {
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  overflow: auto;
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+    #07101c;
+  background-size: 32px 32px;
+}
+
+.battlePreviewStage {
+  position: relative;
+  width: 1600px;
+  height: 900px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: #000;
+  transform-origin: center center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+}
+
+.battlePreviewFrame {
+  position: absolute;
+  left: 18%;
+  top: 4%;
+  width: 60%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgb(63, 63, 70);
+  border-radius: 16px;
+  background: #000;
+}
+
+.stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  background: #9bd8f4;
+  isolation: isolate;
+  transform: scale(0.75);
+  transform-origin: top left;
+}
+
+.gameplayPlane {
+  position: absolute;
+  inset: 0;
+  /* Match the battle reveal scene: above the field gameplay, below foreground trim. */
+  z-index: 12;
+  transform: translate3d(var(--battle-gameplay-parallax-x, 0px), 0, 0);
+  transform-origin: top left;
+  will-change: transform;
+}
+
+.battlePreviewDeck {
+  position: absolute;
+  left: 18%;
+  top: 60%;
+  width: 60%;
+  height: 46%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 17% 32%, rgba(16, 185, 129, 0.1), transparent 16%),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.02));
+  border-top: 1px solid rgba(125, 211, 252, 0.08);
+}
+
+.battlePreviewLog {
+  position: absolute;
+  left: 2%;
+  bottom: 8%;
+  width: 256px;
+  min-height: 420px;
+  border: 1px solid rgba(63, 63, 70, 0.92);
+  border-radius: 12px;
+  padding: 18px 16px;
+  color: #facc15;
+  font-size: 16px;
+  font-weight: 900;
+  background: rgba(24, 24, 27, 0.9);
+  pointer-events: none;
+}
+
+.battlePreviewQuit {
+  position: absolute;
+  left: 2%;
+  top: 2%;
+  min-height: 34px;
+  border-radius: 9px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  background: #ef0000;
+  pointer-events: none;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.22) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(15, 23, 42, 0.22) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+}
+
+.stageLayer {
+  position: absolute;
+  z-index: 40;
+  display: block;
+  border: 1px solid transparent;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+  transform-origin: top left;
+  touch-action: none;
+}
+
+.stageLayer:active {
+  cursor: grabbing;
+}
+
+.stageLayerSelected {
+  border-color: #facc15;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.7);
+}
+
+.stageLayer img {
+  display: block;
+  width: 170px;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+}
+
+.characterLayer {
+  z-index: 48;
+}
+
+.characterLayer img {
+  width: var(--workstation-character-width, 330px);
+}
+
+.particleLayer {
+  width: 512px;
+  height: 512px;
+  overflow: hidden;
+  background-image: url("/images/battle-effects/mami-spawn-reveal-particles-sprite.webp");
+  background-repeat: no-repeat;
+  background-size: 600% 600%;
+}
+
+.particleLayer img {
+  display: none;
+}
+
+.burstLayer {
+  z-index: 44;
+  width: 190px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.82) 0 14%, rgba(236, 254, 255, 0.38) 32%, rgba(125, 211, 252, 0.16) 54%, transparent 72%),
+    conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.34), transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+.shadowLayer {
+  z-index: 47;
+  width: 122px;
+  height: 20px;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.42) 46%, rgba(0, 0, 0, 0.08) 72%, transparent 86%);
+  filter: blur(4px);
+}
+
+.revealCard {
+  position: absolute;
+  z-index: 44;
+  width: 142px;
+  aspect-ratio: 2 / 3;
+  transform-origin: center center;
+  filter:
+    drop-shadow(0 18px 20px rgba(0, 0, 0, 0.72))
+    drop-shadow(0 0 22px rgba(125, 211, 252, 0.5));
+}
+
+.revealCard img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.revealParticle {
+  position: absolute;
+  left: 220px;
+  top: 190px;
+  z-index: 46;
+  width: 430px;
+  aspect-ratio: 1;
+  pointer-events: none;
+  background-image: url("/images/battle-effects/mami-spawn-reveal-particles-sprite.webp");
+  background-repeat: no-repeat;
+  background-size: 600% 600%;
+  mix-blend-mode: screen;
+  animation: particlePreviewFrames 1400ms step-end infinite;
+}
+
+.revealBurst {
+  position: absolute;
+  left: 330px;
+  top: 390px;
+  z-index: 45;
+  width: 230px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.86) 0 14%, rgba(236, 254, 255, 0.42) 32%, rgba(125, 211, 252, 0.2) 54%, transparent 72%),
+    conic-gradient(from 0deg, transparent, rgba(255, 255, 255, 0.36), transparent, rgba(255, 255, 255, 0.22), transparent);
+  mix-blend-mode: screen;
+}
+
+.revealCharacterSlot {
+  position: absolute;
+  z-index: 50;
+  width: 330px;
+  height: 430px;
+  pointer-events: none;
+}
+
+.revealCharacterSlot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #facc15;
+  border-radius: 999px;
+  transform: translate(-50%, 50%);
+  background: rgba(15, 23, 42, 0.72);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.72);
+}
+
+.revealCharacter {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  filter:
+    brightness(1.06)
+    saturate(1.05)
+    drop-shadow(0 20px 18px rgba(0, 0, 0, 0.78));
+}
+
+@keyframes particlePreviewFrames {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  16% {
+    background-position: 20% 0%;
+  }
+
+  32% {
+    background-position: 40% 20%;
+  }
+
+  48% {
+    background-position: 60% 40%;
+  }
+
+  64% {
+    background-position: 80% 60%;
+  }
+
+  80%,
+  100% {
+    background-position: 100% 80%;
+  }
+}
+
+.controls {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: auto;
+  padding: 14px;
+  border-left: 1px solid rgba(148, 163, 184, 0.24);
+  background: #0f172a;
+}
+
+.panel {
+  margin-bottom: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.76);
+}
+
+.panel h2 {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.layerList {
+  display: grid;
+  gap: 7px;
+}
+
+.layerItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.layerItem button {
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 6px;
+  color: #cbd5e1;
+  text-align: left;
+  padding: 0 10px;
+  background: #111827;
+  cursor: pointer;
+}
+
+.layerItem button:hover,
+.layerItem .activeLayer {
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.72);
+  background: #1e293b;
+}
+
+.layerItem input {
+  width: 18px;
+  height: 18px;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.fields label,
+.sliderLabel,
+.uploadLabel {
+  display: grid;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.fields input,
+.sliderLabel input,
+.uploadLabel input {
+  min-width: 0;
+}
+
+.fields input {
+  height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: #f8fafc;
+  background: #111827;
+}
+
+.uploadLabel {
+  margin-top: 12px;
+}
+
+.buttonRow {
+  margin-top: 12px;
+}
+
+.sliderLabel {
+  margin-bottom: 12px;
+  grid-template-columns: 1fr;
+}
+
+.sliderLabel span {
+  color: #e2e8f0;
+  font-variant-numeric: tabular-nums;
+}
+
+.smallNote {
+  margin: 8px 0 0;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.timelineRows {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.timelineRow {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 6px;
+  padding: 5px 7px;
+  color: #cbd5e1;
+  font-size: 12px;
+  text-align: left;
+  background: #111827;
+  cursor: pointer;
+}
+
+.timelineRow:hover,
+.timelineRowActive {
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.72);
+  background: #1e293b;
+}
+
+.timelineTrack {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+}
+
+.timelineBar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22d3ee, #f0abfc);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+}
+
+.output {
+  max-height: 280px;
+  overflow: auto;
+  margin: 0 0 10px;
+  border-radius: 6px;
+  padding: 10px;
+  color: #dbeafe;
+  font-size: 11px;
+  line-height: 1.45;
+  background: #020617;
+}
+
+.copyButton {
+  width: 100%;
+}
+
+@media (max-width: 980px) {
+  .workstation {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    min-height: auto;
+    max-height: none;
+    border-left: 0;
+    border-top: 1px solid rgba(148, 163, 184, 0.24);
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "created": "2026-07-21",
+  "description": "Byte-identical reconstruction of the R1/R2 production files immediately before polished-art promotion",
+  "files": [
+    {
+      "card": "R1",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-r1-r2-promotion-2026-07-21/player/R1/card.png",
+        "webp": "design-source/cards/archive/pre-polished-r1-r2-promotion-2026-07-21/player/R1/card.webp"
+      },
+      "sha256": {
+        "png": "8fe7bbf814353e662b1abee544ffff337fcc4344a76c231f4d500b06769c08ff",
+        "webp": "ad15096b2f83d6c2d21dc7b0920938d61fbc9955f4a4c6d04ccc8bc68c6adda2"
+      }
+    },
+    {
+      "card": "R2",
+      "files": {
+        "png": "design-source/cards/archive/pre-polished-r1-r2-promotion-2026-07-21/player/R2/card.png",
+        "webp": "design-source/cards/archive/pre-polished-r1-r2-promotion-2026-07-21/player/R2/card.webp"
+      },
+      "sha256": {
+        "png": "a21eddfad3077dc6c961df7d77d775507ed4b8c3c7221bac46990d99b01bc7a8",
+        "webp": "aaa825ed4890bd073dec6b229b145655fe2a000f7f0fd7c1076f53fc1d8fa539"
+      }
+    }
+  ]
+}

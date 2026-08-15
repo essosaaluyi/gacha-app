@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 960" role="img" aria-label="Phase 1 trust foundation asset board">
+
+<defs>
+  <linearGradient id="panelGrad" x1="0" x2="0" y1="0" y2="1">
+    <stop offset="0" stop-color="#293146"/>
+    <stop offset="1" stop-color="#171425"/>
+  </linearGradient>
+  <linearGradient id="purpleGrad" x1="0" x2="1" y1="0" y2="1">
+    <stop offset="0" stop-color="#7d25c8"/>
+    <stop offset="0.55" stop-color="#c22bea"/>
+    <stop offset="1" stop-color="#4a178b"/>
+  </linearGradient>
+  <linearGradient id="paperGrad" x1="0" x2="0" y1="0" y2="1">
+    <stop offset="0" stop-color="#ece0c9"/>
+    <stop offset="1" stop-color="#c8b790"/>
+  </linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000" flood-opacity="0.45"/>
+  </filter>
+  <pattern id="circuit" width="72" height="72" patternUnits="userSpaceOnUse">
+    <path d="M8 16h20v14h22M44 8v18h18M14 54h24v-12h20" fill="none" stroke="#46e1ff" stroke-opacity="0.16" stroke-width="2"/>
+    <circle cx="28" cy="30" r="3" fill="#46e1ff" fill-opacity="0.18"/>
+    <circle cx="58" cy="42" r="3" fill="#d6a856" fill-opacity="0.2"/>
+  </pattern>
+</defs>
+
+<rect width="1280" height="960" fill="#0c0e16"/>
+<text x="48" y="58" fill="#fff6df" font-size="34" font-family="Georgia, serif" font-weight="700">Phase 1 Trust Foundation - Asset Board</text>
+<text x="48" y="92" fill="#aeb6c9" font-size="18" font-family="Arial">Arcade manual / rules console / readable legal ledger</text>
+<image href="info-bg-arcade-manual.svg" x="48" y="128" width="360" height="203"/>
+<image href="info-bg-prize-counter.svg" x="460" y="128" width="360" height="203"/>
+<image href="info-bg-legal-ledger.svg" x="872" y="128" width="360" height="203"/>
+<image href="panel-frame-manual.svg" x="48" y="380" width="300" height="200"/>
+<image href="table-frame-rules-odds.svg" x="386" y="372" width="320" height="206"/>
+<image href="document-frame-legal.svg" x="744" y="360" width="160" height="205"/>
+<image href="modal-frame-cookie-settings.svg" x="946" y="380" width="286" height="190"/>
+<image href="button-info-primary.svg" x="48" y="632" width="210" height="61"/>
+<image href="button-info-secondary.svg" x="284" y="632" width="210" height="61"/>
+<image href="button-info-quiet.svg" x="520" y="632" width="210" height="61"/>
+<image href="button-info-warning.svg" x="756" y="632" width="210" height="61"/>
+<image href="divider-circuit-line.svg" x="48" y="706" width="500" height="28"/>
+<image href="divider-ticket-teeth.svg" x="616" y="700" width="500" height="38"/>
+<image href="icon-manual.svg" x="48" y="770" width="82" height="82"/><text x="89" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">manual</text><image href="icon-rules.svg" x="160" y="770" width="82" height="82"/><text x="201" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">rules</text><image href="icon-privacy.svg" x="272" y="770" width="82" height="82"/><text x="313" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">privacy</text><image href="icon-terms.svg" x="384" y="770" width="82" height="82"/><text x="425" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">terms</text><image href="icon-support.svg" x="496" y="770" width="82" height="82"/><text x="537" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">support</text><image href="icon-cookies.svg" x="608" y="770" width="82" height="82"/><text x="649" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">cookies</text><image href="icon-legal.svg" x="720" y="770" width="82" height="82"/><text x="761" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">legal</text><image href="icon-points.svg" x="832" y="770" width="82" height="82"/><text x="873" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">points</text><image href="icon-rewards.svg" x="944" y="770" width="82" height="82"/><text x="985" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">rewards</text><image href="icon-warning.svg" x="1056" y="770" width="82" height="82"/><text x="1097" y="874" text-anchor="middle" fill="#d9d2c2" font-size="18">warning</text>
+</svg>

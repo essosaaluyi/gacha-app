@@ -1,53 +1,69 @@
 let audio: HTMLAudioElement | null = null;
 
-let trackIndex = 0;
-
-const tracks = [
-  "/audio/BGM1.mp3",
-  "/audio/BGM2.mp3",
-];
+const BGM_TRACK = "/audio/BGM07228.mp3";
 
 export function getBgmAudio() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   if (!audio) {
-    audio = new Audio(tracks[trackIndex]);
+    audio = new Audio(BGM_TRACK);
 
-    audio.loop = false;
+    // Looping: the track is a few minutes long, so with loop off it simply
+    // ended mid-run -- usually around the bonus, which is why the machine went
+    // silent for every round after it and never came back. The BGM is meant to
+    // run for the whole session, so it repeats.
+    audio.loop = true;
     audio.volume = 0.5;
-
-    audio.addEventListener("ended", () => {
-      trackIndex = (trackIndex + 1) % tracks.length;
-
-      if (audio) {
-        audio.src = tracks[trackIndex];
-        audio.play();
-      }
-    });
   }
 
   return audio;
 }
 
-export async function playBgm() {
+export function playBgm() {
   const bgm = getBgmAudio();
-  await bgm.play();
+  if (!bgm) return;
+
+  bgm.play();
 }
 
 export function pauseBgm() {
-  getBgmAudio().pause();
+  const bgm = getBgmAudio();
+  if (!bgm) return;
+
+  bgm.pause();
+}
+
+export function stopBgm() {
+  const bgm = getBgmAudio();
+  if (!bgm) return;
+
+  bgm.pause();
+  bgm.currentTime = 0;
 }
 
 export function setBgmMuted(muted: boolean) {
-  getBgmAudio().muted = muted;
+  const bgm = getBgmAudio();
+  if (!bgm) return;
+
+  bgm.muted = muted;
 }
 
 export function setBgmVolume(volume: number) {
-  getBgmAudio().volume = volume;
-}
+  const bgm = getBgmAudio();
+  if (!bgm) return;
 
-export function getBgmVolume() {
-  return getBgmAudio().volume;
+  bgm.volume = Math.max(0, Math.min(1, volume));
 }
 
 export function getBgmMuted() {
-  return getBgmAudio().muted;
+  const bgm = getBgmAudio();
+  return bgm ? bgm.muted : false;
 }
+
+export function getBgmVolume() {
+  const bgm = getBgmAudio();
+  return bgm ? bgm.volume : 0.5;
+}
+

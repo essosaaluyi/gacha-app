@@ -1,0 +1,20 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#111}</style></head>
+<body>
+<video id="v" src="/__ref.mp4" muted playsinline preload="auto"></video>
+<script>
+const v=document.getElementById('v');
+window.vinfo=()=>({dur:v.duration,w:v.videoWidth,h:v.videoHeight,ready:v.readyState});
+window.grab=(t,maxw)=>new Promise((res)=>{
+  const done=()=>{
+    v.onseeked=null;
+    const scale=maxw?Math.min(1,maxw/v.videoWidth):1;
+    const c=document.createElement('canvas');
+    c.width=Math.round(v.videoWidth*scale);c.height=Math.round(v.videoHeight*scale);
+    c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+    res(c.toDataURL('image/jpeg',0.82));
+  };
+  v.onseeked=done;
+  v.currentTime=t;
+});
+</script>
+</body></html>

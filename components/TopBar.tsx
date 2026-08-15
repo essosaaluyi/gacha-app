@@ -5,40 +5,70 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   getBgmMuted,
-  getBgmVolume,
+  pauseBgm,
   setBgmMuted,
-  setBgmVolume,
 } from "@/lib/audio/bgmStore";
 import { playBgm } from "@/lib/audio/bgmStore";
+import {
+  addPoints,
+  getWalletState,
+  initializeWallet,
+  subscribeWallet,
+} from "@/lib/wallet/walletStore";
+import { logEvent } from "@/lib/events/gameEventStore";
+import { patchConfig } from "@/lib/game-config/patchConfig";
+import GiftBoxOverlay from "@/components/GiftBoxOverlay";
+import { getClaimableCount } from "@/lib/giftbox/giftBoxStore";
+
+function MusicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 18.5a2.5 2.5 0 1 1-1.5-2.29V5.5l10-2v11.25a2.5 2.5 0 1 1-1.5-2.29V7.1l-7 1.4v10Z" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5.25v13.5L18.5 12 8 5.25Z" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 5.5h4v13H7v-13Zm6 0h4v13h-4v-13Z" />
+    </svg>
+  );
+}
 
 export default function TopBar() {
   const [email, setEmail] = useState<string | null>(null);
   const [points, setPoints] = useState(0);
   const [isGuest, setIsGuest] = useState(false);
-  const [dailyReward, setDailyReward] = useState(0);
+  const [, setDailyReward] = useState(0);
   const [cooldownText, setCooldownText] = useState("");
   const [claimPopupOpen, setClaimPopupOpen] = useState(false);
   const [claimedAmount, setClaimedAmount] = useState(0);
   const [returnPopupOpen, setReturnPopupOpen] = useState(false);
 
-  const [muted, setMuted] = useState(false);
-const [volume, setVolume] = useState(0.5);
-const [needsResumeBgm, setNeedsResumeBgm] = useState(false);
+const [muted, setMuted] = useState(() => getBgmMuted());
+const [playing, setPlaying] = useState(false);
 const [welcomeGiftOpen, setWelcomeGiftOpen] = useState(false);
 const [welcomeGiftAmount, setWelcomeGiftAmount] = useState(0);
-
-  useEffect(() => {
-    setMuted(getBgmMuted());
-setVolume(getBgmVolume());
-    loadUser();
-  }, []);
+const [giftBoxOpen, setGiftBoxOpen] = useState(false);
+const [giftClaimable, setGiftClaimable] = useState(0);
 
   const getPointSetting = async (key: string, fallback: number) => {
     const { data } = await supabase
       .from("point_settings")
       .select("setting_value")
       .eq("setting_key", key)
-      .single();
+      // An absent setting row is the normal case -- the caller supplies the
+      // fallback. single() would 406 on it and log an error for nothing.
+      .maybeSingle();
 
     return data?.setting_value ?? fallback;
   };
@@ -58,7 +88,7 @@ setVolume(getBgmVolume());
     return `Next: ${hours}h ${minutes}m`;
   };
 
-  const loadUser = async () => {
+  async function loadUser() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -70,15 +100,19 @@ setVolume(getBgmVolume());
 
       const { data } = await supabase
         .from("user_points")
-        .select("points, last_daily_claim")
+        .select("last_daily_claim")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
-      setPoints(data?.points ?? 0);
       setCooldownText(formatCooldown(data?.last_daily_claim ?? null));
 
-      const reward = await getPointSetting("member_daily_points", 300);
+      const reward = await getPointSetting(
+        "member_daily_points",
+        patchConfig.dailyClaim.memberDaily
+      );
       setDailyReward(reward);
+
+      await initializeWallet();
       return;
     }
 
@@ -88,41 +122,32 @@ setVolume(getBgmVolume());
       setIsGuest(true);
       setEmail("Guest");
 
-      const guestPoints = Number(localStorage.getItem("guest_points") ?? 0);
       const giftClaimed =
-  localStorage.getItem("guest_welcome_gift_claimed") === "true";
+        localStorage.getItem("guest_welcome_gift_claimed") === "true";
 
-let finalGuestPoints = guestPoints;
+      await initializeWallet();
 
-if (!giftClaimed) {
-  finalGuestPoints += 1000;
+      if (!giftClaimed) {
+        localStorage.setItem("guest_welcome_gift_claimed", "true");
+        await addPoints(1000, "welcome_gift");
+        setWelcomeGiftAmount(1000);
+        setWelcomeGiftOpen(true);
+      }
 
-  localStorage.setItem(
-    "guest_points",
-    String(finalGuestPoints)
-  );
-
-  localStorage.setItem(
-    "guest_welcome_gift_claimed",
-    "true"
-  );
-
-  setWelcomeGiftAmount(1000);
-setWelcomeGiftOpen(true);
-}
       const guestLastClaim = localStorage.getItem("guest_last_daily_claim");
-
-      setPoints(finalGuestPoints);
       setCooldownText(formatCooldown(guestLastClaim));
 
-      const reward = await getPointSetting("guest_daily_points", 100);
+      const reward = await getPointSetting(
+        "guest_daily_points",
+        patchConfig.dailyClaim.guestDaily
+      );
       setDailyReward(reward);
       return;
     }
 
     setEmail(null);
     setPoints(0);
-  };
+  }
 
   const claimDailyReward = async () => {
     const now = new Date().toISOString();
@@ -132,13 +157,15 @@ setWelcomeGiftOpen(true);
 
       if (formatCooldown(lastClaim)) return;
 
-      const reward = await getPointSetting("guest_daily_points", 100);
-      const after = points + reward;
+      const reward = await getPointSetting(
+        "guest_daily_points",
+        patchConfig.dailyClaim.guestDaily
+      );
 
-      localStorage.setItem("guest_points", String(after));
       localStorage.setItem("guest_last_daily_claim", now);
+      await addPoints(reward, "daily_claim");
+      logEvent({ kind: "dailyClaim", detail: { reward, tier: "guest" } });
 
-      setPoints(after);
       setClaimedAmount(reward);
       setClaimPopupOpen(true);
       setCooldownText(formatCooldown(now));
@@ -153,24 +180,25 @@ setWelcomeGiftOpen(true);
 
     const { data } = await supabase
       .from("user_points")
-      .select("points, last_daily_claim")
+      .select("last_daily_claim")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (formatCooldown(data?.last_daily_claim ?? null)) return;
 
-    const reward = await getPointSetting("member_daily_points", 300);
-    const after = (data?.points ?? 0) + reward;
+    const reward = await getPointSetting(
+      "member_daily_points",
+      patchConfig.dailyClaim.memberDaily
+    );
 
     await supabase
       .from("user_points")
-      .update({
-        points: after,
-        last_daily_claim: now,
-      })
+      .update({ last_daily_claim: now })
       .eq("user_id", user.id);
 
-    setPoints(after);
+    await addPoints(reward, "daily_claim");
+    logEvent({ kind: "dailyClaim", detail: { reward, tier: "member" } });
+
     setClaimedAmount(reward);
     setClaimPopupOpen(true);
     setCooldownText(formatCooldown(now));
@@ -182,135 +210,152 @@ setWelcomeGiftOpen(true);
     window.location.href = "/";
   };
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadUser();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // Gift box badge: refresh on mount and whenever the overlay closes.
+  useEffect(() => {
+    if (!giftBoxOpen) setGiftClaimable(getClaimableCount());
+  }, [giftBoxOpen]);
+
+  // Unified wallet: the points readout always mirrors the shared balance.
+  useEffect(() => {
+    const syncPoints = () => setPoints(getWalletState().points);
+    syncPoints();
+    return subscribeWallet(syncPoints);
+  }, []);
+
   return (
     <>
-      <div className="mb-6 flex justify-between items-start gap-4">
-        <div>
+      {/* The shell owns the bar's width so it renders identically on every
+          page, regardless of the content container it sits above. */}
+      <header className="game-topbar-shell">
+      <div className="game-topbar">
+        <div className="game-topbar-brand">
           <button
             onClick={() => setReturnPopupOpen(true)}
-            className="hover:opacity-80 transition-opacity"
+            className="game-topbar-logo"
           >
             <img
-              src="/images/title.png"
+              src="/images/title.webp"
               alt="Title"
-              className="w-32 object-contain"
             />
           </button>
         </div>
 
-        <div className="text-right">
-          <p className="text-sm text-zinc-300 mb-2">{email ?? "Guest"}</p>
+        <nav className="game-topbar-nav" aria-label="Game navigation">
+          <Link href="/menu">Menu</Link>
+          <Link href="/gacha">Gacha</Link>
+          <Link href="/inventory">Cards</Link>
+          <Link href="/history">History</Link>
+          {/* Shop is visible either way: unlocked when enabled, tagged as
+              coming soon while redeeming is still gated. */}
+          <Link href="/shop" className="game-topbar-nav-item">
+            Shop
+            {!patchConfig.shop.enabled && (
+              <span className="game-topbar-nav-tag">Coming Soon</span>
+            )}
+          </Link>
+          <Link href="/how-to-play">Game Info</Link>
+          <Link href="/rules">Rules</Link>
+          <Link href="/support">Support</Link>
+        </nav>
 
-          <div className="flex justify-end gap-3 mb-3">
-  <Link
-    href="/menu"
-    className="text-zinc-400 hover:text-white text-sm"
-  >
-    Menu
-  </Link>
-
-  <Link
-    href="/gacha"
-    className="text-zinc-400 hover:text-white text-sm"
-  >
-    Gacha
-  </Link>
-
-  <Link
-    href="/inventory"
-    className="text-zinc-400 hover:text-white text-sm"
-  >
-    Inventory
-  </Link>
-
-  <Link
-    href="/history"
-    className="text-zinc-400 hover:text-white text-sm"
-  >
-    History
-  </Link>
-</div>
-
-          <p className="text-emerald-400 text-xl font-bold mb-3">
-            Points: {points}
-          </p>
-
-          {isGuest ? (
-            <a
-              href="/login"
-              className="inline-block bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl text-sm font-semibold mb-2"
-            >
-              Sign Up / Log In
-            </a>
-          ) : email ? (
-            <button
-              onClick={logout}
-              className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-xl text-sm font-semibold mb-2"
-            >
-              Logout
-            </button>
-          ) : (
-            <a
-              href="/login"
-              className="inline-block bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl text-sm font-semibold mb-2"
-            >
-              Sign Up / Log In
-            </a>
-          )}
-
-          <div>
+        <div className="game-topbar-actions">
+          <div className="game-topbar-tools">
             <button
               onClick={claimDailyReward}
               disabled={!!cooldownText}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold ${
-                cooldownText
-                  ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
-                  : "bg-emerald-600 hover:bg-emerald-500 text-white"
-              }`}
+              className="game-topbar-tool"
             >
-              Claim Daily Reward
+              {cooldownText ? cooldownText : "Daily Gift"}
             </button>
 
-            <div className="mt-2">
-  <button
-    onClick={() => {
-      const next = !muted;
-      setMuted(next);
-      setBgmMuted(next);
-    }}
-    className="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-xl text-sm font-semibold"
-  >
-    {muted ? "BGM: Muted" : "BGM: On"}
-  </button>
+            <button
+              onClick={() => setGiftBoxOpen(true)}
+              className="game-topbar-tool relative"
+            >
+              Gift Box
+              {giftClaimable > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-zinc-950 text-[10px] font-black flex items-center justify-center">
+                  {giftClaimable}
+                </span>
+              )}
+            </button>
 
-  <button
-  onClick={() => playBgm()}
-  className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-xl text-sm font-semibold mt-2"
->
-  Resume BGM
-</button>
+            <button
+              onClick={() => {
+                const next = !muted;
+                setMuted(next);
+                setBgmMuted(next);
+              }}
+              className={`game-topbar-icon-button ${
+                muted ? "game-topbar-icon-button-muted" : ""
+              }`}
+              aria-label={muted ? "Unmute music" : "Mute music"}
+              title={muted ? "Unmute music" : "Mute music"}
+            >
+              <MusicIcon />
+            </button>
 
-  <input
-    type="range"
-    min="0"
-    max="1"
-    step="0.05"
-    value={volume}
-    onChange={(e) => {
-      const next = Number(e.target.value);
-      setVolume(next);
-      setBgmVolume(next);
-    }}
-    className="w-24 ml-2"
-  />
-</div>
+            <button
+              onClick={() => {
+                if (playing) {
+                  pauseBgm();
+                  setPlaying(false);
+                  return;
+                }
 
-            {cooldownText && (
-              <p className="text-xs text-zinc-400 mt-1">{cooldownText}</p>
-            )}
+                void playBgm();
+                setPlaying(true);
+              }}
+              className="game-topbar-icon-button"
+              aria-label={playing ? "Pause music" : "Play music"}
+              title={playing ? "Pause music" : "Play music"}
+            >
+              {playing ? <PauseIcon /> : <PlayIcon />}
+            </button>
+          </div>
+
+          <div className="game-topbar-play-stack">
+            <div className="game-topbar-account-row">
+              {isGuest ? (
+                <a
+                  href="/login"
+                  className="game-topbar-account-link"
+                >
+                  Login
+                </a>
+              ) : email ? (
+                <button
+                  onClick={logout}
+                  className="game-topbar-account-link"
+                >
+                  Logout
+                </button>
+              ) : (
+                <a
+                  href="/login"
+                  className="game-topbar-account-link"
+                >
+                  Login
+                </a>
+              )}
+
+              <div className="game-topbar-account">
+                <span>{email ?? "Guest"}</span>
+                <strong>{points.toLocaleString()} pts</strong>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+      </header>
 
       {returnPopupOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -373,6 +418,8 @@ setWelcomeGiftOpen(true);
           </div>
         </div>
       )}
+      {giftBoxOpen && <GiftBoxOverlay onClose={() => setGiftBoxOpen(false)} />}
+
       {welcomeGiftOpen && (
   <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
     <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md text-white text-center">

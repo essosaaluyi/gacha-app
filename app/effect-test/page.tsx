@@ -429,7 +429,7 @@ function PressDepthTest() {
         className="relative bg-white p-4 rounded-3xl shadow-[0_0_40px_rgba(255,255,255,0.35)] overflow-hidden"
       >
         <img
-          src="/images/widebanner.png"
+          src="/images/widebanner.webp"
           alt="Test"
           style={{ transformOrigin: origin }}
           className={`w-full max-w-3xl rounded-2xl inline-block ${
