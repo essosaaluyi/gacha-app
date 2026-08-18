@@ -10,6 +10,18 @@ const STAGE_HEIGHT = 500;
 const RELEASE_SECONDS = 0.42;
 
 /**
+ * Where the three cards land and when, in the cabinet's table layout, from
+ * patchConfig.cabinetTable and CARD_PLACE_DURATION_1..3. Mirrored rather than
+ * imported so the overlay stays a pure listener with no reach into game config;
+ * if the table is re-laid out, the trails want updating here.
+ */
+const CARD_SLOTS = [
+  { x: 285, y: 237, delay: 0, duration: 0.34 },
+  { x: 600, y: 237, delay: 0.1, duration: 0.4 },
+  { x: 915, y: 237, delay: 0.2, duration: 0.46 },
+];
+
+/**
  * The disc's well is a square box; the disc art inside it is a circle with a
  * little air around it. Without this the aura draws around the box's inscribed
  * circle and floats visibly off the gold rim it is supposed to be lighting.
@@ -17,6 +29,19 @@ const RELEASE_SECONDS = 0.42;
 const DISC_ART_INSET = 14;
 
 type Tell = "chance" | "attack" | "triple" | null;
+
+/**
+ * `?vfx-aura=always` shows the aura on every hand that earned a tell, instead
+ * of on the 70-85% the withholding leaves. For looking at the effect
+ * deliberately rather than waiting for it — the same dev-only shape as the
+ * hand overrides in resultLottery, and off entirely in production so no player
+ * can turn the tell into a certainty.
+ */
+function forceAura() {
+  if (typeof window === "undefined") return false;
+  if (process.env.NODE_ENV === "production") return false;
+  return new URLSearchParams(window.location.search).get("vfx-aura") === "always";
+}
 
 type PileDetail = { state?: string; tell?: Tell };
 type LandedDetail = {
@@ -33,11 +58,15 @@ type Fx = {
       shape?: "rect" | "disc";
       radius?: number;
       inset?: number;
+      force?: boolean;
     }
   ) => boolean;
   drawCard: (
     deck: HTMLElement,
-    landing: HTMLElement | { x: number; y: number },
+    landing:
+      | HTMLElement
+      | { x: number; y: number }
+      | Array<{ x: number; y: number; delay?: number; duration?: number }>,
     outcome: string,
     duration?: number
   ) => void;
@@ -127,15 +156,25 @@ export default function BattleVfxOverlay() {
         fx.armDraw(deck, tellRef.current ?? "normal", {
           shape: "disc",
           inset: DISC_ART_INSET,
+          force: forceAura(),
         });
         return;
       }
 
       if (detail.state === "launching") {
-        // Aim the trail at the point the Pixi cards take over from the DOM
-        // pile, so the sparks travel the same line the cards do.
-        const entry = fromStage(313, STAGE_HEIGHT / 2) ?? { x: 0, y: 0 };
-        fx.drawCard(deck, entry, tellRef.current ?? "normal", RELEASE_SECONDS);
+        // One trail per card, aimed at the slot that card is actually going to
+        // and delayed by the same stagger the stage deals on, so each streak
+        // sits behind its own card instead of all three overlapping.
+        const trails = CARD_SLOTS.map((slot) => {
+          const point = fromStage(slot.x, slot.y);
+          return point
+            ? { ...point, delay: slot.delay, duration: slot.duration }
+            : null;
+        }).filter((t): t is NonNullable<typeof t> => t !== null);
+
+        if (trails.length) {
+          fx.drawCard(deck, trails, tellRef.current ?? "normal", RELEASE_SECONDS);
+        }
         return;
       }
 
