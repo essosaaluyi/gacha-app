@@ -17,10 +17,12 @@ const DeckFxStage = dynamic(() => import("@/components/vfx/DeckFxStage"), { ssr:
 const DEAL_SECONDS = 0.55;
 
 const OUTCOMES: { key: Outcome; label: string; note: string }[] = [
-  { key: "chance", label: "Chance", note: "aura 85% · lightning · wave + sparks + shake" },
-  { key: "attack", label: "Attack", note: "aura 70% · lightning · sparks + shake" },
-  { key: "triple", label: "Triple", note: "aura 75% · lightning · sparks + shake" },
-  { key: "normal", label: "Normal", note: "no aura · no lightning · silent landing" },
+  { key: "white", label: "White", note: "~2% · glow + glitter · 28% of draws" },
+  { key: "blue", label: "Blue", note: "~5% · glow + glitter · 15% of draws" },
+  { key: "green", label: "Green", note: "~35% · adds arcs · 1 in 30" },
+  { key: "red", label: "Red", note: "90% · arcs · 1 in 94" },
+  { key: "gold", label: "Gold", note: "certain · arcs · 1 in 741" },
+  { key: "normal", label: "None", note: "no cue — the disc stays dark" },
 ];
 
 type Phase = "idle" | "armed" | "dealing" | "landed";
@@ -32,7 +34,7 @@ export default function DeckEffectsPage() {
   const targetRef = useRef<HTMLDivElement>(null);
   const fxRef = useRef<DeckFxHandle | null>(null);
 
-  const [outcome, setOutcome] = useState<Outcome>("chance");
+  const [outcome, setOutcome] = useState<Outcome>("green");
   const [phase, setPhase] = useState<Phase>("idle");
   const [ready, setReady] = useState(false);
   const [log, setLog] = useState<string[]>([]);
@@ -45,7 +47,7 @@ export default function DeckEffectsPage() {
     if (!ready || phase !== "idle") return;
     const shown = fxRef.current?.armDraw(outcome) ?? false;
     setPhase("armed");
-    note(shown ? `Armed ${outcome} — tell shown` : `Armed ${outcome} — tell withheld`);
+    note(shown ? `Armed ${outcome}` : `Armed ${outcome} — disc stays dark`);
   };
 
   /** Second click: pull the card, then land it. */
@@ -57,7 +59,7 @@ export default function DeckEffectsPage() {
 
     window.setTimeout(() => {
       setPhase("landed");
-      fxRef.current?.cardLanded(outcome);
+      fxRef.current?.cardLanded("chance");
       note(`Landed ${outcome}`);
     }, DEAL_SECONDS * 1000);
   };
@@ -79,10 +81,12 @@ export default function DeckEffectsPage() {
           </Link>
         </div>
         <p className="text-zinc-400 text-sm mb-5 max-w-2xl">
-          The effects wired to a draw. Pick what the card will be, click{" "}
-          <strong className="text-zinc-200">Arm</strong> to start the draw, then{" "}
-          <strong className="text-zinc-200">Draw</strong>. The aura is deliberately not shown on
-          every good outcome — arm the same outcome a few times to see it withheld.
+          Each rung of the anticipation ladder, pinned. In the real cabinet the rung
+          is rolled once per hand against the odds — see{" "}
+          <code className="text-zinc-300">lib/battle-pixi/presentation/drawTell.ts</code> — and
+          the percentage on each button is what that colour <em>means</em>, not how often it
+          shows. Pick a rung, click <strong className="text-zinc-200">Arm</strong>, then{" "}
+          <strong className="text-zinc-200">Draw</strong>.
         </p>
 
         {/* The board. Positions are measured against this, and it is what shakes. */}

@@ -16,7 +16,7 @@ import {
 import { STAGE, UI } from "@/lib/battle-pixi/config";
 import { PresentationContext } from "@/lib/battle-pixi/presentation/presentationContext";
 import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
-import { readDrawTell } from "@/lib/battle-pixi/presentation/drawTell";
+import { rollDrawTell } from "@/lib/battle-pixi/presentation/drawTell";
 import { recordDrawOutcome } from "@/lib/battle-pixi/state/drawCostStore";
 import {
   animateTo,
@@ -76,6 +76,8 @@ import {
 
 import {
   isFatalModeActive,
+  hasFatalModeHit,
+  getFatalModeGamesLeft,
   startFatalMode,
   registerFatalModeHit,
   consumeFatalModeTurn,
@@ -1388,6 +1390,28 @@ export default function BattlePixiStage({
               : { barChance: "main" }
           )
         );
+
+        // The disc's anticipation cue. It has to be rolled here rather than
+        // when the pile sets, because the pile sets *before* this line runs —
+        // reading the result any earlier reads the previous hand's.
+        //
+        // Only the colour leaves the stage. Which symbols are coming never
+        // does: a window event is a poor place to put the hand, and the
+        // overlay has no business knowing it.
+        if (cabinetMode) {
+          window.dispatchEvent(
+            new CustomEvent("battle:vfx-tell", {
+              detail: {
+                rung: rollDrawTell({
+                  result: currentBattleResult,
+                  fatalActive: isFatalModeActive(),
+                  fatalGamesLeft: getFatalModeGamesLeft(),
+                  fatalAlreadyHit: hasFatalModeHit(),
+                }),
+              },
+            })
+          );
+        }
 
         // Chance hands occasionally earn the stronger anticipation cue. The
         // outcome is known here, but every card remains unclickable until the
@@ -3678,16 +3702,9 @@ const globalY = cardGroup.y + card.y;
         }
 
         // Tell the cabinet shell the stack is set at the disk exit.
-        //
-        // The tell rides along because this is the only moment the disc's aura
-        // can be decided: the hand is drawn by now, and the player has not seen
-        // a card yet. Only the tell travels, never the hand — the overlay has
-        // no business knowing which symbols are coming.
         if (cabinetMode && value) {
           window.dispatchEvent(
-            new CustomEvent("battle:cabinet-pile", {
-              detail: { state: "set", tell: readDrawTell(currentBattleResult) },
-            })
+            new CustomEvent("battle:cabinet-pile", { detail: { state: "set" } })
           );
         }
       };

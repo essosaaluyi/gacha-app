@@ -28,22 +28,24 @@ const CARD_SLOTS = [
  */
 const DISC_ART_INSET = 14;
 
-type Tell = "chance" | "attack" | "triple" | null;
+type Rung = "white" | "blue" | "green" | "red" | "gold" | null;
 
 /**
- * `?vfx-aura=always` shows the aura on every hand that earned a tell, instead
- * of on the 70-85% the withholding leaves. For looking at the effect
- * deliberately rather than waiting for it — the same dev-only shape as the
- * hand overrides in resultLottery, and off entirely in production so no player
- * can turn the tell into a certainty.
+ * `?vfx-tell=gold` pins every draw to one rung, so a colour can be looked at
+ * deliberately instead of waited for — gold is 1 in 741 in normal play. Dev
+ * only, the same shape as the hand overrides in resultLottery, so no player
+ * can pin the ladder and turn a tell into a certainty.
  */
-function forceAura() {
-  if (typeof window === "undefined") return false;
-  if (process.env.NODE_ENV === "production") return false;
-  return new URLSearchParams(window.location.search).get("vfx-aura") === "always";
+function pinnedRung(): Rung | undefined {
+  if (typeof window === "undefined") return undefined;
+  if (process.env.NODE_ENV === "production") return undefined;
+  const value = new URLSearchParams(window.location.search).get("vfx-tell");
+  const rungs = ["white", "blue", "green", "red", "gold"] as const;
+  return (rungs as readonly string[]).includes(value ?? "") ? (value as Rung) : undefined;
 }
 
-type PileDetail = { state?: string; tell?: Tell };
+type PileDetail = { state?: string };
+type TellDetail = { rung?: Rung };
 type LandedDetail = {
   symbol?: string;
   onTarget?: boolean;
@@ -53,26 +55,21 @@ type LandedDetail = {
 type Fx = {
   armDraw: (
     el: HTMLElement,
-    outcome: string,
-    options?: {
-      shape?: "rect" | "disc";
-      radius?: number;
-      inset?: number;
-      force?: boolean;
-    }
+    rung: string,
+    options?: { shape?: "rect" | "disc"; radius?: number; inset?: number }
   ) => boolean;
   drawCard: (
     deck: HTMLElement,
+    rung: string,
     landing:
       | HTMLElement
       | { x: number; y: number }
       | Array<{ x: number; y: number; delay?: number; duration?: number }>,
-    outcome: string,
     duration?: number
   ) => void;
   cardLanded: (
     target: HTMLElement | { x: number; y: number },
-    outcome: string
+    symbol: string
   ) => void;
   clear: () => void;
   dispose: () => void;
@@ -107,8 +104,8 @@ type Fx = {
 export default function BattleVfxOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fxRef = useRef<Fx | null>(null);
-  /** The tell for the hand currently at the disk exit; null once it is spent. */
-  const tellRef = useRef<Tell>(null);
+  /** The rung rolled for the hand now at the disk exit; null means dark. */
+  const rungRef = useRef<Rung>(null);
   const probeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -149,17 +146,6 @@ export default function BattleVfxOverlay() {
       const deck = disc();
       if (!deck) return;
 
-      if (detail.state === "set") {
-        // A hand with no tell gets no aura, and `armDraw` withholds it on some
-        // of the hands that do have one — see OUTCOME_RULES.
-        tellRef.current = detail.tell ?? null;
-        fx.armDraw(deck, tellRef.current ?? "normal", {
-          shape: "disc",
-          inset: DISC_ART_INSET,
-          force: forceAura(),
-        });
-        return;
-      }
 
       if (detail.state === "launching") {
         // One trail per card, aimed at the slot that card is actually going to
@@ -173,15 +159,32 @@ export default function BattleVfxOverlay() {
         }).filter((t): t is NonNullable<typeof t> => t !== null);
 
         if (trails.length) {
-          fx.drawCard(deck, trails, tellRef.current ?? "normal", RELEASE_SECONDS);
+          fx.drawCard(deck, rungRef.current ?? "normal", trails, RELEASE_SECONDS);
         }
         return;
       }
 
       if (detail.state === "idle") {
-        tellRef.current = null;
+        rungRef.current = null;
         fx.clear();
       }
+    };
+
+    // The rung arrives on its own event rather than with the pile, because the
+    // pile is set *before* the hand is drawn — reading the result at pile time
+    // reads the previous draw's.
+    const onTell = (event: Event) => {
+      if (!fx || !(event instanceof CustomEvent)) return;
+      const deck = disc();
+      if (!deck) return;
+
+      const detail = (event.detail ?? {}) as TellDetail;
+      rungRef.current = pinnedRung() ?? detail.rung ?? null;
+
+      fx.armDraw(deck, rungRef.current ?? "normal", {
+        shape: "disc",
+        inset: DISC_ART_INSET,
+      });
     };
 
     const onLanded = (event: Event) => {
@@ -192,16 +195,16 @@ export default function BattleVfxOverlay() {
       // The wave is the chance card's alone. An attack only earns one when it
       // actually lands on its target — an attack that misses is not a hit, and
       // giving it the same punctuation would say it was.
-      const outcome =
+      const symbol =
         detail.symbol === "Chance"
           ? "chance"
           : detail.symbol === "Attack" && detail.onTarget
             ? "attack"
             : null;
-      if (!outcome) return;
+      if (!symbol) return;
 
       const point = fromStage(detail.stage.x, detail.stage.y);
-      if (point) fx.cardLanded(point, outcome);
+      if (point) fx.cardLanded(point, symbol);
     };
 
     (async () => {
@@ -229,6 +232,7 @@ export default function BattleVfxOverlay() {
         fx = instance;
         fxRef.current = instance;
         window.addEventListener("battle:cabinet-pile", onPile);
+        window.addEventListener("battle:vfx-tell", onTell);
         window.addEventListener("battle:vfx-card-landed", onLanded);
       } catch {
         // Effects are decoration. A stage that cannot build one still deals.
@@ -238,6 +242,7 @@ export default function BattleVfxOverlay() {
     return () => {
       cancelled = true;
       window.removeEventListener("battle:cabinet-pile", onPile);
+      window.removeEventListener("battle:vfx-tell", onTell);
       window.removeEventListener("battle:vfx-card-landed", onLanded);
       probeRef.current?.remove();
       probeRef.current = null;

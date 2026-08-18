@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { RefObject } from "react";
 
-export type Outcome = "chance" | "attack" | "triple" | "normal";
+export type Outcome = "white" | "blue" | "green" | "red" | "gold" | "normal";
 
 export type DeckFxHandle = {
   /** First click on draw: lights the deck, sometimes. Returns whether it showed. */
   armDraw: (outcome: Outcome) => boolean;
   /** The card leaves the deck. */
   drawCard: (outcome: Outcome, durationSeconds: number) => void;
-  /** The card lands on the table. */
-  cardLanded: (outcome: Outcome) => void;
+  /** A card lands on the table. Keyed by what landed, not by the rung. */
+  cardLanded: (symbol: "chance" | "attack") => void;
   cancelDraw: () => void;
   clear: () => void;
 };
@@ -54,10 +54,10 @@ export default function DeckFxStage({
   const fxRef = useRef<{
     armDraw: (
       el: HTMLElement,
-      outcome: string,
+      rung: string,
       options?: { shape?: "rect" | "disc"; radius?: number }
     ) => boolean;
-    drawCard: (deck: HTMLElement, landing: HTMLElement, outcome: string, d?: number) => void;
+    drawCard: (deck: HTMLElement, rung: string, landing: HTMLElement, d?: number) => void;
     cardLanded: (el: HTMLElement, outcome: string) => void;
     cancelDraw: () => void;
     clear: () => void;
@@ -79,11 +79,11 @@ export default function DeckFxStage({
       },
       drawCard: (outcome, durationSeconds) => {
         if (!fxRef.current || !deckRef.current || !targetRef.current) return;
-        fxRef.current.drawCard(deckRef.current, targetRef.current, outcome, durationSeconds);
+        fxRef.current.drawCard(deckRef.current, outcome, targetRef.current, durationSeconds);
       },
-      cardLanded: (outcome) => {
+      cardLanded: (symbol) => {
         if (!fxRef.current || !targetRef.current) return;
-        fxRef.current.cardLanded(targetRef.current, outcome);
+        fxRef.current.cardLanded(targetRef.current, symbol);
       },
       cancelDraw: () => fxRef.current?.cancelDraw(),
       clear: () => fxRef.current?.clear(),
