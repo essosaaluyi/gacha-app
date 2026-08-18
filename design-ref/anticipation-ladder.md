@@ -13,20 +13,50 @@ Measurement: `npx tsx tools/ladder-check.mjs`
 
 ## The ladder
 
-| Colour | Means | Fires on | Gets arcs |
+| Colour | Anticipation level | Odds of seeing it | Gets arcs |
 | --- | --- | --- | --- |
-| White | 2.0% | 1 in 26 | no |
-| Blue | 4.7% | 1 in 37 | no |
-| Green | 34.5% | 1 in 115 | yes |
-| Red | 89.5% | 1 in 196 | yes |
-| Gold | 100% | 1 in 546 | yes |
-| *dark* | 0.1% | 92% of draws | — |
+| White | 0.5% | 1 in 6 draws | no |
+| Blue | 1.8% | 1 in 14 | no |
+| Green | 9.4% | 1 in 33 | yes |
+| Red | 49% | 1 in 105 | yes |
+| Gold | 100% | 1 in 515 | yes |
+| *dark* | 0.2% | 3 in 4 draws | — |
 
-"Means" is the chance the draw is in the decisive tier. These are measured, not
-asserted — change a weight and re-run the checker.
+**Anticipation level** is the chance the draw is in the rare tier once you have
+seen that colour. **Odds** is how often the colour appears at all. Both are
+measured, not asserted — `npx tsx tools/ladder-check.mjs`.
+
+Read it as a sentence: white shows up every sixth draw and means nothing. Red
+shows up twice a session and is a coin flip. Gold shows up once in five hundred
+and has never once been wrong.
+
+Two rungs do the work. **Red is the sweat rung** — at 49% it is genuinely
+uncertain, which is where tension lives; a rung that is nearly always right is
+an announcement, not a thrill. **Gold is the payoff rung** — it cannot lie, so
+seeing it is the moment the player already knows.
 
 One ladder for the whole game. A colour means the same thing in every phase,
 including fatal mode.
+
+### Why not a tighter ladder
+
+An earlier draft ran white 2% / blue 5% / green 35% / red 90%. It was more
+*meaningful* per sighting and much deader to play: a cue on 5% of draws, and a
+player could go a hundred draws seeing nothing above blue.
+
+Loosening trades meaning for presence, and the trade is worth making because
+the meaning was wasted on cues nobody ever saw. Note what it does **not** buy:
+
+| | tight | loose |
+| --- | --- | --- |
+| any cue, per 100 draws | 5.2 | 26.6 |
+| green | 0.7 | 3.0 |
+| red | 0.6 | 1.0 |
+| **gold** | **0.3** | **0.2** |
+
+Gold does not move. It is pinned at 100% reliability, so its rate is set purely
+by how rare the tier is — 1.33%. The only way to see gold more often is to
+widen the tier, never to loosen the ladder.
 
 ## What it predicts
 
