@@ -77,14 +77,6 @@ const WEIGHTS: Record<"top" | "decisive" | "quiet", Weights> = {
   quiet: { red: 0.054, green: 0.573, blue: 2.61, white: 3.83, none: 92.93 }
 };
 
-/**
- * Fatal mode's last turn, kill not locked.
- *
- * No green or red: the player is already at the climax and does not need to be
- * teased. A machine that keeps crying wolf during the payoff is just noise.
- */
-const FATAL_MISS: Weights = { blue: 12, white: 24, none: 64 };
-
 /** The predicate the stage uses to register a fatal-mode hit, mirrored here. */
 function registersHit(result: BattleResult): boolean {
   const evaluation = evaluateResult(result);
@@ -146,13 +138,12 @@ function pick(weights: Weights): TellRung | null {
  * @returns the colour to light the disc, or null to leave it dark
  */
 export function rollDrawTell(input: DrawTellInput): TellRung | null {
+  // One ladder, everywhere. Fatal mode gets no table of its own: a locked kill
+  // is simply another top-tier event, so it rolls the same weights as a bar or
+  // a triple. What makes the ladder learnable is that a colour means the same
+  // thing in every phase — a mode with its own odds would quietly retrain the
+  // player halfway through a run.
   const killLocked = isKillLocked(input);
-
-  // The last fatal turn is fully determined either way, so it gets its own
-  // pair of tables rather than being squeezed into the normal-phase ladder.
-  if (input.fatalActive && input.fatalGamesLeft === 1) {
-    return killLocked ? "gold" : pick(FATAL_MISS);
-  }
 
   if (isTopTier(input.result, killLocked)) return pick(WEIGHTS.top);
   if (isDecisive(input.result)) return pick(WEIGHTS.decisive);
