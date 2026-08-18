@@ -98,17 +98,20 @@ collapses. Bar, double and triple are the only outcomes rare enough.
 Note also that a chance *card* is not a chance *result*. Cards feed
 `chanceAttackRate` and appear in about half of all hands.
 
-## Why the disc is quiet
+## Where the numbers come from
 
-A cue appears on roughly 8% of draws. That is forced arithmetic, not taste:
+Nothing here is tuned by hand. Pick the reliability you want a colour to carry
+and its fake rate is forced:
 
 ```
-p_fake = p_real x (D/N) x (1-R)/R
+p_fake = p_real x (D/N) x (1-R)/R      fires = p_real x D / R
 ```
 
-Holding white at 2% reliability against a 1.33% base rate means white can fire
-on about 4% of draws and no more. Making the disc busier means accepting weaker
-reliabilities. A ladder that lit up half the time would mean nothing.
+D is the tier's base rate (1.33%), N its complement, p_real the share of tier
+hands showing that colour, R the reliability. The second identity is the one
+that matters: **how often a colour fires is its share of the tier divided by
+its reliability.** Meaning and frequency are the same dial pulled in opposite
+directions, and no amount of weighting escapes it.
 
 ## Both directions of silence
 
@@ -127,14 +130,15 @@ reliabilities. A ladder that lit up half the time would mean nothing.
 | 2 | What does an attack get? | Joins the bottom of the same ladder — white, blue and green |
 | 3 | Can low rungs fire on nothing hands? | Yes, on all three |
 | 4 | How far does the ladder span? | Full range, gold means certain |
-| 5 | Can red lie? | Yes — right 90% of the time |
-| 6 | Green's reliability | 30–40% (set to 35%) |
+| 5 | Can red lie? | Yes — later loosened to a 49% coin flip |
+| 6 | Green's reliability | 30–40%, later loosened to 9% |
 | 7 | What counts as decisive? | Chance, bar chance, and a predetermined enemy defeat |
 | 8 | Phase-aware or universal? | Universal — one ladder everywhere |
 | 9 | What does gold guarantee? | The top end only: triple, bar, or a kill |
 | 10 | Fatal mode, kill locked | Gold is honest there; no separate table |
 | 11 | Is a single chance a prize? | No — stays outside the tier |
 | 12 | Does surviving an enemy attack count? | No — the tier is upside only |
+| 13 | Meaning or presence? | Presence — loosen the ladder so colours are actually seen |
 
 ## Still open
 
@@ -143,10 +147,12 @@ Nothing. The ladder is fully specified.
 What is *not* settled is whether it feels right in the hand — the numbers are
 verified, the pacing is not. Worth watching for once it has been played:
 
-- Does a dark disc on 92% of draws read as broken rather than as quiet?
-- Is red distinguishable from gold in the moment, given both mean "almost
-  certainly"?
-- Does anyone learn white and blue at all, or are they just noise?
+- Does white on one draw in six read as ambient life, or as a cue that cried
+  wolf so often the player stops looking?
+- Is red at 49% exciting or merely frustrating? It is designed to disappoint
+  half the time.
+- Green is 1 in 33 and means 9%. Does a rung that says "probably not" earn its
+  place, or should it be folded into blue?
 
 ## Testing
 
