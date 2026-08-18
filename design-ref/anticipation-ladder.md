@@ -103,14 +103,20 @@ reliabilities. A ladder that lit up half the time would mean nothing.
 | 8 | Phase-aware or universal? | Universal — one ladder everywhere |
 | 9 | What does gold guarantee? | The top end only: triple, bar, or a kill |
 | 10 | Fatal mode, kill locked | Gold is honest there; no separate table |
+| 11 | Is a single chance a prize? | No — stays outside the tier |
+| 12 | Does surviving an enemy attack count? | No — the tier is upside only |
 
 ## Still open
 
-- **Is a single chance a prize?** It is excluded from the tier because at 49%
-  it is the common path. The draw cost does drop to 1 after one, so if it reads
-  as a reward to the player, the tier is wrong.
-- **The enemy's attack window.** The disc says nothing during it. That is the
-  other moment with real stakes, inverted — the player hoping to survive.
+Nothing. The ladder is fully specified.
+
+What is *not* settled is whether it feels right in the hand — the numbers are
+verified, the pacing is not. Worth watching for once it has been played:
+
+- Does a dark disc on 92% of draws read as broken rather than as quiet?
+- Is red distinguishable from gold in the moment, given both mean "almost
+  certainly"?
+- Does anyone learn white and blue at all, or are they just noise?
 
 ## Testing
 
