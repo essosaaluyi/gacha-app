@@ -8,10 +8,10 @@ import { evaluateResult } from "@/lib/battle-pixi/core/evaluateResult";
  * be one the player cares about — which is the whole difference between a
  * label and a tell. Colour maps to confidence, not to what the cards are:
  *
- *   white   0.5%  appears constantly, means almost nothing
- *   blue    2%
- *   green   10%
- *   red     50%   a coin flip once you see it — the sweat rung
+ *   white   5%
+ *   blue    12%
+ *   green   35%
+ *   red     85%
  *   gold    100%  only ever truthful
  *
  * What the ladder predicts comes from the *measured* distribution, not from the
@@ -74,7 +74,7 @@ const WEIGHTS: Record<"top" | "decisive" | "quiet", Weights> = {
   /** A double chance: worth anticipating, but tops out at red. */
   decisive: { red: 27, green: 32, blue: 18, white: 11, none: 12 },
   /** Everything else, single chance and attack included. Every cue is a fake. */
-  quiet: { red: 0.49, green: 2.8, blue: 6.79, white: 15.67, none: 74.25 }
+  quiet: { red: 0.086, green: 0.574, blue: 1.01, white: 1.488, none: 96.84 }
 };
 
 /** The predicate the stage uses to register a fatal-mode hit, mirrored here. */

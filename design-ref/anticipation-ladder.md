@@ -15,48 +15,51 @@ Measurement: `npx tsx tools/ladder-check.mjs`
 
 | Colour | Anticipation level | Odds of seeing it | Gets arcs |
 | --- | --- | --- | --- |
-| White | 0.5% | 1 in 6 draws | no |
-| Blue | 1.8% | 1 in 14 | no |
-| Green | 9.4% | 1 in 33 | yes |
-| Red | 49% | 1 in 105 | yes |
-| Gold | 100% | 1 in 515 | yes |
-| *dark* | 0.2% | 3 in 4 draws | — |
+| White | 5.1% | 1 in 67 draws | no |
+| Blue | 11.2% | 1 in 91 | no |
+| Green | 32.4% | 1 in 113 | yes |
+| Red | 84.6% | 1 in 180 | yes |
+| Gold | 100% | 1 in 531 | yes |
+| *dark* | 0.1% | 96% of draws | — |
 
 **Anticipation level** is the chance the draw is in the rare tier once you have
 seen that colour. **Odds** is how often the colour appears at all. Both are
 measured, not asserted — `npx tsx tools/ladder-check.mjs`.
 
-Read it as a sentence: white shows up every sixth draw and means nothing. Red
-shows up twice a session and is a coin flip. Gold shows up once in five hundred
-and has never once been wrong.
+Every rung carries real weight here: even white, the floor, means four times
+the base rate. Nothing in this ladder is noise.
 
-Two rungs do the work. **Red is the sweat rung** — at 49% it is genuinely
-uncertain, which is where tension lives; a rung that is nearly always right is
-an announcement, not a thrill. **Gold is the payoff rung** — it cannot lie, so
-seeing it is the moment the player already knows.
+The cost is presence. **The disc is dark on 96% of draws** — one cue every 24.
+That is not a tuning failure but the identity below: a colour fires as often as
+its share of the tier divided by its reliability, so meaning and frequency are
+one dial pulled in opposite directions.
+
+The only way to hold these meanings *and* have the disc speak often is to widen
+what it predicts. See "Widening the tier".
 
 One ladder for the whole game. A colour means the same thing in every phase,
 including fatal mode.
 
-### Why not a tighter ladder
+### Widening the tier
 
-An earlier draft ran white 2% / blue 5% / green 35% / red 90%. It was more
-*meaningful* per sighting and much deader to play: a cue on 5% of draws, and a
-player could go a hundred draws seeing nothing above blue.
+Loosening the reliabilities was tried and rejected: at white 0.5 / blue 2 /
+green 10 / red 50 the disc spoke on a quarter of draws, but the low rungs meant
+nothing, which is what the ladder exists to avoid.
 
-Loosening trades meaning for presence, and the trade is worth making because
-the meaning was wasted on cues nobody ever saw. Note what it does **not** buy:
+The real lever is the tier's width. Same reliabilities as above, but adding
+Reply (6.2%) to what the ladder predicts:
 
-| | tight | loose |
+| | tier 1.33% | tier 7.5% (+Reply) |
 | --- | --- | --- |
-| any cue, per 100 draws | 5.2 | 26.6 |
-| green | 0.7 | 3.0 |
-| red | 0.6 | 1.0 |
-| **gold** | **0.3** | **0.2** |
+| white | 1.5% | 8.7% |
+| blue | 1.1% | 6.4% |
+| green | 0.9% | 4.9% |
+| red | 0.6% | 3.2% |
+| any cue | 4.2% | 24% |
 
-Gold does not move. It is pinned at 100% reliability, so its rate is set purely
-by how rare the tier is — 1.33%. The only way to see gold more often is to
-widen the tier, never to loosen the ladder.
+Every colour keeps its meaning and the disc speaks five times as often. Gold is
+the exception and always will be: reserved for bar, triple and locked kills, its
+rate is bounded by their rarity rather than by the ladder.
 
 ## What it predicts
 
