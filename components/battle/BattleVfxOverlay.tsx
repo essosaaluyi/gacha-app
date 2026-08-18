@@ -32,13 +32,16 @@ type Rung = "white" | "blue" | "green" | "red" | "gold" | null;
 
 /**
  * `?vfx-tell=gold` pins every draw to one rung, so a colour can be looked at
- * deliberately instead of waited for — gold is 1 in 741 in normal play. Dev
- * only, the same shape as the hand overrides in resultLottery, so no player
- * can pin the ladder and turn a tell into a certainty.
+ * deliberately instead of waited for — gold is 1 in 546, and the ladder only
+ * speaks at all on about 8% of draws.
+ *
+ * Unlike the hand overrides in resultLottery this works in production, because
+ * it cannot leak anything. It forces the *display* and leaves the hand alone,
+ * so a pinned disc has no relationship to what is coming — it destroys the
+ * cue's information rather than revealing it.
  */
 function pinnedRung(): Rung | undefined {
   if (typeof window === "undefined") return undefined;
-  if (process.env.NODE_ENV === "production") return undefined;
   const value = new URLSearchParams(window.location.search).get("vfx-tell");
   const rungs = ["white", "blue", "green", "red", "gold"] as const;
   return (rungs as readonly string[]).includes(value ?? "") ? (value as Rung) : undefined;
