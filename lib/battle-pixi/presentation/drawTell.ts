@@ -23,8 +23,8 @@ import { evaluateResult } from "@/lib/battle-pixi/core/evaluateResult";
  *
  * So a single chance is the *common* path, not a prize, and neither it nor an
  * attack can carry a ladder — a cue built on a coin flip carries no
- * information however it is weighted. The rare tier is bar, double and triple:
- * 1.33% together, about 1 in 75, which is what a ladder needs underneath it.
+ * information however it is weighted. The tier is bar, triple, double chance
+ * and reply: 7.5% together, about 1 in 13.
  *
  * The low rungs lie on purpose. Without fakes, any cue at all would guarantee
  * something good, and a dark disc would guarantee a dead hand — the machine
@@ -49,13 +49,13 @@ type Weights = Partial<Record<TellRung | "none", number>>;
  * Per-class colour weights, in percent.
  *
  * These are derived, not chosen. Given the target reliabilities and the base
- * rates (decisive 1.33%, everything else 98.67%), the fake rate each colour is
- * allowed is forced:  p_fake = p_real x (D/N) x (1-R)/R.
+ * rates (tier 7.5%, everything else 92.5%), the fake rate each colour is
+ * allowed is forced:  p_fake = p_real x (D/N) x (1-R)/R,  and how often it
+ * fires at all is  share x D / R.
  *
- * That is also why the disc is quiet. A cue can only be as common as its
- * reliability and its base rate permit — holding white at 2% means white can
- * fire on about 4% of draws and no more. A ladder that lit up half the time
- * would be one that meant nothing.
+ * That second identity is the one to keep in mind: meaning and frequency are
+ * the same dial pulled in opposite directions, and the only escape is a wider
+ * tier underneath.
  *
  * Changing a weight changes what a colour *means*. The reliability on each
  * line is the thing to preserve; scratchpad/ladder-check.mjs measures it.
@@ -74,7 +74,7 @@ const WEIGHTS: Record<"top" | "decisive" | "quiet", Weights> = {
   /** A double chance: worth anticipating, but tops out at red. */
   decisive: { red: 27, green: 32, blue: 18, white: 11, none: 12 },
   /** Everything else, single chance and attack included. Every cue is a fake. */
-  quiet: { red: 0.086, green: 0.574, blue: 1.01, white: 1.488, none: 96.84 }
+  quiet: { red: 0.412, green: 4.6, blue: 9.94, white: 15.61, none: 69.44 }
 };
 
 /** The predicate the stage uses to register a fatal-mode hit, mirrored here. */
@@ -102,15 +102,23 @@ export function isKillLocked(input: DrawTellInput): boolean {
 }
 
 /**
- * The middle rung of the tier: a double chance.
+ * The middle of the tier: a double chance, or a reply.
  *
- * A *single* chance is deliberately absent. It is the most common result in the
- * game at 49% — the normal path, not a prize — and a ladder keyed to it would
- * be a ladder keyed to a coin flip. A chance *card* is likewise not an outcome:
+ * Reply is here for frequency, not for grandeur. At 6.2% it is the only outcome
+ * common enough to give the ladder something to say — with bar, double and
+ * triple alone the tier was 1.33%, and reliabilities this high left the disc
+ * dark on 96% of draws. Since fires = share / reliability, the only way to hold
+ * a strict ladder *and* have it speak is a wider tier underneath it.
+ *
+ * It earns the place on merit too: a reply makes the next draw free.
+ *
+ * A *single* chance is still absent. It is the most common result in the game
+ * at 49% — the normal path, not a prize — and a ladder keyed to it would be a
+ * ladder keyed to a coin flip. A chance *card* is likewise not an outcome:
  * cards feed chanceAttackRate and turn up in half of all hands.
  */
 function isDecisive(result: BattleResult): boolean {
-  return result.result === "DoubleChance";
+  return result.result === "DoubleChance" || result.result === "Reply";
 }
 
 function isTopTier(result: BattleResult, killLocked: boolean): boolean {

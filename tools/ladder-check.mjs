@@ -23,7 +23,8 @@ for (let i = 0; i < N; i++) {
   const isTop =
     result.result === 'TripleChance' || result.result === 'Bar' ||
     (result.barChance?.scope === 'battle' && result.barChance.outcome === 'success');
-  const isDecisive = isTop || result.result === 'DoubleChance';
+  const isDecisive =
+    isTop || result.result === 'DoubleChance' || result.result === 'Reply';
   if (isDecisive) decisiveTotal++;
 
   const key = rung ?? 'none';
