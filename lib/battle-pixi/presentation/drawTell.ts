@@ -1,5 +1,6 @@
 import type { BattleResult } from "@/lib/battle-pixi/core/resultLottery";
 import { evaluateResult } from "@/lib/battle-pixi/core/evaluateResult";
+import { getBattleResultWeights } from "@/lib/battle-pixi/core/resultLottery";
 
 /**
  * The disc's anticipation ladder.
@@ -46,36 +47,95 @@ export type DrawTellInput = {
 type Weights = Partial<Record<TellRung | "none", number>>;
 
 /**
- * Per-class colour weights, in percent.
- *
- * These are derived, not chosen. Given the target reliabilities and the base
- * rates (tier 7.5%, everything else 92.5%), the fake rate each colour is
- * allowed is forced:  p_fake = p_real x (D/N) x (1-R)/R,  and how often it
- * fires at all is  share x D / R.
- *
- * That second identity is the one to keep in mind: meaning and frequency are
- * the same dial pulled in opposite directions, and the only escape is a wider
- * tier underneath.
- *
- * Changing a weight changes what a colour *means*. The reliability on each
- * line is the thing to preserve; scratchpad/ladder-check.mjs measures it.
+ * What each colour is meant to mean: the chance the draw is in the tier, given
+ * that you have seen that colour. This is the design; everything else below is
+ * arithmetic in service of it.
  */
-const WEIGHTS: Record<"top" | "decisive" | "quiet", Weights> = {
-  /**
-   * Triple, bar, or a locked kill — the only class allowed to show gold.
-   * Gold takes a quarter rather than most of these, so that gold stays rarer
-   * than red; giving it the majority made the ceiling more common than the
-   * rung below it, which reads as broken.
-   */
-  top: { gold: 22, red: 41, green: 18, blue: 6, white: 3, none: 10 },
-  // ^ the `none` matters as much as the colours: without it a dark disc would
-  // be *proof* that nothing rare was coming. Fakes stop absence being a signal
-  // in one direction; this stops it in the other.
-  /** A double chance: worth anticipating, but tops out at red. */
-  decisive: { red: 27, green: 32, blue: 18, white: 11, none: 12 },
-  /** Everything else, single chance and attack included. Every cue is a fake. */
-  quiet: { red: 0.412, green: 4.6, blue: 9.94, white: 15.61, none: 69.44 }
+const TARGET_RELIABILITY: Record<TellRung, number> = {
+  white: 0.05,
+  blue: 0.12,
+  green: 0.35,
+  red: 0.85,
+  gold: 1
 };
+
+/**
+ * How tier hands distribute across the colours, in percent.
+ *
+ * Only the top class may show gold, and it takes a fifth rather than most of
+ * them so that gold stays rarer than red — a ceiling more common than the rung
+ * below it reads as broken. The `none` entries matter as much as the colours:
+ * without them a dark disc would be *proof* nothing was coming. Fakes stop
+ * absence being a signal in one direction; these stop it in the other.
+ */
+const TOP_SHARE: Weights = { gold: 22, red: 41, green: 18, blue: 6, white: 3, none: 10 };
+const MID_SHARE: Weights = { red: 27, green: 32, blue: 18, white: 11, none: 12 };
+
+/** Outcomes that make a draw worth anticipating, split by ceiling. */
+const TOP_RESULTS = ["Bar", "TripleChance"] as const;
+const MID_RESULTS = ["DoubleChance", "Reply"] as const;
+
+const RUNGS: TellRung[] = ["white", "blue", "green", "red", "gold"];
+
+/**
+ * Fake rates, derived from the odds actually in force.
+ *
+ * Computed rather than written down, because a hard-coded table silently means
+ * something different the moment the odds move — and they do move. A debug pin
+ * (patchConfig.debug.forceResultProbability) reshapes the whole distribution,
+ * so a ladder tuned against a pinned build reads roughly twice as strong once
+ * the pin comes off. Deriving it means a test pin changes what the player
+ * *sees*, never what a colour *means*.
+ *
+ * The arithmetic is Bayes rearranged. For a colour with share s of the tier and
+ * target reliability R, against a tier of base rate D:
+ *
+ *   p_fake = s x (D/N) x (1-R)/R        how often it may lie
+ *   fires  = s x D / R                  how often it appears at all
+ *
+ * The second identity is the one worth remembering: meaning and frequency are
+ * the same dial pulled in opposite directions, and the only way to have both is
+ * a wider tier underneath.
+ */
+function deriveWeights(): { top: Weights; mid: Weights; quiet: Weights } {
+  const weights = getBattleResultWeights();
+  const total = weights.reduce((sum, item) => sum + item.weight, 0) || 1;
+  const rateOf = (names: readonly string[]) =>
+    weights
+      .filter((item) => names.includes(item.result))
+      .reduce((sum, item) => sum + item.weight, 0) / total;
+
+  const topRate = rateOf(TOP_RESULTS);
+  const midRate = rateOf(MID_RESULTS);
+  const tier = topRate + midRate;
+
+  // No tier at all would make every reliability undefined; leave the disc dark
+  // rather than divide by zero.
+  if (tier <= 0) return { top: TOP_SHARE, mid: MID_SHARE, quiet: { none: 100 } };
+
+  const rest = 1 - tier;
+  const quiet: Weights = {};
+  let used = 0;
+
+  for (const rung of RUNGS) {
+    const R = TARGET_RELIABILITY[rung];
+    if (R >= 1) {
+      quiet[rung] = 0; // gold cannot lie, so it never appears out here
+      continue;
+    }
+    // Share of the whole tier, blending the two classes by how often each occurs.
+    const share =
+      (((TOP_SHARE[rung] ?? 0) / 100) * topRate +
+        ((MID_SHARE[rung] ?? 0) / 100) * midRate) /
+      tier;
+    const fake = share * (tier / rest) * ((1 - R) / R);
+    quiet[rung] = fake * 100;
+    used += fake;
+  }
+
+  quiet.none = Math.max(0, (1 - used) * 100);
+  return { top: TOP_SHARE, mid: MID_SHARE, quiet };
+}
 
 /** The predicate the stage uses to register a fatal-mode hit, mirrored here. */
 function registersHit(result: BattleResult): boolean {
@@ -153,7 +213,9 @@ export function rollDrawTell(input: DrawTellInput): TellRung | null {
   // player halfway through a run.
   const killLocked = isKillLocked(input);
 
-  if (isTopTier(input.result, killLocked)) return pick(WEIGHTS.top);
-  if (isDecisive(input.result)) return pick(WEIGHTS.decisive);
-  return pick(WEIGHTS.quiet);
+  const weights = deriveWeights();
+
+  if (isTopTier(input.result, killLocked)) return pick(weights.top);
+  if (isDecisive(input.result)) return pick(weights.mid);
+  return pick(weights.quiet);
 }
