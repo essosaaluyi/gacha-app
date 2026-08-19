@@ -94,8 +94,9 @@ and the real distribution over 200k draws is:
 
 So a single chance is the common path, not a prize, and an attack is not rare
 either. **A cue built on a coin flip carries no information however it is
-weighted** — the ladder needs a rare event underneath it or the whole span
-collapses. Bar, double and triple are the only outcomes rare enough.
+weighted** — the ladder needs something rare enough underneath it or the whole
+span collapses. Bar, triple and double chance qualify on rarity; reply joins
+them because rarity alone left the tier too narrow to light the disc.
 
 Note also that a chance *card* is not a chance *result*. Cards feed
 `chanceAttackRate` and appear in about half of all hands.
@@ -109,7 +110,7 @@ and its fake rate is forced:
 p_fake = p_real x (D/N) x (1-R)/R      fires = p_real x D / R
 ```
 
-D is the tier's base rate (1.33%), N its complement, p_real the share of tier
+D is the tier's base rate (7.5%), N its complement, p_real the share of tier
 hands showing that colour, R the reliability. The second identity is the one
 that matters: **how often a colour fires is its share of the tier divided by
 its reliability.** Meaning and frequency are the same dial pulled in opposite
@@ -157,8 +158,10 @@ verified, the pacing is not. Worth watching for once it has been played:
 
 ## Testing
 
-Dev server only:
-
-- `?vfx-tell=gold` — pin every draw to one rung
-- `?triple-chance=true` · `?attack-target=true` — force a hand
-- `/effect-test/deck` — every rung on a stand-in disc
+- `?vfx-tell=gold` — pin every draw to one rung. Works in production too: it
+  forces the display and leaves the hand alone, so it removes the cue's
+  information rather than leaking any.
+- `?triple-chance=true` · `?attack-target=true` — force a hand. Dev server only.
+- `/effect-test/deck` — every rung on a stand-in disc.
+- `npx tsx tools/draw-trace.mjs 100` — 100 draws with the rung and the hand
+  side by side.
