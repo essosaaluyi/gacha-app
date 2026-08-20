@@ -4,10 +4,12 @@ import {
   initializeBattlePoints,
   subscribeBattlePoints,
 } from "@/lib/battle-pixi/state/battlePointsStore";
+import { useBonusOpeningHidden } from "@/lib/battle-pixi/state/useBonusOpeningHidden";
 import BattleDigitStrip from "./BattleDigitStrip";
 
 export default function BattlePoints() {
   const [state, setState] = useState(getBattlePointsState());
+  const hiddenForOpening = useBonusOpeningHidden();
 
   useEffect(() => {
     const unsubscribe = subscribeBattlePoints(() => {
@@ -18,6 +20,10 @@ export default function BattlePoints() {
 
     return unsubscribe;
   }, []);
+
+  // Hidden for the bonus opening. The wallet keeps updating underneath; only
+  // the readout stands down, so nothing has to be re-synced when it returns.
+  if (hiddenForOpening) return null;
 
   return (
     <div className="battle-points-plaque" aria-label={`Total ${state.points} points`}>

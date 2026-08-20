@@ -2,6 +2,7 @@
 
 import BattleBackground from "@/components/battle/BattleBackground";
 import BattleGameCounter from "@/components/battle/BattleGameCounter";
+import BattleBetPayout from "@/components/battle/BattleBetPayout";
 import BattleHUD from "@/components/battle/BattleHUD";
 import BattleLog from "@/components/battle/BattleLog";
 import BattlePixiStage from "@/components/battle/BattlePixiStage";
@@ -614,6 +615,12 @@ export default function BattleScreen() {
       {/* Outside the scaled stage on purpose: a canvas under scale(0.75) would
           render at three-quarter resolution and be scaled back up. */}
       {audioReady && <BattleVfxOverlay />}
+      {/* Also outside the stage, and for the same kind of reason: the play
+          field's bottom-right corner is where the enemy card is dealt, so a
+          readout parked there gets covered every round. On the bezel it is
+          always legible, and it is where a cabinet puts its credit meter
+          anyway — on the frame, not over the picture. */}
+      <BattleBetPayout />
       <div className="fixed inset-0 flex items-center justify-center">
         <div
           className="relative battle-fixed-stage battle-cabinet-stage"

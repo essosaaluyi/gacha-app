@@ -8977,3 +8977,84 @@ body.page-video-active .trust-page {
     animation-duration: 1ms;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   BET / PAYOUT
+
+   The stake meter, bottom right of the cabinet. Deliberately plain: it is a
+   readout, not a feature, and it sits next to the player's hand where anything
+   decorative would compete with the cards. Monospace so the digits do not
+   shuffle sideways as the bet drains.
+   --------------------------------------------------------------------------- */
+.bcab-stake {
+  /* On the cabinet bezel rather than inside the play field — see the mount
+     comment in BattleScreen. Fixed, so it is not caught by the stage's 0.75
+     scale and renders at full crispness.
+
+     One row rather than two on purpose: the cabinet is centred with a shallow
+     letterbox strip below it, and a stacked readout is taller than that strip,
+     so it would sit on the corner of the player's own hand. Laid out flat it
+     fits in the strip and clears the art. */
+  position: fixed;
+  right: 20px;
+  bottom: 6px;
+  z-index: 60;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 16px;
+  background: linear-gradient(180deg, rgba(10, 12, 16, 0.88), rgba(4, 5, 8, 0.94));
+  border: 1px solid #3a3325;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 3px 10px rgba(0, 0, 0, 0.7);
+}
+
+.bcab-stake-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.bcab-stake-divider {
+  width: 1px;
+  align-self: stretch;
+  background: linear-gradient(180deg, transparent, #3a3325 30%, #3a3325 70%, transparent);
+}
+
+.bcab-stake-label {
+  font-family: var(--fu);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  color: #8b93a2;
+}
+
+.bcab-stake-value {
+  font-family: var(--fl);
+  font-size: 24px;
+  line-height: 1.1;
+  min-width: 2ch;
+  text-align: right;
+  color: #e8edf5;
+  /* Tabular figures: a draining counter must not reflow the row. */
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(120, 200, 255, 0.35);
+}
+
+/* A win is the only thing here worth colouring. */
+.bcab-stake-win .bcab-stake-label { color: #d9b45b; }
+.bcab-stake-win .bcab-stake-value {
+  color: #ffd98a;
+  text-shadow: 0 0 12px rgba(255, 200, 87, 0.55);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bcab-stake-win .bcab-stake-value { animation: bcabStakeWin 0.5s ease-out; }
+}
+
+@keyframes bcabStakeWin {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}

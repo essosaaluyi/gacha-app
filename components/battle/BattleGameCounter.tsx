@@ -6,16 +6,21 @@ import {
   getGameCount,
   subscribeGameCount,
 } from "@/lib/battle-pixi/state/battleGameStore";
+import { useBonusOpeningHidden } from "@/lib/battle-pixi/state/useBonusOpeningHidden";
 import BattleDigitStrip from "./BattleDigitStrip";
 
 export default function BattleGameCounter() {
   const [gameCount, setGameCount] = useState(getGameCount());
+  const hiddenForOpening = useBonusOpeningHidden();
 
   useEffect(() => {
     return subscribeGameCount(() => {
       setGameCount(getGameCount());
     });
   }, []);
+
+  // The bonus opening is a cutscene; a counter over it is leftover chrome.
+  if (hiddenForOpening) return null;
 
   return (
     <div className="battle-game-counter" aria-label={`${gameCount} games played`}>
