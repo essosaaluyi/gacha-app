@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import BattleDeckOrder from "@/components/gacha/BattleDeckOrder";
 import type { Card } from "@/lib/gacha/pullLogic";
+import TopBar from "@/components/TopBar";
 
 export default function BattleOrderPage() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -40,11 +41,13 @@ export default function BattleOrderPage() {
 
   return (
     <main className="battle-order-room">
+      <TopBar />
       <div className="battle-order-spotlight" />
       <div className="battle-order-dust" />
       <div className="battle-order-dust battle-order-dust-second" />
 
       <div className="battle-order-content">
+        <header className="site-page-heading"><div><p className="site-eyebrow">READY WHEN YOU ARE</p><h1>Your battle hand<span className="site-heading-dot">.</span></h1><p>Meet the characters joining your next adventure.</p></div></header>
         {cards.length > 0 ? (
           <BattleDeckOrder cards={cards} />
         ) : (

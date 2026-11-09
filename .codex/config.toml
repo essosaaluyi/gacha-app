@@ -1,0 +1,5 @@
+# Gacha Battle: one primary Project Manager and at most three workers.
+# Keep personal model, provider, permissions and integrations unchanged.
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3

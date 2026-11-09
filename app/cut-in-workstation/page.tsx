@@ -61,8 +61,10 @@ export default function CutInWorkstationPage() {
   // Read inside the mount layout effect, which must not re-run when they change.
   const pausedRef = useRef(paused);
   const timeRef = useRef(time);
-  pausedRef.current = paused;
-  timeRef.current = time;
+  useLayoutEffect(() => {
+    pausedRef.current = paused;
+    timeRef.current = time;
+  }, [paused, time]);
 
   const getAnims = useCallback(
     () => stageRef.current?.getAnimations({ subtree: true }) ?? [],

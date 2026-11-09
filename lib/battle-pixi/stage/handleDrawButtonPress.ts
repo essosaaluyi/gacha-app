@@ -8,13 +8,10 @@ import { addBattleLog } from "@/lib/battle-pixi/state/battleLogStore";
 import { incrementGameCount } from "@/lib/battle-pixi/state/battleGameStore";
 import {
   decrementEnemyAttackCounter,
-  getEnemyAttackCounter,
 } from "@/lib/battle-pixi/state/enemyAttackCounterStore";
-import { getAttackFakeoutState } from "@/lib/battle-pixi/state/attackFakeoutStore";
 import { isFatalModeActive } from "@/lib/battle-pixi/state/fatalModeStore";
 import {
   isEnemyAttackModeActive,
-  startEnemyAttackMode,
 } from "@/lib/battle-pixi/state/enemyAttackModeStore";
 import { hideRoundInsert } from "@/lib/battle-pixi/state/roundInsertStore";
 import { startPendingChancePointsReveal } from "@/lib/battle-pixi/state/chancePointsRevealStore";
@@ -68,6 +65,7 @@ type HandleDrawButtonPressArgs = {
 
   onBonusFinished: (collectionStarted: boolean) => void;
   confirmBonusResult?: boolean;
+  immediateCommit?: boolean;
 };
 
 
@@ -87,6 +85,7 @@ export function handleDrawButtonPress({
 
   onBonusFinished,
   confirmBonusResult = false,
+  immediateCommit = false,
 }: HandleDrawButtonPressArgs) {
   if (cardsAreOut) return;
   // A committed draw is still handing off to its new hand — reject the press
@@ -209,17 +208,14 @@ preparePendingNextRound();
 
 incrementGameCount();
 
- const fakeoutWasActive = getAttackFakeoutState().active;
-
 if (
   !isFatalModeActive() &&
   !isEnemyAttackModeActive()
 ) {
   decrementEnemyAttackCounter();
 
-  if (!fakeoutWasActive && getEnemyAttackCounter() <= 0) {
-  startEnemyAttackMode();
-}
+  // Zero is an entry opportunity. The committed result's Empty50% lottery
+  // in BattlePixiStage arms the original finite enemy window.
 }
 
   drawButton.eventMode = "none";
@@ -236,6 +232,10 @@ const beginPreparedDraw = () => {
   setCardsAreOut(true);
   endDrawSequence();
 };
+
+// Cabinet DRAW1 must persist the paid lottery in this synchronous commit,
+// rather than leave an unload gap while old table cards fade.
+if (immediateCommit) { beginPreparedDraw(); return; }
 
 const hasOldRevealedCards = drawCards.some(
   (card) => card.visible && card.parent === stage

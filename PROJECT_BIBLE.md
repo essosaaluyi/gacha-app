@@ -1,8 +1,42 @@
 # Gacha Battle Project Bible
 
-Last updated: 2026-06-26
+Last updated: 2026-11-09
 
 This document is the shared source of truth for the gacha battle game. Use it to keep development, design, balancing, QA, and future chats aligned.
+
+## Current Implementation Status
+
+The 2026-10-31 read-only team audit traced current source and ran limited checks. This section records implementation, not blanket visual or end-to-end approval. Use `session-handoff.md` for the latest task and checks, and `outputs/character-abilities/current-character-ability-audit.md` for the character/rule matrix.
+
+| Area | Current evidence | Remaining work |
+| --- | --- | --- |
+| Gacha and battle | Pull results, deck ordering/one shuffle, table-card rules, Fatal modes, bonuses and collection are connected in source. | Full browser acceptance remains outstanding. |
+| Character mechanics | Individual printed W RATE, UR3's per-round 66-89 roll, and Mami's post-collection BAR boost exist in source. | Most other authored individual abilities are not integrated; reconcile historical proposals before implementation. |
+| Enemy Fatal — corrected (2026-11-06) | Idle-at-zero entry only: non-Empty0%, Empty50%, once per committed game. Original finite window restored: default3 draws including trigger, no active-window entry reroll. Entry third stop warns650ms; final third stop shows1800ms ENEMY then stored survival/refill or defeat. Evidence: latest correction in `outputs/ui-review/2026-11-06/enemy-fatal/pm-qa.md`; Kai25 focused/type pass, scoped lint0 errors/1 existing warning; Riku10 normal checks and legacy-recovery1/1 clear. | Owner visual judgment pending; temporary attack screens. Real-save/legacy Continue and production frequencies not browser-tested; phone/full-game coverage not exhaustive. Owner clarified2026-11-08: 書き換え抽選 means the existing drawn-card attack-to-avoidance outcome override; terminology closed, no symbol redraw/replacement requested. |
+| Battle persistence | Snapshots, Continue Battle and some per-mode persistence exist. | Stage initialization overwrites restored deck/enemy state; Fatal/fakeout/nested-bonus coverage, draw discounts and snapshot validation need work. |
+| R1/R2 animation | Both have runtime summon/idle sequences and struggle layers. R1 has detailed sonic-attack production material. | R1's final bespoke cinematic is not established as integrated; R2's exact attack/timed storyboard is pending. |
+| Air-tank 3D lab (2026-11-03) | Real Three.js `/air-tank-lab` with current card art, collision prevention, particle/light spirals and button-triggered curved-glass crack growth/repair. Owner later authorized embedding the tank in `/battle`, recorded separately below. Earlier lab recording verified; revision recording-time hit source-checked only. | Actual smartphone performance unverified; accurate fluid physics, physical glass fragments and refraction absent. |
+| Player dock / two-step DRAW (2026-11-09) | Production tank/old3D flight unmounted, preserved sources/labs/assets. Dock summon target and active-card display; DRAW1 commits once→3 backs SET/unlimited wait; DRAW2 free flat2:3 release→manual table flips. Prior PM live and independent recovery evidence: outputs/ui-review/2026-11-08/player-dock-two-step/pm-qa.md. | Owner visual acceptance pending. Free fixture is not paid wallet/G/browser-save proof; phone/GPU/contextloss/all modes not exhaustive. Resurrection disabled/unexercised. Earlier tank/one-press presentation superseded. |
+| Checks | TypeScript passed; deck tests passed 3/3; scoped application lint had 0 errors and 87 warnings. | Integration/browser coverage is limited and the balance simulator is stale. |
+
+The existing Design Department, Producer and QA prompts below remain role guidance. Reusable role profiles are in `.codex/agents/`; `AGENTS.md` defines delegation, ownership and handoffs. Product decisions belong here, current task progress belongs in the handoff, and historical design remains labeled as historical. An audit finding proposes work; it does not authorize a gameplay change.
+
+### Gacha Studio Team
+
+| Name | Role | Owns |
+| --- | --- | --- |
+| Ren / レン | Project Manager | Priorities, task ownership, decisions and handoffs. |
+| Aki / アキ | Game Systems Designer / Critical Reviewer | Mechanic proposals, risk/reward, ability/bonus interactions and independent critique. No implementation. |
+| Kai / カイ | Game Developer | Gameplay, state/persistence, React/Pixi integration and runtime playback. |
+| Mio / ミオ | UI / Cabinet Designer | Cabinet graphics, layout, typography, color, frames/LED/buttons and assigned CSS/presentational markup. |
+| Sora / ソラ | Animation Director | Character art, storyboards, animation and cinematic delivery. |
+| Riku / リク | QA Tester | Independent gameplay, integration, responsive and visual verification. |
+| マイニガ | 3D Artist / WebGL Prototyper (`tank_3d_artist`) | Isolated Three.js air-tank, materials/camera and card-shuffle prototypes; current card art read-only. Production integration remains Kai's, cabinet/UI Mio's and character art Sora's. |
+| Kiwi / キウイ | Frontend Web Designer / Developer (`frontend_designer`) | Assigned Web pages, responsive layout, accessibility and frontend presentation/interaction code. Existing Mio cabinet/UI and Kai gameplay/runtime ownership remains; shared files require explicit coordination. |
+
+The PM chooses at most three concurrent workers from the seven specialties. Cabinet/UI, frontend Web work, character animation and assigned 3D work have distinct file owners; shared component or scene changes are coordinated before editing. Planning meetings use the owner's proposal, Aki's real supporting/critical review, and Ren's concise summary with one unresolved question; opposition is evidence-based rather than performative.
+
+Each member has a named local project chat, registered in the current section of `session-handoff.md`. Ren is the coordination entry point. Run only the needed roles; use one chat per coherent task, brief milestone handoffs and fresh context when starting a different task. Compaction can preserve continuity for the same ongoing problem. Separate chats and more agents do not themselves guarantee lower usage. Keep old records available without loading them into every task.
 
 ## Core Vision
 
@@ -21,6 +55,19 @@ The important design goal is not only the math result. The emotional rhythm matt
 - Hit or dodge payoff
 - Bonus / point reward confirmation
 
+## Character Direction
+
+Owner direction (2026-11-01): character appeal is visual-first. Players should want the appearance and want to use the character's distinctive ability. Personality and deep backstory are not primary requirements for this game.
+
+| Question | Review standard |
+| --- | --- |
+| Why want the character? | Its visual design should be desirable, recognizable and memorable. Do not assume polish alone establishes appeal. |
+| What is it? | A brief identity: what person/creature/entity it is and what it does. Express that premise through appearance rather than expanding lore. |
+| Why use it? | Its individual ability changes the experience of playing. Approved intent and current runtime implementation remain separate. |
+| Where is it from? | Characters may be summoned from different worlds. A unified origin world is not required; cross-world summoning/battle is the shared premise. Battle-royale-like flavor does not itself specify a new multiplayer mode. |
+
+Review one character at a time using its existing approved references: one-line identity, distinctive visual attraction, ability/play difference, and evidence-based keep/change points. The owner assigned Aki to compile one existing-image review page per player character (15 verified in the current roster), with names, short background/identity, ability design and implementation status. Visual selling points and keep/change decisions remain open for joint review. New review documents are authorized; new artwork and ability implementation are not. Do not turn the multi-world premise into a forced common lore or an automatic change to approved art styles.
+
 ## Current Tech Stack
 
 - Next.js
@@ -36,19 +83,40 @@ Read `AGENTS.md` before code changes. This project uses a Next.js version with b
 ## Current Game Flow
 
 1. Player starts from the top page.
-2. Player performs a gacha pull.
-3. Pull result becomes the player's battle cards.
-4. After reveal, the player sees the battle deck order screen.
-5. Player may shuffle once.
-6. Final card order is read top-left to bottom-right:
-   - Top row: 1 to 5
-   - Bottom row: 6 to 10
-7. Player begins battle.
-8. Battle opening plays.
-9. Round 1 starts.
-10. Battle proceeds through card flips, omens, fakeouts, attacks, enemy counter, and rewards.
+2. One pack always yields five cards; new single-card pulls are removed. Existing opening video/3D pack reveal and battle-hand preparation continue. Member-five DB compatibility is still unverified and guarded before payment; legacy single histories remain.
+3. Enter battle: Enemy Insert and enemy summon precede unused-hand selection.
+4. Click a hand card to inspect; drag onto the upper-left player dock (or use existing keyboard confirmation) for Yes/No. Old field drop is rejected. Only Yes commits that instance; its card remains in the dock and its character appears on the field.
+5. DRAW1 commits payment/lottery/G/counter once and sequentially sets three backs below the dock outlet (0/160/320ms, SET ready650ms). SET waits indefinitely, including while inspecting cards. Production tank/mix/old3D flight are unmounted; their source/lab/assets remain preserved.
+6. DRAW2 costs nothing and does not reroll: flat natural2:3 backs lift/enlarge/settle to the table (1080ms,90ms stagger). Cards remain back-down and manual flips alone advance stops; DRAW unlocks after all three settle. AUTO uses the same guarded SET→DEAL funnel. Continue restores committed hand/phase/stops/rewards/bonus queues and payoff cast/winner without duplicate awards or RNG; interrupted deal returns to the paid stable holder.
+7. Defeat reopens unused-hand selection; summoned instances never return to hand. Existing victorious-card persistence is retained. New runs have normal rounds1–5, with round6=EXTRA1; legacy saves retain their prior boundary.
+8. Existing bonus/collection rules remain. SuperMax's natural freeze leads into its restored dedicated MAX movie; no new bonus probabilities or outcome-to-glass-crack mapping are introduced.
+
+Latest battle-deal evidence: outputs/ui-review/2026-11-08/player-dock-two-step/pm-qa.md plus Kai/Mio/Riku handoffs. Prior PM fresh free1280×720 confirmed dock summon, unlimited SET/inspection, second release/three manual flips, AUTO funnel and navigation DOM cleanup. Actual-store recovery checks cover reward/Fatal/nestedMAX/struggle corrections; this is not paid wallet/G or real-save browser evidence. Phone/GPU/contextloss/full-mode coverage skipped; owner visual acceptance next. Concurrent owner frontend/gacha work remains preserved.
 
 ## Gacha To Battle Rules
+
+### Pack selection and Offering Rates (2026-11-08)
+
+- Show one existing pack image with drop shadow/contrast on a separate dark-green stage, full-pool card previews without carousel arrows, one five-card opening action and current five-card price.
+- Offering Rates lists all15 existing card images/names and rarity/individual rates from the actual shared lottery weights. Current rarity rates R60%, SR25%, SSR10%, UR5%; individual rates equal effective rarity rate divided by its pool size. State that these are per-card draws, not pack-at-least-once probabilities, and disclose rounding. Do not change odds through presentation.
+- Kiwi checks and Riku independent review passed; PM desktop/390 portrait and dialog/confirmation evidence: `outputs/ui-review/2026-11-08/gacha-five-pack/pm-qa.md`. Paid opening/DB save not newly browser-tested; member guard retained. Owner visual judgment remains open.
+
+### Enemy Fatal (owner correction, 2026-11-06)
+
+- Only idle entry at enemy countdown zero changes: the committed whole-game result non-Empty never enters; Empty enters at50%, rolled once. One Empty symbol is not the predicate. An active window never rerolls entry. Existing player-Fatal failure can still force an enemy window independently of countdown; other original priorities/odds remain.
+- Preserve the original finite window: default3 draws INCLUDING the trigger, leaving two following draws. Live configured length is captured on entry and saved. Entry third stop warns650ms then permits the following games; it does not immediately retire the fighter. At the original final third stop, show1800ms ENEMY/card/name/ATTACK, then resolve held survival/refill or defeat. Player placeholder remains1800ms.
+- Normal window cards retain original accumulated rescue predicates: Chance presence or Bar registers counter; target Attack or Reply registers reset. Held real shield outcome takes precedence at final; survival refills the enemy counter. Owner confirmed2026-11-08: 「書き換え抽選」＝「引いたカードで攻撃結果を回避へ書き換える（既存方式）」. This is the implemented pending survival/outcome override; terminology is closed. No symbol redraw/replacement or new odds were requested; no implementation change or new QA is required.
+- Continue restores saved window length, counter/reset flags, shield, entry commitment, settled positions and BAR/Defense grades without new payment or entry roll. Result-less legacy hands restore neutral backs/remaining stops, finish only their committed transition without unknown-symbol rewards, and clear the pending plan before next draw. Hidden/overview/context guards and unlimited manual stop waiting remain.
+- Prior PM DEV browser evidence shows Reply rescue2→1→final attack→same fighter/enemy/round and counter4/4, Empty entry/intermediate survive until final attack/defeat, and counter-zero Reply staying idle. Latest actual images: `pm-correction-entry-2g.png`, `pm-correction-final-attack.png`, `pm-correction-survived.png`, `pm-correction-final-failure.png`. Real-save/legacy Continue and production frequency are source/test evidence only, not browser acceptance; phone/full-game coverage not exhaustive. Temporary attacks await owner visual judgment.
+- Historical first acceptance's immediate retirement and persistent per-idle-game attacks are superseded. Its screenshots/test totals do not establish the corrected multi-game sequence; use the latest correction in the existing PM QA and Kai handoff.
+
+### Card overview (implemented 2026-11-02)
+
+- Click a hand card or either field character to inspect its card; viewing and closing do not consume it.
+- A translucent black rectangular dialog shows existing art on the left and name, ability, expected reward and W RATE on the right, with an × close control.
+- Dragging a hand card onto the field (or Shift+Enter) opens the same overview with summon Yes/No. Only Yes commits the instance; No/Escape/× cancel without consumption.
+- Draw/AUTO are blocked while the overview is open. Closing restores focus to the invoking card/character.
+- Display implemented ability status and actual Attack success-rate semantics. Uncalculated expected rewards and undecided guarantees are explicitly identified; inspection must not reroll variable W RATE.
 
 The gacha result must connect directly to the battle.
 
@@ -78,11 +146,9 @@ This allows the game to feel like a smart slot machine while still using card an
 
 ## Attack Probability
 
-The attack probability value was reduced from 24 to 2 during current tuning.
+Attack outcomes use the active character's printed W RATE on target and half that rate off target. UR3 resolves one integer from 66 through 89 per round. Chance and Empty have separate rules.
 
-This makes attack outcomes appear much more often during internal testing, so the battle loop can be tested and refined faster.
-
-This is a testing/balancing value and may change later.
+The current implementation is in `lib/game-config/patchConfig.ts`, `lib/battle-pixi/core/evaluateResult.ts` and `lib/battle-pixi/state/playerWinRateStore.ts`; the existing ability audit records the detailed matrix. The former global test value of 2 is historical, not the current attack-rate contract. Distinguish result-lottery odds from the chance that an Attack lands.
 
 ## Battle Presentation Rules
 
@@ -400,14 +466,22 @@ For every issue, provide:
 
 ## Current Development Priorities
 
-Near-term priorities:
+Owner direction (2026-10-31): revisit the core experience before adding production content. Preserve lottery-based competition and pachislot-style presentation; make player initiative and meaningful decisions clearer. The owner's performance, presentation and character-appeal concerns are not yet measured market/technical conclusions. Discovery proposals are not approved mechanics. Record the current hypothesis and next decision in `session-handoff.md`.
 
-1. Make the gacha-to-battle connection feel complete.
-2. Make player card abilities visible and meaningful.
-3. Improve attack fakeout final payoff: hit, dodge, and enemy counter.
-4. Add stronger visual presentation for card-specific and enemy-specific moments.
-5. Refine battle point rewards and progression.
-6. Continue adding assets without breaking the battle loop.
+The owner supports exploring player-chosen risk/reward routes: higher victory chance with a smaller victory payout, or lower chance with a larger payout. Equal expected net points, equal victory probability and identical per-battle results are different requirements. Proposed payout locking, probability calculation, ability interactions and exact values still require design/validation; no gameplay implementation is authorized yet.
+
+New reward proposal under discussion: differentiate victory bonus guarantees/weights by the selected card's rarity (R: super guaranteed; SR: super chance; SSR: regular or better; UR: default regular), retaining the opening Chance upgrade as a player-drawn opportunity. Exact floors, weights, superMax handling and priority against existing forced bonuses are unresolved. Preserving future Chance/bonus draws means the pre-battle contract would fix guarantee/distribution rules rather than an exact final point amount. This interpretation needs agreement; no rates were changed.
+
+Proposed flow under discussion: enemy revealed first while player cards remain in hand; player chooses a card and then summons it to start battle. Show the card/enemy-conditioned offer and commit its victory payout before the first battle draw. This is a proposed replacement for automatic initial summoning, not the current implementation. Owner-confirmed rule: a summoned card never returns to hand. Do not add return/reuse/cooldown mechanics. Whether the card stays on the field after victory and when next-enemy selection opens remain separate unresolved rules.
+
+Current priority order; implementation starts only when assigned by the owner:
+
+1. Diagnose the agency/suspense gap, compare relevant games and validate a short core-loop proposal with minimal art/video. Team setup is complete; do not resume production merely because staff are ready.
+2. Repair and verify Continue Battle, save boundaries, committed outcomes, rewards and next-draw pricing.
+3. Add focused regression checks and reconcile simulator/runtime rules before using balance results.
+4. Reconcile and approve individual ability requirements, then implement them incrementally.
+5. Confirm R1 final attack deliverables/integration requirements and finalize R2's action/storyboard.
+6. Improve attack payoff, character presentation and progression after the core loop is stable.
 
 Do not overbuild mobile-specific behavior yet. Keep layouts responsive, but focus first on making the browser game loop fun and stable.
 

@@ -90,8 +90,7 @@ let bonusBackgroundArmed = false;
 export const BONUS_OPENING_VIDEOS: Record<BonusType, string> = {
   regular: "/videos/openings/bonus-regular.mp4",
   super: "/videos/openings/bonus-super.mp4",
-  // Not delivered yet. Until it lands the freeze still plays and the bonus
-  // still runs as a nested loop; only this clip is missing.
+  // Dedicated source movie restored and verified by PM on 2026-11-03.
   superMax: "/videos/openings/bonus-super-max.mp4",
 };
 
@@ -135,7 +134,7 @@ export function armBonusOpening(type: BonusType) {
 
 /** The freeze cuts in over the running opening. */
 export function enterBonusFreeze() {
-  if (!bonusOpeningVisible || bonusOpeningStage !== "main") return;
+  if (!bonusOpeningVisible || bonusOpeningType !== "superMax" || bonusOpeningStage !== "main") return;
 
   bonusOpeningStage = "freeze";
   playSfx("freeze");
@@ -144,7 +143,7 @@ export function enterBonusFreeze() {
 
 /** Freeze finished: the super-max opening takes over. */
 export function enterBonusOpeningMax() {
-  if (bonusOpeningStage !== "freeze") return;
+  if (!bonusOpeningVisible || bonusOpeningType !== "superMax" || bonusOpeningStage !== "freeze") return;
 
   bonusOpeningStage = "max";
   notify();
@@ -199,6 +198,7 @@ export function showBonusOpening() {
 }
 
 export function finishBonusOpeningPresentation() {
+  if (!bonusOpeningVisible) return;
   bonusOpeningVisible = false;
   setBattlePresentationPhase("next_round_ready", "bonus-opening-complete");
   notify();
@@ -300,4 +300,24 @@ export function showBonusStaticBackground() {
   bonusOpeningVisible = false;
   activeRevealVideo = "";
   notify();
+}
+
+export function getBonusPresentationSnapshot(){return structuredClone({bonusOverlayVisible,bonusOpeningVisible,pendingRevealVideo,activeRevealVideo,revealKey,bonusResultVisible,bonusResultPoints,pendingResultAfterVideo,pendingResultPoints,bonusGameText,bonusOpeningArmed,bonusBackgroundArmed,bonusOpeningType,bonusOpeningCover,bonusOpeningStage});}
+export function restoreBonusPresentationSnapshot(value?: ReturnType<typeof getBonusPresentationSnapshot>){if(!value)return;
+bonusOverlayVisible=structuredClone(value.bonusOverlayVisible);
+bonusOpeningVisible=structuredClone(value.bonusOpeningVisible);
+pendingRevealVideo=structuredClone(value.pendingRevealVideo);
+activeRevealVideo=structuredClone(value.activeRevealVideo);
+revealKey=structuredClone(value.revealKey);
+bonusResultVisible=structuredClone(value.bonusResultVisible);
+bonusResultPoints=structuredClone(value.bonusResultPoints);
+pendingResultAfterVideo=structuredClone(value.pendingResultAfterVideo);
+pendingResultPoints=structuredClone(value.pendingResultPoints);
+bonusGameText=structuredClone(value.bonusGameText);
+bonusOpeningArmed=structuredClone(value.bonusOpeningArmed);
+bonusBackgroundArmed=structuredClone(value.bonusBackgroundArmed);
+bonusOpeningType=structuredClone(value.bonusOpeningType);
+bonusOpeningCover=structuredClone(value.bonusOpeningCover);
+bonusOpeningStage=structuredClone(value.bonusOpeningStage);
+notify();
 }

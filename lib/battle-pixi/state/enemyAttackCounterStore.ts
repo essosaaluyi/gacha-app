@@ -1,3 +1,5 @@
+import { resetEnemyAttackMode } from "./enemyAttackModeStore";
+
 let enemyAttackCounter = 8;
 // The value the counter was last armed at. The HUD renders the counter as a
 // depleting gauge, so it needs the full value to compute a ratio — a bare
@@ -18,6 +20,7 @@ export function getEnemyAttackCounterMax() {
  * so this also re-arms the max; use decrementEnemyAttackCounter to tick down.
  */
 export function setEnemyAttackCounter(value: number) {
+  if (value > 0) resetEnemyAttackMode();
   enemyAttackCounter = value;
   enemyAttackCounterMax = Math.max(1, value);
   listeners.forEach((listener) => listener());

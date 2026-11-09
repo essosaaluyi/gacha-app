@@ -147,3 +147,15 @@ export function subscribeBonusMode(listener: () => void) {
     listeners = listeners.filter((l) => l !== listener);
   };
 }
+
+export function getClassicBonusSnapshot(){return structuredClone({active,phase,bonusGamesRemaining,bonusTotalPoints,waitingForResultConfirm,bonusGamesMax,forcedOpeningType});}
+export function restoreClassicBonusSnapshot(value?: ReturnType<typeof getClassicBonusSnapshot>){if(!value)return;
+active=structuredClone(value.active);
+phase=structuredClone(value.phase);
+bonusGamesRemaining=structuredClone(value.bonusGamesRemaining);
+bonusTotalPoints=structuredClone(value.bonusTotalPoints);
+waitingForResultConfirm=structuredClone(value.waitingForResultConfirm);
+bonusGamesMax=structuredClone(value.bonusGamesMax);
+forcedOpeningType=structuredClone(value.forcedOpeningType);
+notify();
+}

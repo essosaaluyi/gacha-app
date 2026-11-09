@@ -1,6 +1,19 @@
 # Gacha Battle App
 
+## Shared cross-tool handoff
+
+Read `AGENTS.md` and the **Shared Claude / Codex restart** section at the top of `session-handoff.md` first. It is the common current task record for Claude and Codex; consult only relevant bible/evidence afterward. Update that same section after work (changed files, decisions, checks/limits, remaining work, next owner), preserving existing changes/history. `.codex/agents/*.toml` are reusable role briefs, not automatically enabled Claude agents. Latest owner-authorized task and preservation rules override older conflicting guidance below; in particular do not restart/clean the shared preview automatically for stale CSS. The latest owner-supplied reference media is authorized for the assigned presentation task.
+
 Web-based gacha battle game: PixiJS renderer inside a Next.js/React shell. Supabase for accounts/points (guests use localStorage).
+
+## Shared Preview Source Of Truth
+
+- Canonical workspace: `C:\Users\essos\Desktop\gacha-app`.
+- Canonical branch: `main`, unless the owner explicitly selects another branch.
+- Do not edit or serve `.claude/worktrees/*` for shared battle QA.
+- Use the shared live preview at `http://127.0.0.1:3000` from the canonical workspace with `npm run dev`.
+- Before reporting visual QA, verify the repository root, current branch, and server working directory.
+- Use `next start` only for explicit production-build QA after a fresh rebuild; it is not the collaborative editing preview.
 
 ## Layout
 - `app/` — routes: menu, gacha, battle, admin (odds editor), history, inventory, trust pages

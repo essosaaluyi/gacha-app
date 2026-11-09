@@ -17,12 +17,31 @@ export const cards: Card[] = configuredCards.map((card) => ({
   backImage: PLAYER_CARD_BACK_IMAGE,
 }));
 
-export function rollRarity() {
+export function getRarityWeights(): Record<string, number> {
   // Admin-editable gacha odds override the spreadsheet rates when present.
-  const rates: Record<string, number> = {
+  return {
     ...rarityRates,
     ...patchConfig.gachaOdds,
   };
+}
+
+export function getOfferingRates() {
+  const weights = Object.entries(getRarityWeights());
+  let cumulative = 0;
+  let covered = 0;
+  const rarities = weights.map(([rarity, rate], index) => {
+    cumulative += rate;
+    const end = Math.max(covered, Math.min(100, cumulative));
+    const probability = end - covered + (index === weights.length - 1 ? 100 - end : 0);
+    covered = end;
+    const pool = cards.filter(card => card.rarity === rarity);
+    return { rarity, probability, cards: pool.map(card => ({ ...card, probability: probability / pool.length })) };
+  });
+  return rarities;
+}
+
+export function rollRarity() {
+  const rates = getRarityWeights();
 
   const rand = Math.random() * 100;
   let cumulative = 0;

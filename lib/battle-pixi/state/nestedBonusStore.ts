@@ -134,3 +134,15 @@ export function subscribeNestedBonus(listener: () => void) {
     listeners = listeners.filter((l) => l !== listener);
   };
 }
+
+export function getNestedBonusSnapshot(){return structuredClone({active,inNested,mainGamesRemaining,nestedGamesRemaining,totalPoints,waitingForResultConfirm,pendingResolution});}
+export function restoreNestedBonusSnapshot(value?: ReturnType<typeof getNestedBonusSnapshot>){if(!value)return;
+active=structuredClone(value.active);
+inNested=structuredClone(value.inNested);
+mainGamesRemaining=structuredClone(value.mainGamesRemaining);
+nestedGamesRemaining=structuredClone(value.nestedGamesRemaining);
+totalPoints=structuredClone(value.totalPoints);
+waitingForResultConfirm=structuredClone(value.waitingForResultConfirm);
+pendingResolution=structuredClone(value.pendingResolution);
+notify();
+}

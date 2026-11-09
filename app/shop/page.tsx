@@ -5,6 +5,8 @@
 
 import { useEffect, useState } from "react";
 import TopBar from "@/components/TopBar";
+import SoftDialog from "@/components/site/SoftDialog";
+import SiteIcon from "@/components/site/SiteIcon";
 import { patchConfig } from "@/lib/game-config/patchConfig";
 import { logEvent } from "@/lib/events/gameEventStore";
 import {
@@ -108,6 +110,7 @@ export default function ShopPage() {
                   key={item.id}
                   className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-5 flex flex-col"
                 >
+                  <div className="site-shop-icon"><SiteIcon name="gift" /></div>
                   <h2 className="text-lg font-bold mb-1">{item.title}</h2>
                   <p className="text-xs text-zinc-500 mb-4 flex-1">
                     {item.desc}
@@ -115,7 +118,7 @@ export default function ShopPage() {
 
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-emerald-400 font-bold">
-                      {item.cost.toLocaleString()} pts
+                      <SiteIcon name="coin" className="site-inline-icon" />{item.cost.toLocaleString()} pts
                     </span>
                     <button
                       onClick={() => setConfirmItem(item)}
@@ -143,28 +146,18 @@ export default function ShopPage() {
       </div>
 
       {confirmItem && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-2xl font-bold mb-3">Confirm Redeem</h2>
-            <p className="text-zinc-300 mb-6">
+        <SoftDialog open onClose={() => setConfirmItem(null)} title="Redeem this item?">
+            <div className="site-dialog-symbol"><SiteIcon name="gift" /></div>
+            <p className="site-dialog-copy">
               Spend {confirmItem.cost} points on {confirmItem.title}?
             </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmItem(null)}
-                className="flex-1 bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-xl font-semibold"
-              >
-                No
-              </button>
               <button
                 onClick={() => void redeem(confirmItem)}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
+                className="site-primary site-button-full"
               >
-                Yes
+                Redeem item<SiteIcon name="check" />
               </button>
-            </div>
-          </div>
-        </div>
+        </SoftDialog>
       )}
     </main>
   );

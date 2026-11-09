@@ -1,5 +1,14 @@
 "use client";
 
+import CabinetTwoStepCards, { type TwoStepCardsHandle } from "@/components/battle/cabinet/CabinetTwoStepCards";
+import type { CabinetEject3DGeometry } from "@/components/battle/cabinet/CabinetEjectCards3D";
+import CabinetPlayerDock from "@/components/battle/cabinet/CabinetPlayerDock";
+import EnemyFatalTease from "@/components/battle/EnemyFatalTease";
+import FatalAttackPlaceholder from "@/components/battle/FatalAttackPlaceholder";
+import { getFatalPresentation, subscribeFatalPresentation, isFatalPresentationResolving } from "@/lib/battle-pixi/state/fatalPresentationStore";
+import { parseFatalPreview } from "@/lib/battle-pixi/core/enemyFatalRoll";
+import { getEnemyCharacterName, getPlayerCharacterName } from "@/lib/battle-pixi/config/characterNames";
+import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
 import BattleBackground from "@/components/battle/BattleBackground";
 import BattleGameCounter from "@/components/battle/BattleGameCounter";
 import BattleBetPayout from "@/components/battle/BattleBetPayout";
@@ -8,6 +17,10 @@ import BattleLog from "@/components/battle/BattleLog";
 import BattlePixiStage from "@/components/battle/BattlePixiStage";
 import BattleVfxOverlay from "@/components/battle/BattleVfxOverlay";
 import BattleSpawnScene from "@/components/battle/BattleSpawnScene";
+import BattleSummonPanel from "@/components/battle/BattleSummonPanel";
+import CardOverviewDialog from "@/components/battle/CardOverviewDialog";
+import { getCardOverview, getEnemyCardOverview, acquireCardOverviewLock, isCardOverviewOpen,
+  subscribeCardOverview, type CardOverviewData } from "@/lib/battle-pixi/config/cardOverview";
 import BattlePoints from "@/components/battle/BattlePoints";
 import MagicCircleOverlay from "@/components/battle/MagicCircleOverlay";
 import AttackFakeoutInsert from "@/components/battle/AttackFakeoutInsert";
@@ -65,6 +78,7 @@ import { getGameCount } from "@/lib/battle-pixi/state/battleGameStore";
 import { getCurrentBattleId, getEvents } from "@/lib/events/gameEventStore";
 import {
   getBattleState,
+  setBattleState,
   subscribeBattleState,
 } from "@/lib/battle-pixi/state/battleStateStore";
 import {
@@ -88,14 +102,27 @@ import { getWalletState, initializeWallet } from "@/lib/wallet/walletStore";
 import { getCurrentRound } from "@/lib/battle-pixi/state/roundStore";
 import {
   getUpcomingPlayerBattleCards,
+  getAvailablePlayerBattleCards,
+  getPlayerBattleCardIndex,
+  getSelectedPlayerBattleCardIndex,
+  getCurrentPlayerBattleCard,
+  getRemainingPlayerBattleCards,
+  selectPlayerBattleCard,
+  summonSelectedPlayerBattleCard,
   subscribePlayerBattleCard,
 } from "@/lib/battle-pixi/state/playerBattleCardStore";
+import { getCurrentEnemy, subscribeCurrentEnemy } from "@/lib/battle-pixi/state/currentEnemyStore";
+import { getBattleMode, setBattleMode, subscribeBattleMode } from "@/lib/battle-pixi/state/battleModeStore";
+import { getPlayerWinRateForRound, resetPlayerWinRate } from "@/lib/battle-pixi/state/playerWinRateStore";
+import { buildBattleSnapshot } from "@/lib/battle-pixi/state/battleSessionSync";
+import { saveBattleSession } from "@/lib/battle-pixi/state/battleSessionStore";
 import {
   getRoundInsertState,
   subscribeRoundInsert,
 } from "@/lib/battle-pixi/state/roundInsertStore";
 import {
   getBattlePresentationFlow,
+  restoreBattleSummons,
   subscribeBattlePresentationFlow,
 } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import {
@@ -132,6 +159,7 @@ const PlayerFatalModeOpeningInsertTest = dynamic(
  * them afterwards regardless.
  */
 function captureRunSummary(ending: BattleRunEnding) {
+  if (parseFatalPreview(process.env.NODE_ENV === "production", new URLSearchParams(window.location.search).get("fatal-preview"))) return;
   const gamesPlayed = getGameCount();
   const battleId = getCurrentBattleId();
 
@@ -152,8 +180,41 @@ function captureRunSummary(ending: BattleRunEnding) {
 }
 
 export default function BattleScreen() {
+  const dockRef = useRef<HTMLDivElement|null>(null);
+  const [dockDropActive,setDockDropActive]=useState(false);
+  const [setCount,setSetCount]=useState(0);
+  const battleFieldRef = useRef<HTMLElement | null>(null);
+  const overviewLease = useRef<(() => void) | null>(null);
+  const overviewOrigin = useRef<HTMLElement | null>(null);
+  const [overview, setOverview] = useState<CardOverviewData | null>(null);
+  const [overviewOpen, setOverviewOpen] = useState(isCardOverviewOpen);
+
+  const closeOverview = () => {
+    const origin = overviewOrigin.current;
+    overviewOrigin.current = null;
+    setOverview(null);
+    overviewLease.current?.();
+    overviewLease.current = null;
+    // Restore the actual field opener after portal cleanup and its own focus
+    // callback, rather than relying on the dialog's activeElement snapshot.
+    if (origin) window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      if (origin.isConnected && !isCardOverviewOpen()) origin.focus({ preventScroll: true });
+    }));
+  };
+  const inspectField = (side: "player" | "enemy", origin: HTMLElement) => {
+    const card = getCurrentPlayerBattleCard();
+    const enemy = getCurrentEnemy();
+    const data = side === "player" ? card && getCardOverview(card, true) : enemy && getEnemyCardOverview(enemy);
+    if (!data || isCardOverviewOpen() || isFatalPresentationResolving()) return;
+    overviewOrigin.current = origin;
+    overviewLease.current = acquireCardOverviewLock();
+    setOverview(data);
+  };
   const router = useRouter();
   const searchParams = useSearchParams();
+  const fatalPreview = parseFatalPreview(process.env.NODE_ENV === "production", searchParams.get("fatal-preview"));
+  const [fatalPresentation, setFatalPresentation] = useState(getFatalPresentation);
+  useEffect(() => subscribeFatalPresentation(() => setFatalPresentation(getFatalPresentation())), []);
   const [openingActive, setOpeningActive] = useState(false);
   const [openingChecked, setOpeningChecked] = useState(false);
   const [openingFading, setOpeningFading] = useState(false);
@@ -164,6 +225,39 @@ export default function BattleScreen() {
   const [bgmPlaying, setBgmPlaying] = useState(false);
   const [bgmMuted, setBgmMutedState] = useState(false);
   const [autoEnabled, setAutoEnabled] = useState(false);
+  const [drawPressed, setDrawPressed] = useState(false);
+  const [dealPhase, setDealPhase] = useState("idle");
+  const [mixStartedAt, setMixStartedAt] = useState(0);
+  const [ejectStartedAt, setEjectStartedAt] = useState(0);
+  const [ejectEndedAt, setEjectEndedAt] = useState(0);
+  const ejectRenderer = useRef<TwoStepCardsHandle>(null);
+  const [ejectGeometry, setEjectGeometry] = useState<CabinetEject3DGeometry | null>(null);
+  const ejectClockOrigin = useRef(0);
+  const lastFlightClock = useRef(0);
+
+  useEffect(() => {
+    const detach = subscribeCardOverview(() => {
+      const open = isCardOverviewOpen();
+      setOverviewOpen(open);
+      if (open) {
+        setAutoEnabled(false);
+        window.dispatchEvent(new CustomEvent("battle:set-auto", { detail: false }));
+      }
+    });
+    return () => { detach(); overviewLease.current?.(); overviewLease.current = null; };
+  }, []);
+  const [stageReady, setStageReady] = useState(false);
+  const [battleMode, setBattleModeValue] = useState(getBattleMode);
+  const [enemy, setEnemy] = useState(getCurrentEnemy);
+  const [activeCardIndex, setActiveCardIndex] = useState(getPlayerBattleCardIndex);
+  const [selectedCardIndex, setSelectedCardIndex] = useState(getSelectedPlayerBattleCardIndex);
+  const [availableCards, setAvailableCards] = useState(getAvailablePlayerBattleCards);
+  const [battleState, setBattleStateValue] = useState(getBattleState);
+  useEffect(() => {
+    setOverview(null);
+    overviewLease.current?.();
+    overviewLease.current = null;
+  }, [enemy, activeCardIndex, battleMode]);
   const [barChanceState, setBarChanceState] = useState(getBarChanceState());
   const [cabinetSignals, setCabinetSignals] = useState(getCabinetSignalState());
   // Quitting ends the run and deletes the resume save, so it asks first.
@@ -187,6 +281,7 @@ export default function BattleScreen() {
   const startCollectionPreview =
     process.env.NODE_ENV !== "production" &&
     searchParams.get("start") === "collection";
+  const previewSuperMax = startBonusRound && searchParams.get("bonus-preview") === "superMax";
   const attackLandPreview =
     process.env.NODE_ENV !== "production" ? searchParams.get("preview") : null;
   const attackLandPreviewWinner =
@@ -208,9 +303,29 @@ export default function BattleScreen() {
   );
 
   useEffect(() => {
-    return subscribePlayerBattleCard(() => {
+    const sync = () => {
       setHandCards(getUpcomingPlayerBattleCards(3));
-    });
+      setAvailableCards(getAvailablePlayerBattleCards());
+      setActiveCardIndex(getPlayerBattleCardIndex());
+      setSelectedCardIndex(getSelectedPlayerBattleCardIndex());
+      if (!getCurrentPlayerBattleCard()) setAutoEnabled(false);
+    };
+    sync();
+    return subscribePlayerBattleCard(sync);
+  }, []);
+
+  useEffect(() => {
+    const ready = () => setStageReady(true);
+    window.addEventListener("battle:stage-ready", ready);
+    const detachEnemy = subscribeCurrentEnemy(() => setEnemy(getCurrentEnemy()));
+    const detachMode = subscribeBattleMode(() => setBattleModeValue(getBattleMode()));
+    const detachState = subscribeBattleState(() => setBattleStateValue(getBattleState()));
+    return () => {
+      window.removeEventListener("battle:stage-ready", ready);
+      detachEnemy();
+      detachMode();
+      detachState();
+    };
   }, []);
 
   useEffect(
@@ -242,14 +357,30 @@ export default function BattleScreen() {
         state === "consumed"
       ) {
         setPileState(state);
+        setSetCount(event.detail?.setCount??3);
+        if (event.detail?.phase) setDealPhase(event.detail.phase);
+        setMixStartedAt(event.detail?.mixStartedAt ?? 0);
+        setEjectStartedAt(event.detail?.ejectStartedAt ?? 0);
+        setEjectEndedAt(event.detail?.ejectEndedAt ?? 0);
+        ejectClockOrigin.current = event.detail?.ejectClock ?? 0;
+        if (event.detail?.geometry) setEjectGeometry(event.detail.geometry);
+
       }
     };
 
+    const advanceFlight = (event: Event) => {
+      if (!(event instanceof CustomEvent) || !Number.isFinite(event.detail?.time)) return;
+      lastFlightClock.current = event.detail.time;
+      ejectRenderer.current?.seek(Math.max(0, event.detail.time - ejectClockOrigin.current));
+    };
+    window.addEventListener("battle:cabinet-flight-clock", advanceFlight);
     window.addEventListener("battle:cabinet-pile", handlePileState);
     return () => {
+      window.removeEventListener("battle:cabinet-flight-clock", advanceFlight);
       window.removeEventListener("battle:cabinet-pile", handlePileState);
     };
   }, []);
+
 
   useEffect(
     () =>
@@ -323,6 +454,7 @@ export default function BattleScreen() {
   // memory board. Without this the machine keeps cheerfully glowing around a
   // beat that is meant to own the room.
   const ledsBlackedOut = cabinetSignals.blackout !== null;
+
 
   // Ends the battle opening: fades the overlay out, then unmounts it. Called
   // by the video's own end, by an error, and by the backstop timer -- so it
@@ -420,7 +552,7 @@ export default function BattleScreen() {
       }
       unsubscribe();
     };
-  }, []);
+  }, [audioReady]);
 
   useEffect(() => {
     // Same measurement as the v8 mockup's fit(): visualViewport first.
@@ -468,7 +600,7 @@ export default function BattleScreen() {
       // Check for a saved session to resume. The "resume" flag is set by the
       // menu page's Continue button; without it a direct /battle visit always
       // starts fresh (the old behaviour).
-      const resumeRequested =
+      const resumeRequested = !fatalPreview &&
         localStorage.getItem("battle_resume_requested") === "true";
       const savedSession = resumeRequested ? loadBattleSession() : null;
 
@@ -484,14 +616,38 @@ export default function BattleScreen() {
         return;
       }
 
-      resetBattleRun();
-      startAutoSave();
+      resetBattleRun({ preview: fatalPreview !== null });
+      // Development mode entries keep their existing direct-to-mode behavior.
+      if (startBonusRound || startCollectionPreview || (fatalPreview && searchParams.get("dock-preview")!=="true")) {
+        const first = getAvailablePlayerBattleCards()[0];
+        if (first) {
+          selectPlayerBattleCard(first.index);
+          summonSelectedPlayerBattleCard();
+        }
+        const enemy = getCurrentEnemy();
+        if (enemy) restoreBattleSummons(`${getCurrentRound()}:${enemy.id}`, getPlayerBattleCardIndex());
+      }
+      const collection = getCollectionState();
+      if (!fatalPreview && (collection.active || collection.finished || collection.awaitingExtraDeal)) {
+        setBattleMode("collection", "collection-entry");
+      }
+      if (!getCurrentPlayerBattleCard() && getRemainingPlayerBattleCards() === 0) {
+        setBattleState("gameOver");
+      }
+      if (!fatalPreview) startAutoSave();
+
+      if (fatalPreview) {
+        setOpeningChecked(true);
+        return;
+      }
 
       if (startBonusRound) {
-        startBonusOpening();
-        startBonusGames(5);
-        setBonusGameText("5/5");
-        showBonusStaticBackground();
+        startBonusOpening(previewSuperMax ? "superMax" : null);
+        if (!previewSuperMax) {
+          startBonusGames(5);
+          setBonusGameText("5/5");
+          showBonusStaticBackground();
+        }
         setOpeningChecked(true);
         return;
       }
@@ -529,7 +685,7 @@ export default function BattleScreen() {
       // has left the battle.
       stopAutoSave();
     };
-  }, [audioReady, startBonusRound]);
+  }, [audioReady, startBonusRound, startCollectionPreview, previewSuperMax, fatalPreview, finishBattleOpening]);
 
   const toggleBgm = async () => {
     if (bgmPlaying) {
@@ -551,15 +707,46 @@ export default function BattleScreen() {
 
   // The DRAW button drives the mockup's cycle: press 1 sets the pile at the
   // disk exit, press 2 places the cards onto the table.
-  const pileIsSet = pileState === "set";
   const bonusVideoActive = presentationFlow.phase === "bonus_video";
-  const drawLocked = !bonusVideoActive && presentationFlow.phase !== "next_round_ready" && !pileIsSet;
-  const collectionActive = collectionScene;
-  const cabinetDrawLocked = collectionActive
+  const drawLocked = dealPhase!=="set" && !bonusVideoActive && (presentationFlow.phase !== "next_round_ready" ||
+    dealPhase === "setting" || dealPhase === "dealing" || dealPhase === "paused");
+  const collectionActive = !fatalPreview && collectionScene;
+  const summonPending = openingChecked && battleMode === "battle" &&
+    battleState === "playing" && activeCardIndex === null;
+  const handSelectionVisible = summonPending && presentationFlow.summon.enemy === "ready";
+  const summonLocked = battleMode === "battle" &&
+    (presentationFlow.summon.enemy !== "ready" || presentationFlow.summon.player !== "ready");
+  const cabinetDrawLocked = overviewOpen || !stageReady || summonLocked || (collectionActive
     ? !collectionResultReady
-    : drawLocked;
+    : drawLocked);
+
+  const canConfirmHand = () => {
+    const enemy = getCurrentEnemy();
+    const collection = getCollectionState();
+    const summon = getBattlePresentationFlow().summon;
+    return stageReady && getBattleMode() === "battle" && getBattleState() === "playing" &&
+      getCurrentPlayerBattleCard() === null && enemy !== null && summon.enemy === "ready" &&
+      summon.enemyKey === `${getCurrentRound()}:${enemy.id}` &&
+      !collection.active && !collection.finished && !collection.awaitingExtraDeal;
+  };
+
+  const handleHandSelect = (index: number) => {
+    if (canConfirmHand()) selectPlayerBattleCard(index);
+  };
+
+  const handleSummon = () => {
+    if (!canConfirmHand()) return;
+    const selected = getSelectedPlayerBattleCardIndex();
+    if (!getAvailablePlayerBattleCards().some(({ index }) => index === selected)) return;
+    if (!summonSelectedPlayerBattleCard()) return;
+    resetPlayerWinRate();
+    const card = getCurrentPlayerBattleCard();
+    if (card) getPlayerWinRateForRound(card.name, getCurrentRound());
+    saveBattleSession(buildBattleSnapshot());
+  };
 
   const handleDrawPress = () => {
+    if (cabinetDrawLocked || isCardOverviewOpen()) return;
     unlockSfx();
     // Draw-button feedback: play on every press, no matter what it triggers.
     playSfx("buttonPush");
@@ -581,11 +768,12 @@ export default function BattleScreen() {
     }
 
     window.dispatchEvent(
-      new Event(pileIsSet ? "battle:release-cards" : "battle:request-draw")
+      new Event("battle:request-draw")
     );
   };
 
   const handleAutoToggle = () => {
+    if (isCardOverviewOpen() || summonLocked || !stageReady) return;
     const next = !autoEnabled;
     setAutoEnabled(next);
     window.dispatchEvent(new CustomEvent("battle:set-auto", { detail: next }));
@@ -623,7 +811,8 @@ export default function BattleScreen() {
       <BattleBetPayout />
       <div className="fixed inset-0 flex items-center justify-center">
         <div
-          className="relative battle-fixed-stage battle-cabinet-stage"
+          className="relative battle-fixed-stage battle-cabinet-stage bcab-air-cabinet"
+          data-deal-phase={dealPhase} data-mix-start={mixStartedAt} data-eject-start={ejectStartedAt} data-eject-end={ejectEndedAt}
           style={{
             width: "1920px",
             height: "1080px",
@@ -632,6 +821,12 @@ export default function BattleScreen() {
             transformOrigin: "center center",
           }}
         >
+
+          <div className="bcab-top-hud">
+            <div className="bcab-top-hud-points"><BattlePoints /></div>
+            <div className="bcab-top-hud-round"><RoundMeter /></div>
+            <div className="bcab-top-hud-games"><BattleGameCounter /></div>
+          </div>
 
           <div className="bcab-bezel">
             <button
@@ -671,29 +866,14 @@ export default function BattleScreen() {
             </div>
           </div>
 
-          <div
-            className={`bcab-memboard ${cabinetSignals.chanceSweepActive ? "bcab-memboard-chance-wait" : ""} ${cabinetSignals.statueTone ? `bcab-signal-${cabinetSignals.statueTone}` : ""}`}
-            aria-hidden="true"
-            data-led-state={ledsBlackedOut ? "off" : "on"}
-            style={
-              cabinetSignals.statueTone
-                ? ({ "--bcab-memory-led-fill": `var(--bcab-signal-${cabinetSignals.statueTone})` } as CSSProperties)
-                : undefined
-            }
-          >
-            <div className="bcab-memboard-led-glow" />
-            <div className="bcab-memboard-led-color" />
-            <div className="bcab-memboard-led-texture" />
-            {cabinetSignals.memoryPulse && (
-              <div
-                key={cabinetSignals.memoryPulse.token}
-                className={`bcab-panel-pulse bcab-panel-pulse-${cabinetSignals.memoryPulse.mode}`}
-                style={{ "--bcab-pulse-ms": `${cabinetSignals.memoryPulse.durationMs}ms` } as CSSProperties}
-              />
-            )}
-          </div>
+          <CabinetPlayerDock dropTargetRef={dockRef} activeCard={getCurrentPlayerBattleCard()} acceptingDrop={handSelectionVisible}
+            dropActive={dockDropActive} onInspect={()=>{const origin=dockRef.current;if(origin)inspectField("player",origin);}}
+            outletPhase={dealPhase==="set"||dealPhase==="setting"?"prepared":dealPhase==="dealing"?"dealing":"empty"}
+            preparedCount={Math.max(0,Math.min(3,setCount)) as 0|1|2|3}/>
+          {ejectGeometry && dealPhase==="dealing" && <CabinetTwoStepCards ref={ejectRenderer} geometry={ejectGeometry}/>}
 
           <section
+            ref={battleFieldRef}
             className="absolute battle-cabinet-screen"
             style={{ left: "330px", top: "88px", width: "1250px", height: "618px" }}
           >
@@ -708,9 +888,9 @@ export default function BattleScreen() {
                   onResultReadyChange={setCollectionResultReady}
                 />
               )}
-              {audioReady && !collectionActive && (
+              {audioReady && openingChecked && !collectionActive && (
                 <>
-                  <BattleSpawnScene />
+                  {!openingActive && <BattleSpawnScene onInspect={inspectField} />}
                   <BattleHUD />
                   <MagicCircleOverlay />
                   <AttackFakeoutInsert />
@@ -736,9 +916,22 @@ export default function BattleScreen() {
                     mode={fatalModeOpeningEnabled ? fatalModeOpeningParam : null}
                     tone={fatalModeOpeningTone}
                   />
+                  <EnemyFatalTease
+                    active={Boolean(fatalPresentation.plan?.enemy?.tease) &&
+                      (fatalPresentation.phase === "anticipation" || fatalPresentation.phase === "warning")}
+                    stage={fatalPresentation.phase === "warning" ? "warning" : "anticipation"}
+                    stops={fatalPresentation.stops}
+                    enemyImage={enemy?.image ?? PLAYER_CARD_BACK_IMAGE}
+                    enemyName={getEnemyCharacterName(enemy).label}
+                  />
+                  <FatalAttackPlaceholder active={fatalPresentation.phase === "attack"}
+                    side={fatalPresentation.plan?.enemy?.attack ? "enemy" : "player"}
+                    image={fatalPresentation.plan?.enemy?.attack ? enemy?.image ?? PLAYER_CARD_BACK_IMAGE : getCurrentPlayerBattleCard()?.image ?? PLAYER_CARD_BACK_IMAGE}
+                    name={fatalPresentation.plan?.enemy?.attack ? getEnemyCharacterName(enemy).label : getPlayerCharacterName(getCurrentPlayerBattleCard()).label}
+                  />
                 </>
               )}
-              {battleCoverActive && (
+              {battleCoverActive && !summonPending && (
                 <div
                   aria-hidden="true"
                   className="absolute inset-0 bg-black z-[9998] pointer-events-none"
@@ -747,24 +940,8 @@ export default function BattleScreen() {
 
               {/* Screen furniture belongs to the battle scene, so it leaves
                   with it while the pick phase owns the screen. */}
-              {!collectionActive && (
+              {!collectionActive && !summonPending && (
                 <>
-              <div
-                style={{
-                  position: "absolute",
-                  top: "1.5%",
-                  // 50%, not 54% — paired with translateX(-50%) this centres
-                  // the roadmap exactly. The old 54% pushed it 28px right.
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  zIndex: 80,
-                  width: "min(576px, 60%)",
-                  height: "84px",
-                }}
-              >
-                <RoundMeter />
-              </div>
-
               {/* Sits just above the enemy's head.
                   Anchored to the character's VISIBLE centre, measured from the
                   sprite's opaque bounds rather than its box: the frame is
@@ -785,27 +962,9 @@ export default function BattleScreen() {
                 <EnemyAttackCounter />
               </div>
 
-              <div
-                style={{
-                  position: "absolute",
-                  right: "3%",
-                  top: "3%",
-                  zIndex: 80,
-                }}
-              >
-                <BattleGameCounter />
-              </div>
 
-              <div
-                style={{
-                  position: "absolute",
-                  left: "3%",
-                  top: "3%",
-                  zIndex: 80,
-                }}
-              >
-                <BattlePoints />
-              </div>
+
+
                 </>
               )}
             </div>
@@ -817,6 +976,44 @@ export default function BattleScreen() {
             </div>
             <BattleLog variant="ticker" />
             <StatsGraphPanel inline />
+            <div className="bcab-air-controls">
+            <button
+              type="button"
+              className={`bcab-draw-btn ${
+                cabinetDrawLocked ? "bcab-draw-locked" : ""
+              }`}
+              aria-label={
+                collectionResultReady
+                  ? "Continue to next round"
+                  : bonusVideoActive
+                    ? "Skip bonus video"
+                    : "Draw cards"
+              }
+              data-pressed={drawPressed ? "true" : "false"}
+              data-led-state={drawPressed || cabinetDrawLocked ? "off" : "on"}
+              onPointerDown={() => setDrawPressed(true)}
+              onPointerUp={() => setDrawPressed(false)}
+              onPointerCancel={() => setDrawPressed(false)}
+              onBlur={() => setDrawPressed(false)}
+              onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") setDrawPressed(true); }}
+              onKeyUp={() => setDrawPressed(false)}
+              aria-disabled={cabinetDrawLocked}
+              disabled={cabinetDrawLocked}
+              onClick={handleDrawPress}
+            />
+            <button
+              type="button"
+              className={`bcab-auto ${autoEnabled ? "bcab-auto-on" : ""}`}
+              aria-pressed={autoEnabled}
+              disabled={overviewOpen || summonLocked || !stageReady}
+              aria-label={autoEnabled ? "Turn auto play off" : "Turn auto play on"}
+              onClick={handleAutoToggle}
+            >
+              <span className="bcab-auto-led" aria-hidden="true" />
+              <span className="bcab-auto-label">AUTO</span>
+              <span className="bcab-auto-state">{autoEnabled ? "ON" : "OFF"}</span>
+            </button>
+            </div>
             <div className={`bcab-mascot ${cabinetSignals.statueTone ? `bcab-mascot-active bcab-signal-${cabinetSignals.statueTone}` : ""}`} aria-hidden="true">
               <img key={cabinetSignals.statueToken} src="/images/cabinet/statue.png" alt="" />
             </div>
@@ -867,27 +1064,8 @@ export default function BattleScreen() {
                 />
               )}
             </div>
-            <div className="bcab-card-layer" aria-hidden="true" />
-            <div className="bcab-disk-well" aria-hidden="true">
-              <div className="bcab-disk" />
-            </div>
-            <div className="bcab-disk-ring" aria-hidden="true" />
-            <button
-              type="button"
-              className={`bcab-draw-btn ${
-                cabinetDrawLocked ? "bcab-draw-locked" : ""
-              }`}
-              aria-label={
-                collectionResultReady
-                  ? "Continue to next round"
-                  : bonusVideoActive
-                    ? "Skip bonus video"
-                    : "Draw cards"
-              }
-              aria-disabled={cabinetDrawLocked}
-              disabled={cabinetDrawLocked}
-              onClick={handleDrawPress}
-            />
+
+
 
             {/* The tape releases when ROUND COMPLETE appears. The physical
                 DRAW button then becomes the only way to leave Pick a Bonus. */}
@@ -901,35 +1079,6 @@ export default function BattleScreen() {
                 </span>
               </div>
             )}
-            <div
-              className={`bcab-disk-deck ${
-                pileIsSet || pileState === "launching" ? "bcab-set" : ""
-              } ${pileState === "launching" ? "bcab-launching" : ""} ${
-                pileState === "consumed" ? "bcab-consumed" : ""
-              }`}
-              style={{
-                pointerEvents: "none",
-              }}
-              aria-hidden="true"
-            >
-              <div className="bcab-stack">
-                <div className="bcab-back" />
-                <div className="bcab-back" />
-                <div className="bcab-back" />
-              </div>
-            </div>
-            <button
-              type="button"
-              className={`bcab-auto ${autoEnabled ? "bcab-auto-on" : ""}`}
-              aria-pressed={autoEnabled}
-              aria-label={autoEnabled ? "Turn auto play off" : "Turn auto play on"}
-              onClick={handleAutoToggle}
-            >
-              <span className="bcab-auto-led" aria-hidden="true" />
-              <span className="bcab-auto-label">AUTO</span>
-              <span className="bcab-auto-state">{autoEnabled ? "ON" : "OFF"}</span>
-            </button>
-
             <div
               className="bcab-table-space"
               style={{
@@ -948,15 +1097,31 @@ export default function BattleScreen() {
               </div>
             </div>
 
-            <div className="bcab-hand" aria-hidden="true">
-              {handCards.map((card) => (
-                <div className="bcab-hcard" key={card.name}>
+            {!summonPending && <div className="bcab-hand" aria-hidden="true">
+              {handCards.map((card, index) => (
+                <div className="bcab-hcard" key={`${index}-${card.name}`}>
                   <img className="bcab-hcard-art" src={card.image} alt="" />
                 </div>
               ))}
-              <div className="bcab-hand-label">YOUR HAND</div>
-            </div>
+
+            </div>}
           </div>
+
+          {audioReady && handSelectionVisible && !collectionActive && !openingActive && (
+            <BattleSummonPanel
+              enemy={enemy}
+              cards={availableCards}
+              selectedIndex={selectedCardIndex}
+              onSelect={handleHandSelect}
+              onSummon={handleSummon}
+              disabled={!stageReady || !enemy}
+              dropTargetRef={dockRef}
+              onDropActiveChange={setDockDropActive}
+              getCardOverview={getCardOverview}
+            />
+          )}
+
+          <CardOverviewDialog data={overview} onClose={closeOverview} />
 
           {/* Spans the screen AND the card deck, so a combination lights the
               whole cabinet at once rather than just the table. */}

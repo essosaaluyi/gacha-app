@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import StatsGraphPanel from "@/components/battle/StatsGraphPanel";
+import ResultDataDialog from "@/components/site/ResultDataDialog";
+import TopBar from "@/components/TopBar";
+import SiteIcon from "@/components/site/SiteIcon";
 import {
   readBattleRunSummary,
   type BattleRunSummary,
@@ -42,8 +44,9 @@ export default function BattleResultPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
-      <div className="w-full max-w-3xl bg-black rounded-3xl border border-zinc-800 p-8">
+    <main className="min-h-screen flex flex-col pb-8">
+      <TopBar />
+      <div className="site-result-card w-full max-w-3xl bg-black rounded-3xl border border-zinc-800 p-8">
 
         <h1 className="text-4xl font-bold text-center mb-2">
           Battle Result
@@ -66,11 +69,9 @@ export default function BattleResultPage() {
           ))}
         </div>
 
-        {/* The run's slump graph / data counter, reusing the battle cabinet's
-            own panel rather than a second chart implementation. It reads the
-            event log, which survives the navigation here. */}
+        {/* The website uses the existing event log and chart with its own light dialog. */}
         <div className="mt-8 flex justify-center">
-          <StatsGraphPanel inline />
+          <ResultDataDialog />
         </div>
 
         <div className="mt-6 flex justify-center">
@@ -78,7 +79,7 @@ export default function BattleResultPage() {
             href="/menu"
             className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-xl font-bold"
           >
-            Return To Menu
+            Return To Menu<SiteIcon name="arrow" className="site-inline-icon" />
           </Link>
         </div>
 

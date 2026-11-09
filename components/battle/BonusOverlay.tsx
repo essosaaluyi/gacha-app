@@ -18,6 +18,7 @@ import {
   beginSuperBonusBlackout,
   beginSuperMaxBlackout,
   finishSuperBonusBlackout,
+  restoreSuperMaxBlackoutOnDraw,
 } from "@/lib/battle-pixi/state/cabinetSignalStore";
 import { cabinetSignalConfig } from "@/lib/game-config/cabinetSignalConfig";
 
@@ -33,20 +34,26 @@ function SafeCompletionVideo({
   onComplete,
 }: SafeCompletionVideoProps) {
   const completedRef = useRef(false);
+  const cancelledRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
   const fallbackRef = useRef<number | null>(null);
 
   const complete = useCallback(() => {
-    if (completedRef.current) return;
+    if (cancelledRef.current || completedRef.current) return;
     completedRef.current = true;
     if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
     fallbackRef.current = null;
-    onComplete();
-  }, [onComplete]);
+    onCompleteRef.current();
+  }, []);
+
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   useEffect(() => {
     completedRef.current = false;
+    cancelledRef.current = false;
     fallbackRef.current = window.setTimeout(complete, 15_000);
     return () => {
+      cancelledRef.current = true;
       if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
       fallbackRef.current = null;
     };
@@ -63,6 +70,7 @@ function SafeCompletionVideo({
       onEnded={complete}
       onError={complete}
       onLoadedMetadata={(event) => {
+        if (cancelledRef.current || completedRef.current) return;
         const durationMs = event.currentTarget.duration * 1000;
         if (!Number.isFinite(durationMs) || durationMs <= 0) return;
         if (fallbackRef.current) window.clearTimeout(fallbackRef.current);
@@ -89,8 +97,19 @@ export default function BonusOverlay() {
 
   const finishOpening = useCallback(() => {
     finishSuperBonusBlackout();
+    restoreSuperMaxBlackoutOnDraw();
     finishBonusOpeningPresentation();
   }, []);
+  const completeOpeningStage = useCallback(() => {
+    const current = getBonusPresentationState();
+    if (!current.bonusOpeningVisible) return;
+    if (current.bonusOpeningType === "superMax" && current.bonusOpeningStage === "main") {
+      beginSuperMaxBlackout();
+      enterBonusFreeze();
+    } else if (current.bonusOpeningType === "superMax" && current.bonusOpeningStage === "freeze") {
+      enterBonusOpeningMax();
+    } else finishOpening();
+  }, [finishOpening]);
   const finishReveal = useCallback(() => finishActiveBonusRevealVideo(), []);
 
   // Same identity the reveal <video> remounts on, so the cue fires once per
@@ -120,6 +139,7 @@ export default function BonusOverlay() {
 
     let timer = 0;
     let cancelled = false;
+    let scheduled = false;
 
     // Duration is only known once the clip reports it, so the roll waits for
     // metadata rather than guessing a length.
@@ -128,7 +148,8 @@ export default function BonusOverlay() {
     probe.src = getBonusOpeningVideo();
 
     const schedule = (durationMs: number | null) => {
-      if (cancelled) return;
+      if (cancelled || scheduled) return;
+      scheduled = true;
 
       // Unknown duration: fire at the floor rather than risk a cut that never
       // lands, since a missed freeze would strand a super max on its cover.
@@ -146,10 +167,12 @@ export default function BonusOverlay() {
       schedule(Number.isFinite(ms) && ms > 0 ? ms : null);
     };
     probe.onerror = () => schedule(null);
+    const metadataTimer = window.setTimeout(() => schedule(null), 1000);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.clearTimeout(metadataTimer);
       probe.onloadedmetadata = null;
       probe.onerror = null;
     };
@@ -205,13 +228,13 @@ export default function BonusOverlay() {
       if (state.activeRevealVideo) {
         finishReveal();
       } else if (state.bonusOpeningVisible) {
-        finishOpening();
+        completeOpeningStage();
       }
     };
 
     window.addEventListener("battle:skip-bonus-video", skipBonusVideo);
     return () => window.removeEventListener("battle:skip-bonus-video", skipBonusVideo);
-  }, [finishOpening, finishReveal, state.activeRevealVideo, state.bonusOpeningVisible]);
+  }, [completeOpeningStage, finishReveal, state.activeRevealVideo, state.bonusOpeningVisible]);
 
   if (!state.bonusOverlayVisible && !isPreview) return null;
 
@@ -231,15 +254,12 @@ export default function BonusOverlay() {
     >
       {state.bonusOpeningVisible && (
         <SafeCompletionVideo
+          key={`bonus-opening-${state.bonusOpeningStage}`}
           src={getBonusOpeningVideo()}
           // Remounts the <video> at each stage, which is what makes the freeze
           // cut in over the running opening rather than queue behind it.
           completionKey={`bonus-opening-${state.bonusOpeningStage}`}
-          onComplete={
-            state.bonusOpeningStage === "freeze"
-              ? enterBonusOpeningMax
-              : finishOpening
-          }
+          onComplete={completeOpeningStage}
         />
       )}
 
@@ -249,6 +269,7 @@ export default function BonusOverlay() {
 
       {state.activeRevealVideo && (
         <SafeCompletionVideo
+          key={`${state.activeRevealVideo}-${state.revealKey}`}
           src={state.activeRevealVideo}
           completionKey={`${state.activeRevealVideo}-${state.revealKey}`}
           onComplete={finishReveal}

@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import styles from "./CardMotionLab.module.css";
 
 type MotionStyle = "glide" | "snap" | "fan";
@@ -29,6 +29,24 @@ export default function CardMotionLab() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const deckDragStart = useRef<{ x: number; y: number; offset: Point } | null>(null);
   const didDragRelease = useRef(false);
+  const [stageSize, setStageSize] = useState({ width: 1000, height: 562 });
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const measure = () => {
+      const { width, height } = stage.getBoundingClientRect();
+      setStageSize((current) =>
+        current.width === width && current.height === height
+          ? current
+          : { width, height }
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [motion, run]);
 
   const reset = () => {
     setCards(["deck", "deck", "deck"]);
@@ -168,9 +186,7 @@ export default function CardMotionLab() {
           </button>
 
           {cards.map((state, index) => {
-            const bounds = stageRef.current?.getBoundingClientRect();
-            const width = bounds?.width ?? 1000;
-            const height = bounds?.height ?? 562;
+            const { width, height } = stageSize;
             const cardWidth = width * 0.115;
             const cardHeight = cardWidth * 1.5;
             const cardLeft = width * ([0.29, 0.4425, 0.595][index]);

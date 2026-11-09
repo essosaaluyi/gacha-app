@@ -1,0 +1,57 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: none;
+  container-type: size;
+  background: radial-gradient(ellipse at 50% 43%, #1d092deb, #030107f5 78%);
+  --strength: .35;
+  --beat: 1700ms;
+}
+.overlay[data-stops="2"] { --strength: .58; --beat: 1300ms; }
+.overlay[data-stops="3"], .overlay[data-stage="warning"] { --strength: .82; --beat: 1000ms; }
+.portrait {
+  position: absolute;
+  inset: 0 17% 4%;
+  opacity: var(--strength);
+  mask-image: radial-gradient(ellipse at 50% 42%, #000 15%, #000b 39%, transparent 70%);
+  transition: opacity 450ms ease;
+  animation: emerge 1000ms ease-out both;
+}
+.portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  transform: scale(1.6);
+  transform-origin: 50% 25%;
+  filter: saturate(.65) contrast(1.15);
+}
+.heartbeat { position: absolute; inset: 0; background: radial-gradient(ellipse at center, #9f42bf40, transparent 64%); opacity: .2; animation: beat var(--beat) ease-in-out infinite; }
+.waves { position: absolute; inset: 0; opacity: var(--strength); }
+.waves i { position: absolute; left: 50%; top: 46%; width: 50cqh; height: 50cqh; border: 2px solid #cf95e95c; border-radius: 50%; box-shadow: 0 0 22px #9f4bbe25; animation: ripple var(--beat) ease-out infinite; }
+.waves i:nth-child(2) { animation-delay: -430ms; }
+.waves i:nth-child(3) { animation-delay: -860ms; }
+.warning { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff5fb; background: linear-gradient(transparent, #1505188c 45%, transparent); }
+.title { margin: 0; padding: 0 5%; font: 950 clamp(20px, 7cqw, 100px)/1.05 sans-serif; text-align: center; letter-spacing: -.04em; text-shadow: 0 3px 0 #510e42, 0 0 20px #ea679870; }
+.name { max-width: 85%; margin: 12px 0 0; overflow-wrap: anywhere; font: 700 clamp(12px, 2.4cqw, 30px)/1.2 sans-serif; text-align: center; color: #eec6f5; }
+.tape { position: absolute; left: -8%; width: 116%; overflow: hidden; padding: 6px 0; border-block: 1px solid #ffb1d7; background: #450f36ed; color: #ffd7e9; font: 800 clamp(10px, 1.8cqw, 24px)/1.2 sans-serif; letter-spacing: .22em; white-space: nowrap; }
+.topTape { top: 18%; transform: rotate(-5deg); }
+.bottomTape { bottom: 16%; transform: rotate(-5deg); }
+.tape span { display: block; width: max-content; animation: flow 2400ms linear infinite; }
+.bottomTape span { animation-direction: reverse; }
+@keyframes emerge { from { opacity: 0; transform: translateY(3%); } to { opacity: var(--strength); transform: translateY(0); } }
+@keyframes beat { 0%, 48%, 100% { opacity: .12; } 15%, 31% { opacity: var(--strength); } 23% { opacity: .22; } }
+@keyframes ripple { from { transform: translate(-50%, -50%) scale(.45); opacity: .7; } to { transform: translate(-50%, -50%) scale(2.8); opacity: 0; } }
+@keyframes flow { to { transform: translateX(-25%); } }
+@media (prefers-reduced-motion: reduce) {
+  .portrait, .heartbeat, .waves i, .tape span { animation: none; transition: none; }
+  .portrait { opacity: var(--strength); }
+  .heartbeat { opacity: .12; }
+  .waves i { transform: translate(-50%, -50%); opacity: .2; }
+  .waves i:nth-child(2) { transform: translate(-50%, -50%) scale(1.5); }
+  .waves i:nth-child(3) { transform: translate(-50%, -50%) scale(2); }
+}

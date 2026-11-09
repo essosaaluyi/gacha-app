@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bold Graphic Cel Style"
+  short_description: "Apply the selected bold graphic cel house style"
+  default_prompt: "Use $apply-bold-graphic-cel-style to re-render this character in the project selected bold graphic cel style."

@@ -16,12 +16,21 @@ export type BattleEnemy = {
 
 export const battleEnemies = configuredBattleEnemies as Record<EnemyId, BattleEnemy>;
 
+export const NORMAL_BATTLE_ROUNDS = 5;
+export type NormalBattleRounds = 5 | 10;
+
+export function formatBattleRoundLabel(round: number, normalRounds: NormalBattleRounds = NORMAL_BATTLE_ROUNDS) {
+  return round <= normalRounds
+    ? `ROUND ${String(round).padStart(2, "0")}`
+    : `ROUND EXTRA ${round - normalRounds}`;
+}
+
 function pickRandom<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
 function weightedPick<T>(groups: readonly { weight: number; items: readonly T[] }[]): T {
-  const validGroups = groups.filter((group) => group.items.length > 0);
+  const validGroups = groups.filter((group) => group.items.length > 0 && group.weight > 0);
   const total = validGroups.reduce((sum, group) => sum + group.weight, 0);
 
   let roll = Math.random() * total;
@@ -43,9 +52,10 @@ function removePicked(ids: readonly EnemyId[], pickedEnemyIds: readonly EnemyId[
 
 export function pickEnemyForRound(
   round: number,
-  pickedEnemyIds: EnemyId[]
+  pickedEnemyIds: EnemyId[],
+  normalRounds: NormalBattleRounds = NORMAL_BATTLE_ROUNDS
 ): BattleEnemy {
-  if (round > 10) {
+  if (round > normalRounds) {
     const pickedExtraId = weightedPick<EnemyId>(
       enemySelectionGroups
         .filter((group) => group.phase === "extra")
@@ -58,17 +68,23 @@ export function pickEnemyForRound(
     return battleEnemies[pickedExtraId];
   }
 
-  const isChanceRound = [1, 5, 10].includes(round);
+  // Retain the existing first/fifth-round chance stages and the old tenth
+  // stage for runs saved before the five-battle change.
+  const isChanceRound = [1, 5, normalRounds].includes(round);
   const phase = isChanceRound ? "chance" : "normal";
 
-  const pickedId = weightedPick<EnemyId>(
-    enemySelectionGroups
-      .filter((group) => group.phase === phase)
+  const phaseGroups = enemySelectionGroups.filter((group) => group.phase === phase);
+  const unusedGroups = phaseGroups
       .map((group) => ({
         weight: group.weight,
         items: removePicked(group.enemyIds as readonly EnemyId[], pickedEnemyIds),
-      }))
-  );
+      }));
+  // A legacy or malformed history can exhaust every normal candidate. Reuse
+  // the same phase's pool in that case, preserving its weights and avoiding
+  // an undefined opponent. EXTRA already allows repetition.
+  const pickedId = weightedPick<EnemyId>(unusedGroups.some((group) => group.items.length > 0)
+    ? unusedGroups
+    : phaseGroups.map((group) => ({ weight: group.weight, items: group.enemyIds as readonly EnemyId[] })));
 
   return battleEnemies[pickedId];
 }

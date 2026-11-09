@@ -1,5 +1,9 @@
 "use client";
 import TopBar from "@/components/TopBar";
+import CardArchive from "@/components/site/CardArchive";
+import SoftDialog from "@/components/site/SoftDialog";
+import SiteIcon from "@/components/site/SiteIcon";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -27,7 +31,7 @@ type InventoryGroup = {
 export default function InventoryPage() {
   const [cards, setCards] = useState<InventoryGroup[]>([]);
   const [message, setMessage] = useState("Loading...");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [canSell, setCanSell] = useState(false);
   const [sellOpen, setSellOpen] = useState(false);
   const [points, setPoints] = useState(0);
 
@@ -93,6 +97,8 @@ export default function InventoryPage() {
 
 
     await initializeWallet();
+
+    setCanSell(true);
 
     const { data: settings } = await supabase
       .from("point_settings")
@@ -170,22 +176,6 @@ export default function InventoryPage() {
     }));
   };
 
-  const changeSelectedCount = (
-    cardName: string,
-    max: number,
-    change: number
-  ) => {
-    setSelectedCounts((prev) => {
-      const current = prev[cardName] ?? 0;
-      const next = Math.max(0, Math.min(max, current + change));
-
-      return {
-        ...prev,
-        [cardName]: next,
-      };
-    });
-  };
-
   const totalSelectedCount = Object.values(selectedCounts).reduce(
     (sum, count) => sum + count,
     0
@@ -249,211 +239,22 @@ if (sellError) {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white pb-6">
-      {/* TOP BAR */}
+    <main className="min-h-screen pb-6">
       <TopBar />
-
-      <div className="max-w-5xl mx-auto px-6">
-        <h1 className="text-3xl font-bold mb-4">Inventory</h1>
-
-        {message && <p className="text-zinc-300 mb-4">{message}</p>}
-
-        {totalSelectedCount > 0 && (
-          <div className="mb-6 flex flex-wrap items-center gap-4">
-            <button
-              onClick={() => setSellOpen(true)}
-              className="bg-red-600 hover:bg-red-500 px-5 py-3 rounded-xl font-semibold"
-            >
-              Sell Selected ({totalSelectedCount})
-            </button>
-
-            <p className="text-emerald-400 font-bold">
-              Selling Points: +{totalSellPoints}
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {cards.map((card) => {
-            const selected = selectedCounts[card.card_name] ?? 0;
-
-            return (
-              <div
-                key={card.card_name}
-                className={`bg-zinc-900 border rounded-2xl p-3 relative ${
-                  selected > 0
-                    ? "border-red-400"
-                    : "border-zinc-700"
-                }`}
-              >
-                <button
-                  onClick={() => setSelectedImage(card.image)}
-                  className="w-full"
-                >
-                  <img
-                    src={card.image}
-                    alt={card.card_name}
-                    className="w-full aspect-[3/4] object-contain rounded-xl bg-zinc-800"
-                  />
-                </button>
-
-                <div className="mt-3 text-center">
-                  <p className="text-xs text-zinc-400 mb-2">
-                    Owned: {card.count} / Selling: {selected}
-                  </p>
-
-                  <div className="grid grid-cols-6 gap-1 mb-2 text-xs">
-                    <button
-                      onClick={() =>
-                        setSellCount(card.card_name, 0, card.count)
-                      }
-                      className="bg-zinc-800 hover:bg-zinc-700 px-1 py-2 rounded-lg text-xs"
-                    >
-                      ⇤
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        changeSelectedCount(
-                          card.card_name,
-                          card.count,
-                          -10
-                        )
-                      }
-                      className="bg-zinc-800 hover:bg-zinc-700 px-1 py-2 rounded-lg text-xs"
-                    >
-                      «
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        changeSelectedCount(
-                          card.card_name,
-                          card.count,
-                          -1
-                        )
-                      }
-                      className="bg-zinc-800 hover:bg-zinc-700 px-1 py-2 rounded-lg text-xs"
-                    >
-                      ‹
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        changeSelectedCount(
-                          card.card_name,
-                          card.count,
-                          1
-                        )
-                      }
-                      className="bg-zinc-800 hover:bg-zinc-700 px-1 py-2 rounded-lg text-xs"
-                    >
-                      ›
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        changeSelectedCount(
-                          card.card_name,
-                          card.count,
-                          10
-                        )
-                      }
-                      className="bg-zinc-800 hover:bg-zinc-700 px-1 py-2 rounded-lg text-xs"
-                    >
-                      »
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        setSellCount(
-                          card.card_name,
-                          card.count,
-                          card.count
-                        )
-                      }
-                      className="bg-zinc-800 hover:bg-zinc-700 px-1 py-2 rounded-lg text-xs"
-                    >
-                      ⇥
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* SELL POPUP */}
-      {sellOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-2xl font-bold mb-3">
-              Sell Cards
-            </h2>
-
-            <p className="text-zinc-300 mb-3">
-              Sell {totalSelectedCount} selected card(s)?
-            </p>
-
-            <p className="text-emerald-400 font-bold mb-6">
-              Points: {points} → {points + totalSellPoints}
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setSellOpen(false)}
-                className="flex-1 bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-xl font-semibold"
-              >
-                No
-              </button>
-
-              <button
-                onClick={sellSelected}
-                className="flex-1 bg-red-600 hover:bg-red-500 px-4 py-3 rounded-xl font-semibold"
-              >
-                Yes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* RESULT POPUP */}
-      {resultOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-2xl font-bold mb-3">
-              Points Updated
-            </h2>
-
-            <p className="text-emerald-400 font-bold text-xl mb-6">
-              {pointBefore} → {pointAfter}
-            </p>
-
-            <button
-              onClick={() => setResultOpen(false)}
-              className="w-full bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* IMAGE POPUP */}
-      {selectedImage && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedImage(null)}
-        >
-          <img
-            src={selectedImage}
-            alt="Enlarged card"
-            className="max-w-full max-h-full object-contain rounded-2xl"
-          />
-        </div>
-      )}
+      <CardArchive cards={cards} message={message} points={points} returnValues={returnValues} selectedCounts={selectedCounts} setSellCount={setSellCount} totalSelectedCount={totalSelectedCount} totalSellPoints={totalSellPoints} onReviewSale={() => setSellOpen(true)} onClearSelection={() => setSelectedCounts({})} />
+      <SoftDialog open={sellOpen} onClose={() => setSellOpen(false)} title="Sell selected cards?">
+        <div className="site-dialog-symbol"><SiteIcon name="cards" /></div>
+        <p className="site-dialog-copy">{totalSelectedCount} card{totalSelectedCount === 1 ? "" : "s"} will leave your collection.</p>
+        <div className="archive-sale-summary"><span>You receive</span><strong><SiteIcon name="coin" />+{totalSellPoints.toLocaleString()} pts</strong><span>Balance after sale</span><b>{points.toLocaleString()} → {(points + totalSellPoints).toLocaleString()}</b></div>
+        {canSell ? <button type="button" className="site-primary site-button-full" onClick={sellSelected}>Sell {totalSelectedCount} card{totalSelectedCount === 1 ? "" : "s"}<SiteIcon name="check" /></button> : <><p className="site-dialog-copy">Card selling is available when you log in to your account.</p><Link className="site-primary site-button-full" href="/login">Log in to sell <SiteIcon name="arrow" /></Link></>}
+        <p className="archive-dialog-note">Close this window to keep your cards.</p>
+      </SoftDialog>
+      <SoftDialog open={resultOpen} onClose={() => setResultOpen(false)} title="Cards sold">
+        <div className="site-dialog-symbol"><SiteIcon name="check" /></div>
+        <p className="site-dialog-copy">Your points have been added.</p>
+        <div className="archive-sale-summary"><span>Points balance</span><strong>{pointBefore.toLocaleString()} → {pointAfter.toLocaleString()}</strong></div>
+        <button type="button" className="site-primary site-button-full" onClick={() => setResultOpen(false)}>Back to collection<SiteIcon name="cards" /></button>
+      </SoftDialog>
     </main>
   );
 }

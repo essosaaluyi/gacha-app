@@ -2,7 +2,8 @@ import { resetBattleState } from "@/lib/battle-pixi/state/battleStateStore";
 import { resetBattleLogs } from "@/lib/battle-pixi/state/battleLogStore";
 import { resetGameCount } from "@/lib/battle-pixi/state/battleGameStore";
 import { setEnemyAttackCounter } from "@/lib/battle-pixi/state/enemyAttackCounterStore";
-import { resetCurrentEnemy } from "@/lib/battle-pixi/state/currentEnemyStore";
+import { resetCurrentEnemy, selectEnemyForRound } from "@/lib/battle-pixi/state/currentEnemyStore";
+import { initializePlayerBattleCards } from "@/lib/battle-pixi/state/playerBattleCardStore";
 import { resetRound } from "@/lib/battle-pixi/state/roundStore";
 import { resetBattleMode } from "@/lib/battle-pixi/state/battleModeStore";
 import { resetDrawSequenceGuard } from "@/lib/battle-pixi/state/drawSequenceGuard";
@@ -29,8 +30,15 @@ import { clearCabinetSignals } from "@/lib/battle-pixi/state/cabinetSignalStore"
 import { resetBarProgression } from "@/lib/battle-pixi/state/barProgressionStore";
 import { clearDefenseShield } from "@/lib/battle-pixi/state/defenseShieldStore";
 import { resetEnemyAttackMode } from "@/lib/battle-pixi/state/enemyAttackModeStore";
+import { resetPlayerWinRate } from "@/lib/battle-pixi/state/playerWinRateStore";
+import { clearFatalPresentation } from "./fatalPresentationStore";
+import { restorePlayerFatal } from "./fatalModeStore";
+import { clearPendingBattleHand } from "./pendingBattleHandStore";
 
-export function resetBattleRun() {
+export function resetBattleRun(options: { preview?: boolean } = {}) {
+  clearPendingBattleHand();
+  clearFatalPresentation();
+  restorePlayerFatal();
   resetBattlePresentationFlow();
   resetBattleState();
   resetBattleLogs();
@@ -43,8 +51,11 @@ export function resetBattleRun() {
 
   resetGameCount();
   resetRound();
+  resetPlayerWinRate();
   resetCurrentEnemy();
-  setEnemyAttackCounter(8);
+  initializePlayerBattleCards();
+  const enemy = selectEnemyForRound(1);
+  setEnemyAttackCounter(enemy.attackCounter);
   hideBattleCutIn();
   hideMagicCircle();
   hideChanceIconOverlay();
@@ -70,5 +81,5 @@ export function resetBattleRun() {
   // starting stake only when they are below it, so nobody is ever stranded at
   // 0 points with no way to draw. Re-entering the battle screen on a healthy
   // balance grants nothing.
-  void ensureMinimumPoints(patchConfig.battleStart.minimumPoints, "battle_start_floor");
+  if (!options.preview) void ensureMinimumPoints(patchConfig.battleStart.minimumPoints, "battle_start_floor");
 }

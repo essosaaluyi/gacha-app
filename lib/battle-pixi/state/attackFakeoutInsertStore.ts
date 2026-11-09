@@ -58,45 +58,152 @@ const lastPhraseBySubject = new Map<string, string>();
 // every surface names a fighter the same way. What stays is the dialogue,
 // which is specific to this insert.
 const PLAYER_PHRASES_BY_ID = {
-  R1: [],
-  R2: [],
-  R3: [],
-  R4: [],
-  SR1: [],
-  SR2: [],
-  SR3: [],
-  SR4: [],
-  SSR1: [],
-  SSR2: [],
-  SSR3: [],
-  SSR4: [],
-  UR1: [],
-  UR2: [],
-  UR3: [],
+  R1: [
+    "One, two, three — we're ready!",
+    "Together we're not small anymore.",
+    "Don't touch our brother!",
+  ],
+  R2: [
+    "My scales don't break that easily.",
+    "Come closer. I dare you.",
+    "The forest fights with me.",
+  ],
+  R3: [
+    "We ride first, we ask never.",
+    "Hold on tight — this ends fast.",
+    "You picked the wrong sky.",
+  ],
+  R4: [
+    "My hands shake. My blade doesn't.",
+    "I swore an oath. I keep it.",
+    "I'm not the boy you fought before!",
+  ],
+  SR1: [
+    "The dead run faster than you.",
+    "I've already died once. Try again.",
+    "Keep up — or stay buried.",
+  ],
+  SR2: [
+    "Every scar on me was earned.",
+    "Torn wings still burn the sky.",
+    "Rage is all I have left. It's enough.",
+  ],
+  SR3: [
+    "No badge. No mercy.",
+    "Someone has to answer for this.",
+    "The mask stays on. You don't.",
+  ],
+  SR4: [
+    "You never heard me coming.",
+    "The dark is mine. You're just in it.",
+    "Blink. That's all it takes.",
+  ],
+  SSR1: [
+    "The sky answers when I call.",
+    "Kneel, or be struck down.",
+    "This storm has a name. Mine.",
+  ],
+  SSR2: [
+    "Blood remembers every debt.",
+    "I don't stop bleeding. Neither will you.",
+    "Red is the only color left.",
+  ],
+  SSR3: [
+    "My reign did not end. It moved.",
+    "Bow. The throne is still watching.",
+    "Even death obeyed me once.",
+  ],
+  SSR4: [
+    "One blade. One breath. One cut.",
+    "I will not draw twice.",
+    "Stand up. I'll end it properly.",
+  ],
+  UR1: [
+    "Smile — this part goes quickly.",
+    "I've counted every step you'll take.",
+    "You should have run when you could.",
+  ],
+  UR2: [
+    "The first hit is a greeting.",
+    "You only felt one? Wait.",
+    "Two strikes. No third needed.",
+  ],
+  UR3: [
+    "They left me. I stayed sharp.",
+    "Play with me. Just once more.",
+    "I don't break. I was already broken.",
+  ],
 } as const satisfies Record<string, readonly string[]>;
 
 type PlayerCardId = keyof typeof PLAYER_PHRASES_BY_ID;
 
-const ENEMY_ONE_PHRASES = [
-  "I know... this is the path I chose.",
-  "I see, then die....",
-  "What about those who had no one? You hypocrite!",
-] as const;
-
 const ENEMY_PHRASES_BY_ID: Record<EnemyId, readonly string[]> = {
-  1: ENEMY_ONE_PHRASES,
-  2: [],
-  3: [],
-  4: [],
-  5: [],
-  6: [],
-  7: [],
-  8: [],
-  9: [],
-  10: [],
-  11: [],
-  12: [],
-  13: [],
+  // Elias's three lines are the approved wording -- do not reword them.
+  1: [
+    "I know... this is the path I chose.",
+    "I see, then die....",
+    "What about those who had no one? You hypocrite!",
+  ],
+  2: [
+    "I've walked here longer than you've lived.",
+    "The rift is patient. I am not.",
+    "Step through. I'll be waiting.",
+  ],
+  3: [
+    "Your world was always my meal.",
+    "Scream. The void enjoys it.",
+    "Nothing you love survives me.",
+  ],
+  4: [
+    "Kneel. It's the kindest option.",
+    "A crown is taken, never given.",
+    "You dare raise steel at me?",
+  ],
+  5: [
+    "From up here, you're already prey.",
+    "I only need one pass.",
+    "The sky belongs to talons.",
+  ],
+  6: [
+    "Don't bleed on the carpet.",
+    "How dull. Entertain me properly.",
+    "You're spoiling a lovely evening.",
+  ],
+  7: [
+    "Target acquired. Line drawn.",
+    "You crossed the red line.",
+    "No witnesses. Nothing personal.",
+  ],
+  8: [
+    "None shall pass this plate.",
+    "I have guarded longer than you've breathed.",
+    "Turn back. I will not ask twice.",
+  ],
+  9: [
+    "My blade has no master now.",
+    "Duty died. The blade did not.",
+    "Ghosts don't miss.",
+  ],
+  10: [
+    "Pick a hand. Both are lying.",
+    "Oh, you're taking this seriously?",
+    "The trick was letting you hope.",
+  ],
+  11: [
+    "Stone remembers. Stone endures.",
+    "Roots take everything, slowly.",
+    "You are dust standing upright.",
+  ],
+  12: [
+    "Judgment does not negotiate.",
+    "Your sentence was written long ago.",
+    "Kneel for the axe. It's cleaner.",
+  ],
+  13: [
+    "My lantern shows the way out. Not for you.",
+    "Walk into the light. Quietly.",
+    "One lantern. One grave.",
+  ],
 };
 
 function isPlayerCardId(value: string): value is PlayerCardId {

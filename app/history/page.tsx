@@ -1,6 +1,9 @@
 "use client";
 import Link from "next/link";
 import TopBar from "@/components/TopBar";
+import SoftDialog from "@/components/site/SoftDialog";
+import SiteIcon from "@/components/site/SiteIcon";
+import CardFrame from "@/components/gacha/CardFrame";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -71,7 +74,7 @@ export default function HistoryPage() {
       <TopBar />
 
       <div className="max-w-5xl mx-auto px-6">
-        <h1 className="text-3xl font-bold mb-6">Pull History</h1>
+        <header className="site-page-heading"><div><p className="site-eyebrow">YOUR JOURNEY</p><h1>Pull History<span className="site-heading-dot">.</span></h1><p>A look back at every discovery.</p></div></header>
 
         {message === "guest" ? (
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md">
@@ -100,37 +103,25 @@ export default function HistoryPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {results.map((card) => (
-            <div
+            <button
+              type="button"
+              aria-label={`Enlarge ${card.card_name}`}
               key={card.id}
-              className="bg-zinc-900 border border-zinc-700 rounded-2xl p-3 relative cursor-pointer"
+              className="bg-transparent border-0 p-0 relative cursor-pointer"
               onClick={() => setSelectedImage(card.image)}
             >
-              <img
-                src={card.image}
-                alt={card.card_name}
-                className="w-full aspect-[3/4] object-contain rounded-xl bg-zinc-800"
-              />
+              <CardFrame src={card.image} alt={card.card_name} rarity={card.rarity} />
+              <span className="archive-zoom"><SiteIcon name="search" /></span>
 
               <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded-lg">
                 {formatDate(card.created_at)}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
 
-      {selectedImage && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedImage(null)}
-        >
-          <img
-            src={selectedImage}
-            alt="Enlarged card"
-            className="max-w-full max-h-full object-contain rounded-2xl"
-          />
-        </div>
-      )}
+      <SoftDialog open={selectedImage !== null} onClose={() => setSelectedImage(null)} title="Card preview" wide>{selectedImage && <CardFrame src={selectedImage} alt="Full card" rarity={results.find(card => card.image === selectedImage)?.rarity ?? "R"} inspection />}</SoftDialog>
     </main>
   );
 }

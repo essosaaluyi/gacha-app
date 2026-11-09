@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import SiteIcon, { type SiteIconName } from "@/components/site/SiteIcon";
+import SoftDialog from "@/components/site/SoftDialog";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -45,6 +48,7 @@ function PauseIcon() {
 }
 
 export default function TopBar() {
+  const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
   const [points, setPoints] = useState(0);
   const [isGuest, setIsGuest] = useState(false);
@@ -240,30 +244,19 @@ const [giftClaimable, setGiftClaimable] = useState(0);
           <button
             onClick={() => setReturnPopupOpen(true)}
             className="game-topbar-logo"
+            aria-label="Return to title screen"
           >
-            <img
-              src="/images/title.webp"
-              alt="Title"
-            />
+            <img src="/images/team-c-title.webp" alt="Destiny Wars" />
           </button>
         </div>
 
         <nav className="game-topbar-nav" aria-label="Game navigation">
-          <Link href="/menu">Menu</Link>
-          <Link href="/gacha">Gacha</Link>
-          <Link href="/inventory">Cards</Link>
-          <Link href="/history">History</Link>
-          {/* Shop is visible either way: unlocked when enabled, tagged as
-              coming soon while redeeming is still gated. */}
-          <Link href="/shop" className="game-topbar-nav-item">
-            Shop
-            {!patchConfig.shop.enabled && (
-              <span className="game-topbar-nav-tag">Coming Soon</span>
-            )}
-          </Link>
-          <Link href="/how-to-play">Game Info</Link>
-          <Link href="/rules">Rules</Link>
-          <Link href="/support">Support</Link>
+          {([
+            ["/gacha", "Gacha", "pack"],
+            ["/inventory", "Cards", "cards"], ["/history", "History", "history"],
+            ["/shop", "Shop", "shop"], ["/how-to-play", "Guide", "help"],
+            ["/rules", "Rules", "book"], ["/support", "Support", "mail"],
+          ] satisfies [string, string, SiteIconName][]).map(([href, label, icon]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} title={href === "/shop" && !patchConfig.shop.enabled ? "Shop — coming soon" : label}><SiteIcon name={icon} /><span>{label}</span>{href === "/shop" && !patchConfig.shop.enabled && <span className="game-topbar-nav-tag">Soon</span>}</Link>)}
         </nav>
 
         <div className="game-topbar-actions">
@@ -273,14 +266,14 @@ const [giftClaimable, setGiftClaimable] = useState(0);
               disabled={!!cooldownText}
               className="game-topbar-tool"
             >
-              {cooldownText ? cooldownText : "Daily Gift"}
+              <SiteIcon name="daily" />{cooldownText ? cooldownText : "Daily Gift"}
             </button>
 
             <button
               onClick={() => setGiftBoxOpen(true)}
               className="game-topbar-tool relative"
             >
-              Gift Box
+              <SiteIcon name="gift" />Gift Box
               {giftClaimable > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-zinc-950 text-[10px] font-black flex items-center justify-center">
                   {giftClaimable}
@@ -349,7 +342,7 @@ const [giftClaimable, setGiftClaimable] = useState(0);
 
               <div className="game-topbar-account">
                 <span>{email ?? "Guest"}</span>
-                <strong>{points.toLocaleString()} pts</strong>
+                <strong><SiteIcon name="coin" />{points.toLocaleString()}<small>pts</small></strong>
               </div>
             </div>
           </div>
@@ -357,93 +350,28 @@ const [giftClaimable, setGiftClaimable] = useState(0);
       </div>
       </header>
 
-      {returnPopupOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-2xl font-bold mb-3">
-              Return to Title Screen?
-            </h2>
-
-            <p className="text-zinc-300 mb-6">
-              {isGuest
-  ? "Guest data will be reset if you return to the title screen."
-  : "Current progress will remain saved."}
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setReturnPopupOpen(false)}
-                className="flex-1 bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-xl font-semibold"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={() => {
-  if (isGuest) {
-    localStorage.removeItem("guest_mode");
-    localStorage.removeItem("guest_points");
-    localStorage.removeItem("guest_inventory");
-    localStorage.removeItem("guest_history");
-    localStorage.removeItem("guest_last_daily_claim");
-    localStorage.removeItem("guest_welcome_gift_claimed");
-  }
-
-  window.location.href = "/";
-}}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
-              >
-                Return
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {claimPopupOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-2xl font-bold mb-3">Daily Reward Claimed</h2>
-
-            <p className="text-emerald-400 text-xl font-bold mb-6">
-              +{claimedAmount} Points
-            </p>
-
-            <button
-              onClick={() => setClaimPopupOpen(false)}
-              className="w-full bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      <SoftDialog open={returnPopupOpen} onClose={() => setReturnPopupOpen(false)} title="Return to title screen?">
+        <div className="site-dialog-symbol"><SiteIcon name="home" /></div>
+        <p className="site-dialog-copy">{isGuest ? "Guest data will be reset if you return to the title screen." : "Current progress will remain saved."}</p>
+        <button type="button" className="site-primary site-button-full" onClick={() => {
+          if (isGuest) {
+            localStorage.removeItem("guest_mode");
+            localStorage.removeItem("guest_points");
+            localStorage.removeItem("guest_inventory");
+            localStorage.removeItem("guest_history");
+            localStorage.removeItem("guest_last_daily_claim");
+            localStorage.removeItem("guest_welcome_gift_claimed");
+          }
+          window.location.href = "/";
+        }}>Return to title<SiteIcon name="arrow" /></button>
+      </SoftDialog>
+      <SoftDialog open={claimPopupOpen} onClose={() => setClaimPopupOpen(false)} title="Daily gift received">
+        <div className="site-dialog-symbol"><SiteIcon name="gift" /></div><p className="site-dialog-copy">A little gift for your next adventure.</p><div className="archive-sale-summary"><span>Added to your balance</span><strong><SiteIcon name="coin" />+{claimedAmount.toLocaleString()} pts</strong></div>
+      </SoftDialog>
       {giftBoxOpen && <GiftBoxOverlay onClose={() => setGiftBoxOpen(false)} />}
-
-      {welcomeGiftOpen && (
-  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md text-white text-center">
-      <h2 className="text-2xl font-bold mb-4">
-        Thank You for Playing!
-      </h2>
-
-      <p className="text-zinc-300 mb-4">
-        You received a welcome gift.
-      </p>
-
-      <p className="text-emerald-400 text-2xl font-bold mb-6">
-        +{welcomeGiftAmount} Points
-      </p>
-
-      <button
-        onClick={() => setWelcomeGiftOpen(false)}
-        className="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-semibold"
-      >
-        OK
-      </button>
-    </div>
-  </div>
-)}
+      <SoftDialog open={welcomeGiftOpen} onClose={() => setWelcomeGiftOpen(false)} title="Thank you for playing!">
+        <div className="site-dialog-symbol"><SiteIcon name="gift" /></div><p className="site-dialog-copy">Here is a welcome gift to get you started.</p><div className="archive-sale-summary"><span>Your welcome gift</span><strong><SiteIcon name="coin" />+{welcomeGiftAmount.toLocaleString()} pts</strong></div>
+      </SoftDialog>
     </>
   );
 }

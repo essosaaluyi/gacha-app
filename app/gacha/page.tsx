@@ -1,11 +1,16 @@
 "use client";
 
-import DailyGachaPanel from "@/components/gacha/DailyGachaPanel";
+import RevealLoading from "@/components/gacha/RevealLoading";
+
 import PullSelection from "@/components/gacha/PullSelection";
 import ResultGrid from "@/components/gacha/ResultGrid";
+import CardFrame from "@/components/gacha/CardFrame";
 import RevealPlayer from "@/components/gacha/RevealPlayer";
+import dynamic from "next/dynamic";
 import TopBar from "@/components/TopBar";
-import { useEffect, useState } from "react";
+import SoftDialog from "@/components/site/SoftDialog";
+import SiteIcon from "@/components/site/SiteIcon";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ResultActions from "@/components/gacha/ResultActions";
@@ -28,6 +33,10 @@ import {
 // absent. These are the only hardcoded prices left: the pack labels and the
 // confirm dialog both read the fetched values below.
 const FALLBACK_PULL_COSTS = { single: 100, ten: 1000 };
+const PackReveal3D = dynamic(() => import("@/components/gacha/PackReveal3D"), {
+  ssr: false,
+  loading: () => <p role="status">Loading pack...</p>,
+});
 
 export default function GachaPage() {
   const router = useRouter();
@@ -35,7 +44,7 @@ export default function GachaPage() {
   const [pendingResults, setPendingResults] = useState<Card[]>([]);
   const [message, setMessage] = useState("");
   const [isRevealing, setIsRevealing] = useState(false);
-  const [pullCount, setPullCount] = useState(1);
+  const [pullCount, setPullCount] = useState(5);
   const [revealVideo, setRevealVideo] = useState("/videos/standard.mp4");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [, setPoints] = useState<number>(0);
@@ -48,12 +57,33 @@ export default function GachaPage() {
   // Fetched once, then used for both the pack labels and the confirm dialog, so
   // the advertised price and the charged price cannot disagree.
   const [pullCosts, setPullCosts] = useState(FALLBACK_PULL_COSTS);
+  // Owner-approved: retain the old pack's unit price/discount, at half the
+  // quantity. Keep its existing setting key; no database migration is needed.
+  const fivePullCost = pullCosts.ten / 2;
+  const pullInFlightRef = useRef(false);
+  const revealFinishedRef = useRef(false);
 
   const [freezeActive, setFreezeActive] = useState(false);
   const [freezeTriggered, setFreezeTriggered] = useState(false);
   const [freezeTime, setFreezeTime] = useState<number | null>(null);
   const [mainRevealStopped, setMainRevealStopped] = useState(false);
-  const [revealFinished, setRevealFinished] = useState(false);
+  const [packActive, setPackActive] = useState(false);
+  const [packFinished, setPackFinished] = useState(false);
+  const [saveSettled, setSaveSettled] = useState(false);
+  const [pullRun, setPullRun] = useState(0);
+  const pullRunRef = useRef(0);
+  const mountedRef = useRef(false);
+  const packFinishedRef = useRef(false);
+  const resultsReady = packFinished && saveSettled && results.length > 0;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      pullRunRef.current += 1;
+      setBgmMuted(false);
+    };
+  }, []);
 
   async function loadUserData() {
     const {
@@ -119,13 +149,25 @@ export default function GachaPage() {
     };
   }, []);
 
-  const askPullConfirm = (count: number) => {
+  const askPullConfirm = (count: 1 | 5) => {
+    if (count !== 5) return;
+    if (count === 5 && !isGuest) return;
     setConfirmCount(count);
-    setConfirmCost(count === 10 ? pullCosts.ten : pullCosts.single);
+    setConfirmCost(fivePullCost);
     setConfirmOpen(true);
   };
 
   const startPull = async (count: number, cost: number) => {
+    if (count !== 5 || pullInFlightRef.current) return;
+    if (count === 5 && !isGuest) return;
+    pullInFlightRef.current = true;
+    const run = ++pullRunRef.current;
+    setPullRun(run);
+    setPackActive(false);
+    setPackFinished(false);
+    packFinishedRef.current = false;
+    setSaveSettled(false);
+    setSelectedImage(null);
     setConfirmOpen(false);
     setRevealPreparing(true);
     setMessage("Pulling...");
@@ -135,14 +177,27 @@ export default function GachaPage() {
     } = await supabase.auth.getUser();
 
     if (!user && !isGuest) {
+      pullInFlightRef.current = false;
       setRevealPreparing(false);
       setMessage("Please log in first.");
+      return;
+    }
+
+    // Local saving supports five, but the inactive database's pull_type
+    // constraint has not been verified. Keep members blocked before payment,
+    // including auth changes after the dialog opened, until DB compatibility
+    // is confirmed. Do not turn a failed paid save into a successful pull.
+    if (count === 5 && user) {
+      pullInFlightRef.current = false;
+      setRevealPreparing(false);
+      setMessage("5 Pull is currently available in guest mode.");
       return;
     }
 
     const paid = await spendPoints(cost, "gacha_pull");
 
     if (!paid) {
+      pullInFlightRef.current = false;
       setRevealPreparing(false);
       setMessage("Not enough points.");
       return;
@@ -163,9 +218,9 @@ export default function GachaPage() {
     }
 
     setFreezeTriggered(false);
+    revealFinishedRef.current = false;
     setFreezeActive(false);
     setMainRevealStopped(false);
-    setRevealFinished(false);
     setRevealVideo(revealPlan.video);
     setPullCount(count);
     setPendingResults(pulled);
@@ -176,39 +231,45 @@ export default function GachaPage() {
   };
 
   const finishReveal = async () => {
-    if (revealFinished) return;
+    if (!mountedRef.current || pullRun !== pullRunRef.current || revealFinishedRef.current) return;
+    revealFinishedRef.current = true;
     setBgmMuted(false);
 
-    setRevealFinished(true);
     setIsRevealing(false);
+    setPackActive(true);
     setFreezeActive(false);
     setMainRevealStopped(false);
     setResults([]);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    setResults(pendingResults);
-
-    if (!user) {
-      await saveGuestResults(pendingResults);
-
-setMessage("Guest pull complete.");
-return;
-    }
-
+    // Persist the committed draw at the same video-end boundary as before.
+    // Pack completion is presentation-only, including repeated/stale callbacks.
+    const isCurrentRun = () => mountedRef.current && pullRun === pullRunRef.current;
     try {
-  await saveUserResults(
-    user.id,
-    pullCount,
-    pendingResults
-  );
+      const { data: { user } } = await supabase.auth.getUser();
+      localStorage.setItem("battle_player_cards", JSON.stringify(pendingResults));
+      if (!user) {
+        await saveGuestResults(pendingResults);
+      } else {
+        await saveUserResults(user.id, pullCount, pendingResults);
+      }
+      if (isCurrentRun()) setMessage(user ? "Pull saved." : "Guest pull complete.");
+    } catch (error: unknown) {
+      if (isCurrentRun()) {
+        setMessage(error instanceof Error ? error.message : "Failed to save pull.");
+      }
+    } finally {
+      if (isCurrentRun()) {
+        setResults(pendingResults);
+        setSaveSettled(true);
+      }
+    }
+  };
 
-  setMessage("Pull saved.");
-} catch (error: unknown) {
-  setMessage(error instanceof Error ? error.message : "Failed to save pull.");
-}
+  const finishPack = () => {
+    if (!mountedRef.current || pullRun !== pullRunRef.current ||
+        !revealFinishedRef.current || packFinishedRef.current) return;
+    packFinishedRef.current = true;
+    setPackFinished(true);
   };
 
   const continueToBattleOrder = () => {
@@ -227,12 +288,12 @@ return;
           className="w-full max-w-5xl mx-auto object-contain rounded-2xl mb-6"
         />
 
-        {!revealPreparing && !isRevealing && results.length === 0 && (
+        {!revealPreparing && !isRevealing && !packActive && results.length === 0 && (
   <>
-    <DailyGachaPanel />
     <PullSelection
       askPullConfirm={askPullConfirm}
-      costs={pullCosts}
+      costs={{ five: fivePullCost }}
+      fiveUnavailableReason={!isGuest ? "5 Pull is currently available in guest mode." : undefined}
     />
   </>
 )}
@@ -240,13 +301,7 @@ return;
         {message && <p className="text-zinc-300 mb-6 text-center">{message}</p>}
 
         {revealPreparing && (
-          <div className="reveal-loading-layer mb-8">
-            <div className="reveal-loading-stage">
-              <div className="reveal-loading-ring" />
-              <div className="reveal-loading-core" />
-              <p className="reveal-loading-text">REVEAL STANDBY</p>
-            </div>
-          </div>
+          <RevealLoading />
         )}
 
         <RevealPlayer
@@ -264,7 +319,15 @@ return;
   finishReveal={finishReveal}
 />
 
-        {results.length > 0 && !isRevealing && (
+        {packActive && !packFinished && (
+          <PackReveal3D key={pullRun} cards={pendingResults} onComplete={finishPack} packImage="/images/pack-isolated-legends-v1-r01.png" />
+        )}
+
+        {packFinished && !saveSettled && (
+          <p role="status">Saving pull...</p>
+        )}
+
+        {resultsReady && (
           <>
             <h2 className="text-2xl font-bold mb-4">Pull Results</h2>
 
@@ -293,6 +356,14 @@ return;
     setPendingResults([]);
     setMessage("");
     setIsRevealing(false);
+    setPackActive(false);
+    setPackFinished(false);
+    setSaveSettled(false);
+    setSelectedImage(null);
+    revealFinishedRef.current = false;
+    packFinishedRef.current = false;
+    pullInFlightRef.current = false;
+    pullRunRef.current += 1;
   }}
 />
           </>
@@ -300,47 +371,24 @@ return;
       </div>
 
       {confirmOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm text-center">
-            <h2 className="text-2xl font-bold mb-3">Confirm Pull</h2>
-
-            <p className="text-zinc-300 mb-6">
+        <SoftDialog open onClose={() => setConfirmOpen(false)} title="Confirm Pull">
+            <div className="site-dialog-symbol"><SiteIcon name="pack" /></div>
+            <p className="site-dialog-copy">
               Spend {confirmCost} points for{" "}
-              {confirmCount === 10 ? "10 Pull" : "Single Pull"}?
+              one pack of 5 cards?
             </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmOpen(false)}
-                className="flex-1 bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-xl font-semibold"
-              >
-                No
-              </button>
 
               <button
                 onClick={() => startPull(confirmCount, confirmCost)}
-                className="flex-1 bg-blue-600 hover:bg-blue-500 px-4 py-3 rounded-xl font-semibold"
+                className="site-primary site-button-full"
               >
-                Yes
+                Open pack<SiteIcon name="arrow" />
               </button>
-            </div>
-          </div>
-        </div>
+        </SoftDialog>
       )}
 
 
-      {selectedImage && (
-        <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedImage(null)}
-        >
-          <img
-            src={selectedImage}
-            alt="Enlarged card"
-            className="max-w-full max-h-full object-contain rounded-2xl"
-          />
-        </div>
-      )}
+      <SoftDialog open={selectedImage !== null} onClose={() => setSelectedImage(null)} title="Card preview" wide>{selectedImage && <CardFrame src={selectedImage} alt="Full card" rarity={results.find(card => card.image === selectedImage)?.rarity ?? "R"} inspection />}</SoftDialog>
     </main>
   );
 }

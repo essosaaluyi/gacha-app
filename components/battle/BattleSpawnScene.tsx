@@ -1,17 +1,15 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
 
 import {
-  getRoundInsertState,
-  subscribeRoundInsert,
-} from "@/lib/battle-pixi/state/roundInsertStore";
-import {
-  getBattleCutIn,
-  subscribeBattleCutIn,
-} from "@/lib/battle-pixi/state/battleCutInStore";
+  getBattlePresentationFlow,
+  subscribeBattlePresentationFlow,
+  completeBattleSummon,
+  claimBattleSummonSound,
+} from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import { playSfx } from "@/lib/audio/sfxStore";
 import {
   getCurrentEnemy,
@@ -28,6 +26,7 @@ import {
 } from "@/lib/battle-pixi/config/characterNames";
 import {
   getCurrentPlayerBattleCard,
+  getPlayerBattleCardIndex,
   subscribePlayerBattleCard,
 } from "@/lib/battle-pixi/state/playerBattleCardStore";
 import {
@@ -68,6 +67,9 @@ type RevealPreset = {
   layers: RevealLayerMap;
   standFrameSrc: (index: number) => string;
   idleFrameSrc: (index: number) => string;
+  /** Optional transparent loop used instead of decoding a full PNG sequence. */
+  sequenceVideo?: string;
+  sequencePoster?: string;
   /** True when no character sequence exists yet and card art is the identity-safe fallback. */
   staticCardFallback?: boolean;
 };
@@ -498,6 +500,68 @@ const enemySevenPreset = {
       .padStart(4, "0")}.png`,
 } satisfies RevealPreset;
 
+// Enemy 8 has one authored idle sequence. Stand and idle intentionally read
+// from that same loop; using the generic fallback here enlarges the enemy card
+// into the fighter layer instead of showing the character.
+const enemyEightLayers = {
+  cardBack: { x: 968, y: 290, scale: 1, opacity: 1, visible: true },
+  cardFront: { x: 968, y: 290, scale: 1, opacity: 0.62, visible: true },
+  particle: { x: 800.8, y: 106.4, scale: 1.2, opacity: 1, visible: true },
+  burst: { x: 957.4, y: 315.2, scale: 1, opacity: 0.26, visible: true },
+  shadow: { x: 967.63, y: 547.33, scale: 1.35, opacity: 0.95, visible: true },
+  stand: { x: 850.07, y: 189.6, scale: 0.816, opacity: 1, visible: true },
+  idle: { x: 1045.27, y: -51.8, scale: 0.816, opacity: 1, visible: false },
+} satisfies RevealPreset["layers"];
+
+const enemyEightPreset = {
+  id: "enemy-eight",
+  name: "Enemy 8",
+  storageKey: "enemy-eight-layer-workstation-timeline-v1",
+  cardImage: "/images/cards/enemy/enemy8/card.webp",
+  characterFrameWidth: 430,
+  standFrameCount: 121,
+  idleFrameCount: 121,
+  standFrameMs: 40,
+  idleFrameMs: 40,
+  standStartFrame: 0,
+  idleStartFrame: 0,
+  standTransformOrigin: "50% 50%",
+  idleTransformOrigin: "50% 50%",
+  durationMs: 7600,
+  timeline: {
+    ...baseTimeline,
+    stand: { startMs: 2600, endMs: 7600 },
+    idle: { startMs: 7600, endMs: 7600 },
+  },
+  layers: enemyEightLayers,
+  sequenceVideo: "/images/battle-characters/enemy-eight/enemy-eight-idle.webm",
+  standFrameSrc: (index: number) =>
+    `/images/battle-characters/enemy-eight/idle/${index
+      .toString()
+      .padStart(4, "0")}.png`,
+  idleFrameSrc: (index: number) =>
+    `/images/battle-characters/enemy-eight/idle/${index
+      .toString()
+      .padStart(4, "0")}.png`,
+} satisfies RevealPreset;
+
+function enemyVideoPreset(id: EnemyId, word: string, frames: number): RevealPreset {
+  const root = `/images/battle-characters/enemy-${word}`;
+  return {
+    ...enemyEightPreset,
+    id: `enemy-${word}`,
+    name: battleEnemies[id].name,
+    storageKey: `enemy-${word}-layer-workstation-timeline-v1`,
+    cardImage: battleEnemies[id].image,
+    standFrameCount: frames,
+    idleFrameCount: frames,
+    sequenceVideo: `${root}/enemy-${word}-idle.webm`,
+    sequencePoster: `${root}/poster.png`,
+    standFrameSrc: () => `${root}/poster.png`,
+    idleFrameSrc: () => `${root}/poster.png`,
+  };
+}
+
 // Summon animations that have authored frame sequences today. Do not fall
 // back to another enemy's sequence: that makes the reveal visibly contradict
 // the card and opponent name. Missing sequences use that enemy's own card art
@@ -505,9 +569,17 @@ const enemySevenPreset = {
 const ENEMY_PRESETS_BY_ID: Partial<Record<EnemyId, RevealPreset>> = {
   1: enemyOnePreset,
   2: enemyTwoPreset,
+  3: enemyVideoPreset(3, "three", 121),
   4: enemyFourPreset,
+  5: enemyVideoPreset(5, "five", 83),
   6: enemySixPreset,
   7: enemySevenPreset,
+  8: enemyEightPreset,
+  9: enemyVideoPreset(9, "nine", 123),
+  10: enemyVideoPreset(10, "ten", 84),
+  11: enemyVideoPreset(11, "eleven", 120),
+  12: enemyVideoPreset(12, "twelve", 120),
+  13: enemyVideoPreset(13, "thirteen", 120),
 };
 
 const enemyCardFallbackLayers = {
@@ -960,11 +1032,33 @@ const PLAYER_PRESETS_BY_CARD: Record<string, RevealPreset> = Object.fromEntries(
   ])
 );
 
-// Every card now has its own preset; this only catches an unknown card id.
-const FALLBACK_REVEAL_PRESET = revealPresets.brokenDoll;
+const playerCardFallbacks = new Map<string, RevealPreset>();
 
-function playerPresetFor(card: { name: string } | null) {
-  return (card && PLAYER_PRESETS_BY_CARD[card.name]) ?? FALLBACK_REVEAL_PRESET;
+function playerPresetFor(card: { name: string; image: string }) {
+  const preset = PLAYER_PRESETS_BY_CARD[card.name];
+  if (preset) return preset;
+  const key = `${card.name}:${card.image}`;
+  let fallback = playerCardFallbacks.get(key);
+  if (!fallback) {
+    // Unknown legacy cards keep their own identity; never borrow another
+    // character's monster/video merely because its reveal assets are absent.
+    fallback = {
+      ...revealPresets.brokenDoll,
+      id: `player-${card.name}-card-fallback`,
+      storageKey: `player-${card.name}-card-fallback`,
+      name: card.name,
+      cardImage: card.image,
+      standFrameCount: 1,
+      idleFrameCount: 1,
+      standStartFrame: 0,
+      idleStartFrame: 0,
+      standFrameSrc: () => card.image,
+      idleFrameSrc: () => card.image,
+      staticCardFallback: true,
+    };
+    playerCardFallbacks.set(key, fallback);
+  }
+  return fallback;
 }
 
 function loadSavedPreset(preset: RevealPreset) {
@@ -1043,9 +1137,13 @@ function getPresetStyle(preset: RevealPreset): SpawnStyle {
 function CharacterSequence({
   name,
   preset,
+  persistent = false,
+  onInspect,
 }: {
   name: string;
   preset: RevealPreset;
+  persistent?: boolean;
+  onInspect?: (origin: HTMLElement) => void;
 }) {
   const [phase, setPhase] = useState<"hidden" | "stand" | "idle">("hidden");
   const [frameIndex, setFrameIndex] = useState(0);
@@ -1053,7 +1151,7 @@ function CharacterSequence({
   useEffect(() => {
     let cancelled = false;
     let timeoutId = 0;
-    const startTime = performance.now();
+    const startTime = performance.now() - (persistent ? preset.timeline.idle.startMs : 0);
 
     const tick = () => {
       if (cancelled) return;
@@ -1064,6 +1162,8 @@ function CharacterSequence({
       if (elapsed < preset.timeline.stand.startMs) {
         setPhase("hidden");
         setFrameIndex(0);
+      } else if (preset.sequenceVideo) {
+        setPhase("stand");
       } else if (standOnly) {
         const standElapsed = elapsed - preset.timeline.stand.startMs;
         setPhase("stand");
@@ -1101,7 +1201,7 @@ function CharacterSequence({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [preset]);
+  }, [preset, persistent]);
 
   if (phase === "hidden") {
     return null;
@@ -1118,13 +1218,42 @@ function CharacterSequence({
         preset.staticCardFallback ? " battle-spawn-character-card-fallback" : ""
       }`}
       aria-label={name}
+      style={{ ...(persistent ? { animation: "none" } : {}), pointerEvents: onInspect ? "auto" : "none", cursor: onInspect ? "pointer" : undefined }}
+      role={onInspect ? "button" : undefined}
+      tabIndex={onInspect ? 0 : undefined}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (onInspect) event.currentTarget.focus({ preventScroll: true });
+        onInspect?.(event.currentTarget);
+      }}
+      onKeyDown={(event) => {
+        if (onInspect && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault(); event.stopPropagation();
+          event.currentTarget.focus({ preventScroll: true });
+          onInspect(event.currentTarget);
+        }
+      }}
     >
-      <img
-        className="battle-spawn-character"
-        src={frame}
-        alt=""
-        style={{ filter: "none", imageRendering: "auto" }}
-      />
+      {preset.sequenceVideo ? (
+        <video
+          className="battle-spawn-character"
+          src={preset.sequenceVideo}
+          poster={preset.sequencePoster}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+      ) : (
+        <img
+          className="battle-spawn-character"
+          src={frame}
+          alt=""
+          style={{ filter: "none", imageRendering: "auto" }}
+        />
+      )}
     </div>
   );
 }
@@ -1134,20 +1263,24 @@ function SpawnActor({
   cardImage,
   name,
   preset,
+  persistent = false,
+  onInspect,
 }: {
   side: "player" | "enemy";
   cardImage: string;
   name: string;
   preset: RevealPreset;
+  persistent?: boolean;
+  onInspect?: (origin: HTMLElement) => void;
 }) {
   return (
     <div
       className={`battle-spawn-actor battle-spawn-actor-${side}`}
       style={getPresetStyle(preset)}
     >
-      <div className="battle-spawn-ground" />
+      {!persistent && <div className="battle-spawn-ground" />}
 
-      <div className="battle-spawn-card" aria-label={`${name} spawn card`}>
+      {!persistent && <div className="battle-spawn-card" aria-label={`${name} spawn card`}>
         <img
           className="battle-spawn-card-back"
           src={PLAYER_CARD_BACK_IMAGE}
@@ -1158,235 +1291,106 @@ function SpawnActor({
           src={cardImage}
           alt={`${name} card`}
         />
-      </div>
+      </div>}
 
-      <div className="battle-spawn-light" />
-      <div className="battle-spawn-particle-sprite" />
-      <div
-        className="battle-spawn-white-burst"
-        style={{ transformOrigin: "center center" }}
-      />
+      {!persistent && <>
+        <div className="battle-spawn-light" />
+        <div className="battle-spawn-particle-sprite" />
+        <div className="battle-spawn-white-burst" style={{ transformOrigin: "center center" }} />
+      </>}
       <div className="battle-spawn-character-shadow" />
 
-      <CharacterSequence name={name} preset={preset} />
+      <CharacterSequence name={name} preset={preset} persistent={persistent} onInspect={onInspect} />
     </div>
   );
 }
 
-export default function BattleSpawnScene() {
-  const [spawnReady, setSpawnReady] = useState(false);
-  // Persistent fighter layer (requirement 3/4): once the first summon has
-  // played, the fighters stay mounted and visible for the rest of the battle.
-  // Transient overlays (round inserts, title cut-ins) then only cover them via
-  // z-index -- they can never unmount them or replay the 2.6s intro.
-  const [summonComplete, setSummonComplete] = useState(false);
-  const summonCompleteRef = useRef(false);
-  const spawnSessionRef = useRef(0);
-  const [resolvedPreset, setResolvedPreset] = useState<RevealPreset>(() =>
-    loadSavedPreset(playerPresetFor(getCurrentPlayerBattleCard()))
-  );
-  const [resolvedEnemyPreset, setResolvedEnemyPreset] = useState<RevealPreset>(() =>
-    loadSavedPreset(enemyPresetFor(getCurrentEnemy()))
-  );
-  // Latest summon duration, read at schedule time so the persistence handoff
-  // stays correct without re-subscribing the visibility effect. Synced in an
-  // effect rather than during render -- writing a ref while rendering is unsafe
-  // under concurrent rendering, where a render can be thrown away or replayed.
-  const summonDurationRef = useRef(resolvedPreset.durationMs);
+function FighterPresentation({
+  side, identity, name, cardImage, basePreset, status, startedAt,
+  onInspect,
+}: {
+  side: "player" | "enemy";
+  identity: string | number;
+  name: string;
+  cardImage: string;
+  basePreset: RevealPreset;
+  status: "waiting" | "absent" | "summoning" | "ready";
+  startedAt: number | null;
+  onInspect?: (origin: HTMLElement) => void;
+}) {
+  const [preset, setPreset] = useState(() => loadSavedPreset(basePreset));
 
   useEffect(() => {
-    summonDurationRef.current = resolvedPreset.durationMs;
-  }, [resolvedPreset.durationMs]);
-
-  const summonSePlayedRef = useRef(false);
-
-  const [currentEnemy, setCurrentEnemy] = useState(() => getCurrentEnemy());
-  const [playerCard, setPlayerCard] = useState(() => getCurrentPlayerBattleCard());
-
-  useEffect(() => {
-    setCurrentEnemy(getCurrentEnemy());
-    return subscribeCurrentEnemy(() => setCurrentEnemy(getCurrentEnemy()));
-  }, []);
-
-  useEffect(() => {
-    setPlayerCard(getCurrentPlayerBattleCard());
-    return subscribePlayerBattleCard(() =>
-      setPlayerCard(getCurrentPlayerBattleCard())
-    );
-  }, []);
-
-  // The animation preset for whichever enemy this round actually is.
-  const enemyBasePreset = enemyPresetFor(currentEnemy);
-
-  // ...and for whichever card the player is actually fighting with, so the
-  // summoned character matches the card art beside it.
-  const playerBasePreset = playerPresetFor(playerCard);
-
-  useEffect(() => {
-    const syncRevealPresets = () => {
-      setResolvedPreset(loadSavedPreset(playerBasePreset));
-      setResolvedEnemyPreset(loadSavedPreset(enemyBasePreset));
+    const sync = () => setPreset(loadSavedPreset(basePreset));
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === basePreset.storageKey) sync();
     };
-
-    syncRevealPresets();
-
-    const handleStorage = (event: StorageEvent) => {
-      if (
-        event.key === playerBasePreset.storageKey ||
-        event.key === enemyBasePreset.storageKey
-      ) {
-        syncRevealPresets();
-      }
-    };
-
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("focus", syncRevealPresets);
-
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", sync);
     return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("focus", syncRevealPresets);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", sync);
     };
-  }, [enemyBasePreset, playerBasePreset]);
+  }, [basePreset]);
 
   useEffect(() => {
-    let revealTimer: number | null = null;
-    let persistTimer: number | null = null;
-    let sfxFrame: number | null = null;
-    let disposed = false;
-
-    const SPAWN_DEBUG = process.env.NODE_ENV !== "production";
-
-    const logVisibility = (trigger: string, nextReady: boolean) => {
-      if (!SPAWN_DEBUG) return;
-      console.log(`[spawn-scene] ${trigger}`, {
-        spawnReadyNext: nextReady,
-        summonComplete: summonCompleteRef.current,
-        roundInsertVisible: getRoundInsertState().visible,
-        cutInVariant: getBattleCutIn()?.variant ?? null,
-        session: spawnSessionRef.current,
-      });
-    };
-
-    // Requirement 5: a delayed intro callback can never hide fighters after the
-    // summon has completed -- markSummoned latches the persistent layer on.
-    const markSummoned = () => {
-      if (disposed || summonCompleteRef.current) return;
-      summonCompleteRef.current = true;
-      setSummonComplete(true);
-      if (SPAWN_DEBUG) {
-        console.log("[spawn-scene] summon-complete -> fighters persistent", {
-          session: spawnSessionRef.current,
-        });
-      }
-    };
-
-    const scheduleReveal = (delayMs: number, trigger: string) => {
-      if (revealTimer) window.clearTimeout(revealTimer);
-      revealTimer = window.setTimeout(() => {
-        if (disposed) return;
-        spawnSessionRef.current += 1;
-        logVisibility(`${trigger}:reveal`, true);
-        setSpawnReady(true);
-        // Summon cue. This reveal can re-run outside the battle scene (notably
-        // during the collection phase); the cue is no longer suppressed here but
-        // in sfxStore, which drops cardReveal unless battle or bonus owns the
-        // machine — so it sounds on summon and stays out of the pick zone.
-        if (!summonSePlayedRef.current) {
-          summonSePlayedRef.current = true;
-          sfxFrame = window.requestAnimationFrame(() => {
-            if (!disposed) playSfx("cardReveal");
-          });
-        }
-        // Hand off to the persistent fighter layer once the intro has run.
-        if (persistTimer) window.clearTimeout(persistTimer);
-        persistTimer = window.setTimeout(markSummoned, summonDurationRef.current);
-      }, delayMs);
-    };
-
-    const syncSpawnVisibility = () => {
-      // Once the first summon completes, ignore overlay toggles entirely: the
-      // fighter layer stays up and the overlays cover it (requirement 1/2/3/4).
-      if (summonCompleteRef.current) {
-        logVisibility("persistent-ignore", true);
-        return;
-      }
-
-      const roundInsert = getRoundInsertState();
-      const titleInsert = getBattleCutIn();
-
-      if (roundInsert.visible) {
-        if (revealTimer) window.clearTimeout(revealTimer);
-        logVisibility("round-insert-hide", false);
-        setSpawnReady(false);
-        return;
-      }
-
-      if (titleInsert?.variant === "title") {
-        logVisibility("title-insert-hold", false);
-        setSpawnReady(false);
-        scheduleReveal(titleInsert.durationMs, "title-insert");
-        return;
-      }
-    };
-
-    syncSpawnVisibility();
-    const handleRoundIntroComplete = () => {
-      if (summonCompleteRef.current) return;
-      scheduleReveal(0, "round-intro-complete");
-    };
-    const unsubscribeRoundInsert = subscribeRoundInsert(syncSpawnVisibility);
-    const unsubscribeCutIn = subscribeBattleCutIn(syncSpawnVisibility);
-    window.addEventListener("battle:round-intro-complete", handleRoundIntroComplete);
-
+    if (status !== "summoning" || startedAt === null) return;
+    // Claim the cue inside the cancellable frame: Strict Mode's first effect
+    // pass cannot consume a cue that its cleanup prevented from playing.
+    const soundFrame = window.requestAnimationFrame(() => {
+      if (claimBattleSummonSound(side, identity)) playSfx("cardReveal");
+    });
+    const remaining = Math.max(0, preset.durationMs - (Date.now() - startedAt));
+    const timer = window.setTimeout(() => completeBattleSummon(side, identity), remaining);
     return () => {
-      disposed = true;
-      if (revealTimer) window.clearTimeout(revealTimer);
-      if (persistTimer) window.clearTimeout(persistTimer);
-      if (sfxFrame) window.cancelAnimationFrame(sfxFrame);
-      unsubscribeRoundInsert();
-      unsubscribeCutIn();
-      window.removeEventListener("battle:round-intro-complete", handleRoundIntroComplete);
+      window.cancelAnimationFrame(soundFrame);
+      window.clearTimeout(timer);
     };
+  }, [identity, preset.durationMs, side, startedAt, status]);
+
+  if (status === "waiting" || status === "absent") return null;
+  return <SpawnActor side={side} name={name} cardImage={cardImage}
+    preset={preset} persistent={status === "ready"} onInspect={onInspect} />;
+}
+
+export default function BattleSpawnScene({ onInspect }: { onInspect?: (side: "player" | "enemy", origin: HTMLElement) => void }) {
+  const [enemy, setEnemy] = useState(getCurrentEnemy);
+  const [player, setPlayer] = useState(getCurrentPlayerBattleCard);
+  const [playerIndex, setPlayerIndex] = useState(getPlayerBattleCardIndex);
+  const [summon, setSummon] = useState(() => getBattlePresentationFlow().summon);
+
+  useEffect(() => {
+    const detachEnemy = subscribeCurrentEnemy(() => setEnemy(getCurrentEnemy()));
+    const detachPlayer = subscribePlayerBattleCard(() => {
+      setPlayer(getCurrentPlayerBattleCard());
+      setPlayerIndex(getPlayerBattleCardIndex());
+    });
+    const detachFlow = subscribeBattlePresentationFlow(() => {
+      setSummon(getBattlePresentationFlow().summon);
+    });
+    return () => { detachEnemy(); detachPlayer(); detachFlow(); };
   }, []);
 
-  // Identity (card art + name) comes from live battle state so the summon
-  // matches the enemy the round insert announced and the card the player is
-  // actually fighting with. The animation frames still come from the preset --
-  // per-character frame sequences only exist for the presets so far, so the
-  // preset stays the visual fallback until those are authored.
-  const playerName = playerCard
-    ? getPlayerCharacterName(playerCard).label
-    : resolvedPreset.name;
-  const playerCardImage = playerCard?.image ?? resolvedPreset.cardImage;
-  const enemyName = currentEnemy
-    ? getEnemyCharacterName(currentEnemy).label
-    : resolvedEnemyPreset.name;
-  const enemyCardImage = currentEnemy?.image ?? resolvedEnemyPreset.cardImage;
-
-  // Persistent layer stays mounted after the first summon; only the pre-summon
-  // window can render nothing.
-  if (!spawnReady && !summonComplete) {
-    return null;
-  }
-
+  // The scene itself has no active-card key. Only the changing actor gets a
+  // new identity: selecting/losing a player copy cannot replay the enemy intro.
   return (
     <div className="battle-spawn-scene" aria-label="Battle spawn scene">
       <div className="battle-spawn-camera">
-        <SpawnActor
-          side="player"
-          cardImage={playerCardImage}
-          name={playerName}
-          preset={resolvedPreset}
-        />
-        <SpawnActor
-          side="enemy"
-          cardImage={enemyCardImage}
-          name={enemyName}
-          preset={resolvedEnemyPreset}
-        />
+        {enemy && summon.enemyKey && (
+          <FighterPresentation key={`enemy:${summon.enemyKey}`} side="enemy"
+            identity={summon.enemyKey} name={getEnemyCharacterName(enemy).label}
+            cardImage={enemy.image} basePreset={enemyPresetFor(enemy)}
+            onInspect={onInspect ? origin => onInspect("enemy", origin) : undefined}
+            status={summon.enemy} startedAt={summon.enemyStartedAt} />
+        )}
+        {player && playerIndex !== null && summon.playerIndex === playerIndex && (
+          <FighterPresentation key={`player:${playerIndex}`} side="player"
+            identity={playerIndex} name={getPlayerCharacterName(player).label}
+            cardImage={player.image} basePreset={playerPresetFor(player)}
+            onInspect={onInspect ? origin => onInspect("player", origin) : undefined}
+            status={summon.player} startedAt={summon.playerStartedAt} />
+        )}
       </div>
-      <div className="battle-spawn-dust battle-spawn-dust-left" />
-      <div className="battle-spawn-dust battle-spawn-dust-right" />
     </div>
   );
 }

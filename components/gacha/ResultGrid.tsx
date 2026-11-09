@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { resolvePlayerCardBack } from "@/lib/cards/cardAssets";
+import { useRef } from "react";
+import type { PointerEvent } from "react";
+import CardFrame from "@/components/gacha/CardFrame";
+import { getCardDisplayFrame } from "@/components/gacha/pack-reveal/cardDisplayCrop";
 
 type Card = {
   name: string;
@@ -10,159 +12,82 @@ type Card = {
   backImage?: string;
 };
 
-type BackGlow = "none" | "blue" | "gold" | "rainbow";
-
 type Props = {
-  results: Card[];
+  results: readonly Card[];
   setSelectedImage: (image: string | null) => void;
 };
 
-function chooseBackGlow(card: Card): BackGlow {
-  if (!["SR", "SSR", "UR"].includes(card.rarity)) return "none";
+type Drag = {
+  target: HTMLButtonElement;
+  id: number;
+  x: number;
+  y: number;
+  moved: boolean;
+};
 
-  // 50% chance no glow even if SR or higher
-  if (Math.random() >= 0.5) return "none";
-
-  if (card.rarity === "SR") {
-    return "blue";
-  }
-
-  if (card.rarity === "SSR") {
-    return Math.random() < 0.5 ? "blue" : "gold";
-  }
-
-  if (card.rarity === "UR") {
-    const rand = Math.random();
-
-    if (rand < 0.25) return "blue";
-    if (rand < 0.5) return "gold";
-    return "rainbow";
-  }
-
-  return "none";
-}
-
-function getBackGlowClass(glow: BackGlow) {
-  if (glow === "blue") {
-    return "animate-cardBackGlow bg-blue-950 border-blue-400 shadow-[0_0_28px_rgba(96,165,250,0.65)]";
-  }
-
-  if (glow === "gold") {
-    return "animate-cardBackGlow bg-yellow-950 border-yellow-400 shadow-[0_0_32px_rgba(250,204,21,0.7)]";
-  }
-
-  if (glow === "rainbow") {
-    return "animate-cardBackGlow bg-gradient-to-br from-pink-500 via-blue-400 to-yellow-300 border-white shadow-[0_0_36px_rgba(255,255,255,0.75)]";
-  }
-
-  return "bg-zinc-900 border-zinc-700";
-}
-
+/** Final fronts: tilt is presentation-only; a drag never opens inspection. */
 export default function ResultGrid({ results, setSelectedImage }: Props) {
-  const resultKey = useMemo(
-    () => results.map((card) => `${card.name}:${card.rarity}:${card.image}`).join("|"),
-    [results]
-  );
-  const [revealState, setRevealState] = useState<{
-    key: string;
-    indexes: number[];
-  }>({ key: "", indexes: [] });
-  const backGlows = useMemo(
-    () => results.map((card) => chooseBackGlow(card)),
-    [results]
-  );
-  const flipAudioRef = useRef<HTMLAudioElement | null>(null);
+  const drag = useRef<Drag | null>(null);
+  const suppressClick = useRef<HTMLButtonElement | null>(null);
 
-  useEffect(() => {
-    if (results.length === 0) return;
-
-    if (!flipAudioRef.current) {
-      flipAudioRef.current = new Audio("/audio/card-flip-se.wav");
-    }
-
-    const timers = results.map((_, index) =>
-      window.setTimeout(() => {
-        if (flipAudioRef.current) {
-  flipAudioRef.current.currentTime = 0;
-  flipAudioRef.current.volume = 0.7;
-  flipAudioRef.current.play();
-}
-        setRevealState((prev) => {
-          const indexes = prev.key === resultKey ? prev.indexes : [];
-          if (indexes.includes(index)) return { key: resultKey, indexes };
-          return { key: resultKey, indexes: [...indexes, index] };
-        });
-      }, 500 + index * 350)
-    );
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-    };
-  }, [resultKey, results]);
+  const endDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    const active = drag.current;
+    if (!active || active.id !== event.pointerId) return;
+    if (active.moved || event.type === "pointercancel") suppressClick.current = active.target;
+    active.target.style.transform = "perspective(850px) rotateX(0deg) rotateY(0deg)";
+    active.target.style.transition = "transform 180ms ease-out";
+    drag.current = null;
+    if (active.target.hasPointerCapture(event.pointerId)) active.target.releasePointerCapture(event.pointerId);
+  };
 
   if (results.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8" data-testid="gacha-result-grid">
       {results.map((card, index) => {
-        const revealed =
-          revealState.key === resultKey && revealState.indexes.includes(index);
-        const backGlow = backGlows[index] ?? "none";
-
+        const frame = getCardDisplayFrame(card.image);
         return (
-          <div
-            key={`${card.name}-${index}`}
-            onClick={() => revealed && setSelectedImage(card.image)}
-            className="cursor-pointer perspective"
-          >
-            <div className="relative w-full aspect-[3/4]">
-              <div
-                className={`absolute inset-0 transition-transform duration-700 transform-style-preserve-3d ${
-                  revealed ? "rotate-y-180" : ""
-                }`}
-              >
-                {/* Back side */}
-                <div
-                  className={`absolute inset-0 backface-hidden rounded-2xl border p-[2px] ${getBackGlowClass(
-                    backGlow
-                  )}`}
-                >
-                  <img
-                    src={resolvePlayerCardBack(card.backImage)}
-                    alt="Card Back"
-                    className="w-full h-full object-contain rounded-2xl"
-                  />
-                </div>
-
-                {/* Front side */}
-                <div
-                  className={`absolute inset-0 rotate-y-180 backface-hidden rounded-2xl p-[2px] ${
-                    card.rarity === "UR"
-                      ? "bg-gradient-to-br from-pink-500 via-blue-400 to-yellow-300 shadow-[0_0_30px_rgba(255,255,255,0.25)]"
-                      : ""
-                  }`}
-                >
-                  <div
-                    className={`rounded-2xl p-3 text-center border h-full ${
-                      card.rarity === "SR"
-                        ? "bg-blue-950 border-blue-400 shadow-[0_0_20px_rgba(96,165,250,0.45)]"
-                        : card.rarity === "SSR"
-                        ? "bg-yellow-950 border-yellow-400 shadow-[0_0_24px_rgba(250,204,21,0.5)]"
-                        : card.rarity === "UR"
-                        ? "bg-zinc-900 border-zinc-200"
-                        : "bg-zinc-900 border-zinc-700"
-                    }`}
-                  >
-                    <img
-                      src={card.image}
-                      alt={card.name}
-                      className="w-full h-full object-contain rounded-xl bg-zinc-800"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div key={card.name + "-" + index} className="w-full aspect-[2/3] flex items-center justify-center">
+        <button
+          type="button"
+          aria-label={"Inspect " + card.name}
+          title="Drag to tilt; click or press Enter to inspect."
+          className="relative h-full cursor-grab active:cursor-grabbing select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+          style={{ aspectRatio: frame.aspectRatio, width: "auto", touchAction: "pan-y", background: "transparent", padding: 0, border: 0, transform: "perspective(850px) rotateX(0deg) rotateY(0deg)" }}
+          onPointerDown={(event) => {
+            if (!event.isPrimary || event.button !== 0) return;
+            suppressClick.current = null;
+            drag.current = { target: event.currentTarget, id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+            event.currentTarget.style.transition = "none";
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            const active = drag.current;
+            if (!active || active.id !== event.pointerId) return;
+            const dx = event.clientX - active.x;
+            const dy = event.clientY - active.y;
+            if (Math.hypot(dx, dy) < 6 && !active.moved) return;
+            active.moved = true;
+            const width = Math.max(1, active.target.getBoundingClientRect().width);
+            const rotateY = Math.max(-22, Math.min(22, dx / width * 65));
+            const rotateX = Math.max(-18, Math.min(18, -dy / width * 55));
+            active.target.style.transform = "perspective(850px) rotateX(" + rotateX + "deg) rotateY(" + rotateY + "deg)";
+          }}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onLostPointerCapture={endDrag}
+          onClick={(event) => {
+            if (event.detail !== 0 && suppressClick.current === event.currentTarget) {
+              event.preventDefault();
+              return;
+            }
+            suppressClick.current = null;
+            setSelectedImage(card.image);
+          }}
+        >
+          <CardFrame src={card.image} alt={card.name} rarity={card.rarity} fill />
+        </button>
+        </div>
         );
       })}
     </div>

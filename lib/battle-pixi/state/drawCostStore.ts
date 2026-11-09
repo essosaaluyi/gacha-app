@@ -65,3 +65,5 @@ export function subscribeDrawOutcome(listener: (outcome: BattleOutcome) => void)
     }
   };
 }
+
+export function restoreDrawOutcome(value:BattleOutcome|null){lastOutcome=value;}

@@ -1,0 +1,82 @@
+.page { min-height: 100dvh; padding: 24px; color: #eee9db; background: #0c1118; font-family: sans-serif; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1250px; margin: auto; }
+.header h1 { margin: 4px 0; font-size: clamp(20px, 3vw, 28px); }
+.header a { color: #e8ce91; white-space: nowrap; }
+.kicker { margin: 0; color: #bfa66e; font-size: 11px; letter-spacing: .15em; }
+.note { max-width: 1250px; margin: 12px auto; color: #adb9c8; font-size: 14px; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; max-width: 1250px; margin: 18px auto; }
+.controls button { padding: 9px 18px; color: #c5d0df; background: #192332; border: 1px solid #627188; border-radius: 4px; font: inherit; cursor: pointer; }
+.controls button[aria-pressed="true"] { color: #fff0c6; border-color: #efd18c; background: #3a3326; }
+.controls label { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.controls input { width: 18px; height: 18px; }
+.controls button:focus-visible, .controls input:focus-visible, .header a:focus-visible { outline: 3px solid #86dfff; outline-offset: 3px; }
+.field { position: relative; isolation: isolate; width: 100%; max-width: 1250px; aspect-ratio: 1250 / 618; margin: 0 auto; overflow: hidden; border: 1px solid #6b7c89; border-radius: 6px; background: linear-gradient(#526879 0%, #b1c2c8 34%, #637c76 35%, #253d3b 100%); }
+.ground { position: absolute; left: -80%; top: 35%; width: 260%; height: 140%; transform: perspective(400px) rotateX(55deg); transform-origin: center top; background-image: linear-gradient(#b8d5cb25 1px, transparent 1px), linear-gradient(90deg, #b8d5cb25 1px, transparent 1px); background-size: 9% 15%; }
+.existing { background-image: url('/images/battle-assets/day-field-parallax-layers/03-gameplay.webp'), url('/images/battle-assets/day-field-parallax-layers/02-mid-background.webp'), url('/images/battle-assets/day-field-parallax-layers/01-far-background.webp'); background-size: cover; background-position: center; }
+.nearPad, .farPad { position: absolute; border-radius: 50%; border: 1px solid #c7e5d346; background: #061a1a48; }
+.nearPad { left: 10%; bottom: -2%; width: 37%; height: 15%; }
+.farPad { left: 65%; top: 53%; width: 22%; height: 6%; }
+.enemy, .player { position: absolute; }
+.enemy { left: 55%; top: 8%; width: 35%; height: 50%; }
+.player { left: 5%; bottom: 0; width: 46%; height: 70%; }
+.enemy img, .player img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center bottom; }
+.playerLabel, .enemyLabel { position: absolute; padding: 4px 9px; color: #e6f0ed; background: #132326d9; border-radius: 4px; font-size: clamp(11px, 1.3vw, 15px); }
+.playerLabel { left: 3%; bottom: 4%; }
+.enemyLabel { right: 7%; top: 6%; }
+.portrait { max-width: 390px; aspect-ratio: 390 / 560; }
+.portrait .player { left: 0; width: 62%; height: 65%; }
+.portrait .enemy { left: 49%; top: 10%; width: 49%; height: 45%; }
+.portrait .farPad { left: 60%; top: 52%; width: 32%; }
+.portrait .nearPad { left: 2%; bottom: 0; width: 62%; height: 10%; }
+.diagonal { --view: diagonal; }
+.divider { display: none; }
+.shoulder .player { left: -15%; bottom: -24%; width: 72%; height: 118%; }
+.shoulder .enemy { left: 37%; top: 7%; width: 53%; height: 63%; }
+.shoulder .nearPad { display: none; }
+.shoulder .farPad { left: 49%; top: 66%; width: 29%; }
+.shoulder.portrait .player { left: -28%; bottom: -18%; width: 105%; height: 100%; }
+.shoulder.portrait .enemy { left: 29%; top: 7%; width: 70%; height: 54%; }
+.shoulder.portrait .farPad { left: 44%; top: 57%; width: 43%; }
+.arena { background: radial-gradient(ellipse at 50% 62%, #8c9f8f, #3b5552 60%, #263b42); }
+.arena::before { content: ""; position: absolute; inset: 20% 8% 8%; border: 2px solid #c8dfd17a; border-radius: 50%; transform: rotate(-12deg); }
+.arena .ground { top: 0; height: 190%; transform: perspective(600px) rotateX(34deg); }
+.arena .nearPad { left: 14%; bottom: 15%; width: 26%; height: 9%; }
+.arena .farPad { left: 60%; top: 33%; width: 24%; height: 8%; }
+.arena .player { left: 10%; bottom: 17%; width: 32%; height: 45%; }
+.arena .enemy { left: 56%; top: 2%; width: 33%; height: 40%; }
+.arena.portrait .player { left: 0; bottom: 10%; width: 54%; height: 45%; }
+.arena.portrait .enemy { left: 43%; top: 10%; width: 53%; height: 39%; }
+.arena.portrait .nearPad { left: 2%; bottom: 9%; width: 52%; }
+.arena.portrait .farPad { left: 57%; top: 46%; width: 32%; }
+.duel .player { left: -3%; bottom: 1%; width: 55%; height: 72%; }
+.duel .player img { transform: scale(1.45); transform-origin: center bottom; }
+.duel .enemy { left: 51%; top: 4%; width: 43%; height: 68%; }
+.duel .farPad { left: 62%; top: 69%; width: 26%; }
+.duel.portrait .player { left: -26%; bottom: 0; width: 110%; height: 56%; }
+.duel.portrait .enemy { left: 35%; top: 5%; width: 62%; height: 53%; }
+.duel.portrait .farPad { left: 57%; top: 54%; width: 35%; }
+.split { background: linear-gradient(160deg, #282642 0%, #49334e 45%, #101921 45.2%, #31545d 100%); }
+.split .ground, .split .nearPad, .split .farPad { display: none; }
+.split .enemy { left: 39%; top: -9%; width: 60%; height: 70%; overflow: hidden; clip-path: polygon(0 0, 100% 0, 100% 84%, 0 100%); }
+.split .enemy img { height: 180%; object-position: center top; }
+.split .player { left: -5%; bottom: -1%; width: 70%; height: 60%; overflow: hidden; clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 100%); }
+.split .player img { width: 250%; height: auto; max-width: none; transform: translate(-30%, -16%); }
+.split .divider { display: block; position: absolute; top: 48%; left: -5%; width: 110%; height: 3px; transform: rotate(-9deg); background: #f5d59c; box-shadow: 0 0 15px #e8ad5266; }
+.split.portrait .enemy { left: 0; top: -2%; width: 100%; height: 55%; }
+.split.portrait .player { left: 0; bottom: 0; width: 100%; height: 55%; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 18px; max-width: 1250px; margin: auto; }
+.option { padding: 12px; background: #17212d; border: 1px solid #526174; border-radius: 6px; }
+.option h2, .description h2 { margin: 0 0 10px; font-size: 19px; color: #f3dfac; }
+.option p, .description p { font-size: 14px; line-height: 1.7; }
+.option button { padding: 8px 12px; border: 1px solid #d4b87e; border-radius: 4px; background: #3a3326; color: #fff0c6; cursor: pointer; font: inherit; }
+.option button:focus-visible { outline: 3px solid #86dfff; outline-offset: 3px; }
+.small .playerLabel, .small .enemyLabel { font-size: 11px; padding: 2px 5px; }
+.description { max-width: 1250px; margin: 18px auto; padding: 16px; border-left: 2px solid #bfa66e; background: #15202b; }
+.description a { color: #8ddaff; font-size: 13px; }
+.caution { color: #bac5d2; }
+@media (max-width: 600px) {
+  /* Leave room for the app's fixed music controls. */
+  .page { padding: 90px 10px 16px; }
+  .header { align-items: flex-start; flex-wrap: wrap; }
+  .header a { font-size: 13px; }
+}

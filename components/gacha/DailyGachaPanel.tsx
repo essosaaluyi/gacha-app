@@ -12,21 +12,9 @@ import {
   type CommunityStats,
 } from "@/lib/gacha/dailyRotation";
 import type { Card } from "@/lib/gacha/pullLogic";
+import CardFrame from "./CardFrame";
 
 const STATS_REFRESH_MS = 60_000;
-
-function rarityFrameClass(rarity: string) {
-  if (rarity === "UR") {
-    return "bg-zinc-900 border-zinc-200 shadow-[0_0_18px_rgba(255,255,255,0.35)]";
-  }
-  if (rarity === "SSR") {
-    return "bg-yellow-950 border-yellow-400 shadow-[0_0_14px_rgba(250,204,21,0.4)]";
-  }
-  if (rarity === "SR") {
-    return "bg-blue-950 border-blue-400 shadow-[0_0_12px_rgba(96,165,250,0.35)]";
-  }
-  return "bg-zinc-900 border-zinc-700";
-}
 
 function rarityTextClass(rarity: string) {
   if (rarity === "UR") return "text-white";
@@ -95,21 +83,13 @@ export default function DailyGachaPanel() {
 
           return (
             <div key={card.name} className="text-center">
-              <div
-                className={`relative rounded-xl border p-1 ${rarityFrameClass(
-                  card.rarity
-                )}`}
-              >
+              <div className="relative">
                 {isTop && (
                   <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-500 text-zinc-950 text-[10px] font-black tracking-widest px-2 py-0.5 rounded-full z-10">
                     HOT
                   </span>
                 )}
-                <img
-                  src={card.image}
-                  alt={card.name}
-                  className="w-full aspect-[3/4] object-contain rounded-lg bg-zinc-800"
-                />
+                <CardFrame src={card.image} alt={card.name} rarity={card.rarity} />
               </div>
               <p
                 className={`mt-1 text-xs font-bold ${rarityTextClass(

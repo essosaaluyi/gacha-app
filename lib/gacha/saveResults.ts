@@ -1,6 +1,13 @@
 import { supabase } from "@/lib/supabase";
 import type { Card } from "@/lib/gacha/pullLogic";
 
+export function getPullSessionType(count: number): "single" | "five" | "ten" {
+  if (count === 1) return "single";
+  if (count === 5) return "five";
+  if (count === 10) return "ten"; // Existing histories/legacy callers remain valid.
+  throw new Error("Unsupported pull count.");
+}
+
 export async function saveGuestResults(pendingResults: Card[]) {
   const existingInventory = JSON.parse(
     localStorage.getItem("guest_inventory") ?? "[]"
@@ -36,11 +43,13 @@ export async function saveUserResults(
   pullCount: number,
   pendingResults: Card[]
 ) {
+  const pullType = getPullSessionType(pullCount);
+  if (pendingResults.length !== pullCount) throw new Error("Pull count does not match results.");
   const { data: session, error: sessionError } = await supabase
     .from("pull_sessions")
     .insert({
       user_id: userId,
-      pull_type: pullCount === 10 ? "ten" : "single",
+      pull_type: pullType,
     })
     .select()
     .single();

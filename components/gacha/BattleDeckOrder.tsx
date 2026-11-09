@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Card } from "@/lib/gacha/pullLogic";
+import CardFrame from "./CardFrame";
 
 type Props = {
   cards: Card[];
@@ -48,6 +49,7 @@ export default function BattleDeckOrder({ cards }: Props) {
   const beginBattle = () => {
     localStorage.setItem("battle_player_cards", JSON.stringify(orderedCards));
     localStorage.removeItem("pending_battle_cards");
+    localStorage.removeItem("battle_resume_requested");
     localStorage.setItem("battle_opening_pending", "true");
     router.push("/battle");
   };
@@ -56,9 +58,9 @@ export default function BattleDeckOrder({ cards }: Props) {
     <section className="battle-order-panel">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-5">
         <div>
-          <h3 className="text-2xl font-bold">Battle Deck Order</h3>
+          <h3 className="text-2xl font-bold">Battle Hand</h3>
           <p className="text-sm text-zinc-300">
-            Battle cards enter from {orderLabel}, top-left to bottom-right.
+            Hand cards {orderLabel}. See the enemy, then choose a card to summon.
           </p>
         </div>
 
@@ -80,17 +82,13 @@ export default function BattleDeckOrder({ cards }: Props) {
           <button
             key={`${card.name}-${card.image}-${index}`}
             onClick={() => undefined}
-            className="relative bg-zinc-900 border border-zinc-700 rounded-2xl p-2"
+            className="relative bg-transparent border-0 p-0"
           >
             <div className="absolute top-2 left-2 z-10 bg-black/80 border border-white/30 rounded-full w-8 h-8 flex items-center justify-center text-sm font-black">
               {index + 1}
             </div>
 
-            <img
-              src={card.image}
-              alt={card.name}
-              className="w-full aspect-[3/4] object-contain rounded-xl bg-zinc-800"
-            />
+            <CardFrame src={card.image} alt={card.name} rarity={card.rarity} />
 
             <div className="mt-2 text-center text-xs font-bold">
               {card.name} / {card.rarity}

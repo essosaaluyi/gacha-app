@@ -16,6 +16,7 @@ type RevealCardParams = {
   onFaceSwap?: () => void;
   closeDurationMs?: number;
   openDurationMs?: number;
+  present?: (swapFace: () => void, complete: () => void) => void;
   /**
    * Returns false once the owning hand has been superseded; the flip then
    * stops writing to the sprite and never fires `onRevealComplete`, so a stale
@@ -61,6 +62,7 @@ export function revealCard({
   onFaceSwap,
   closeDurationMs = 220,
   openDurationMs = 115,
+  present,
   guard = alwaysAlive,
 }: RevealCardParams) {
   if (revealed[cardIndex]) return;
@@ -77,6 +79,13 @@ export function revealCard({
 
   const startScaleX = card.scale.x;
   const startScaleY = card.scale.y;
+  if (present) {
+    present(() => { if (guard()) { card.texture = symbolTextures[symbol]; onFaceSwap?.(); } }, () => {
+      if (!guard()) return;
+      playCardRevealPresentation(symbol); pulseMagicCircle(); onRevealComplete();
+    });
+    return;
+  }
 
   animatePhase(
     closeDurationMs,

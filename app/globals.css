@@ -151,13 +151,13 @@ body:has(.game-topbar-shell) > .global-bgm-player {
   will-change: transform;
 }
 
-/* The cabinet frame is intentionally wider than 16:9. Keep the reveal layer
-   in the workstation's 1280x720 space and center it over the wider scenery,
-   so saved per-character placements remain reliable. */
+/* The cabinet uses the approved D oblique-front composition.
+   Workstation coordinates remain unchanged outside the cabinet. */
 .battle-cabinet-screen .battle-spawn-camera {
-  left: 50%;
-  top: 50%;
-  transform: translate3d(calc(-50% + var(--battle-gameplay-parallax-x, 0px)), -50%, 0) scale(0.75);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
 }
 
 .battle-spawn-actor {
@@ -178,33 +178,125 @@ body:has(.game-topbar-shell) > .global-bgm-player {
   right: 8%;
 }
 
-/* Shared cabinet composition offsets. These are applied outside individual
-   presets so workstation values stay untouched for every player and enemy. */
+/* Both fighters share one field; the player stands nearer the viewer. */
 .battle-cabinet-screen .battle-spawn-actor-player {
-  transform: translate3d(42px, 162px, 0);
+  transform: none;
+  clip-path: none;
 }
 
 .battle-cabinet-screen .battle-spawn-actor-enemy {
-  /* Mirror the player lane against the right edge of the wide cabinet frame. */
-  transform: translate3d(375px, 140px, 0);
+  transform: none;
+  clip-path: none;
 }
 
-/* The field art already supplies its own grounded depth. Remove the synthetic
-   contact ovals so the characters can sit cleanly on the near path. */
+/* Approved D composition: front-facing figures on a shared oblique field.
+   Only cabinet presentation changes; workstation presets and summon timing
+   remain authored in their original coordinate system. */
+.battle-cabinet-screen .battle-background-layer > img,
+.battle-cabinet-screen .battle-background-layer > .battle-bg-floor-light,
+.battle-cabinet-screen .battle-background-layer > .battle-bg-vignette {
+  display: none;
+}
+
+.battle-cabinet-screen .battle-background-layer::before,
+.battle-cabinet-screen .battle-background-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.battle-cabinet-screen .battle-background-layer::before {
+  background: linear-gradient(#526879 0%, #b1c2c8 34%, #637c76 35%, #253d3b 100%);
+}
+
+.battle-cabinet-screen .battle-background-layer::after {
+  left: -80%;
+  top: 35%;
+  width: 260%;
+  height: 140%;
+  background-image: linear-gradient(#b8d5cb22 1px, transparent 1px), linear-gradient(90deg, #b8d5cb22 1px, transparent 1px);
+  background-size: 9% 15%;
+  transform: perspective(400px) rotateX(55deg);
+  transform-origin: center top;
+}
+
+.battle-cabinet-screen .battle-spawn-scene::after {
+  content: none;
+}
+
+.battle-cabinet-screen .battle-spawn-actor .battle-spawn-character-slot {
+  --battle-spawn-stand-scale: 1;
+  --battle-spawn-idle-scale: 1;
+  width: 50%;
+  height: 85%;
+  opacity: 1;
+  transform: none;
+  transform-origin: center top;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-character-slot {
+  left: 0;
+  top: 14%;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-character-slot {
+  left: 52%;
+  top: 8%;
+  width: 46%;
+  height: 69%;
+}
+
+.battle-cabinet-screen .battle-spawn-actor .battle-spawn-character-slot .battle-spawn-character {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.battle-cabinet-screen .battle-spawn-actor .battle-spawn-character-shadow {
+  visibility: hidden;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-card {
+  left: 20%;
+  top: 45%;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-card {
+  left: 73%;
+  top: 24%;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-light,
+.battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-white-burst {
+  left: 15%;
+  top: 48%;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-light,
+.battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-white-burst {
+  left: 65%;
+  top: 20%;
+}
+
+/* Keep the threat gauge at the edge of the enemy pane, clear of its face.
+   Override the legacy inline placement without changing shared screen logic. */
+.battle-cabinet-screen .bcab-screen > div:has(> .enemy-attack-gauge) {
+  left: auto !important;
+  right: 2.5%;
+  top: 17% !important;
+  transform: none !important;
+}
+
+/* Keep the stage's large animated summon ovals out of the shared field. */
 .battle-cabinet-screen .battle-spawn-ground,
 .battle-cabinet-screen .battle-spawn-ground {
   display: none;
 }
 
-/* Field-light integration: preserve the source PNG detail while reducing the
-   cut-out look with the meadow's warm sun and cool sky bounce. */
+/* Preserve the source colors against the quiet shared field. */
 .battle-cabinet-screen .battle-spawn-actor .battle-spawn-character {
-  filter:
-    brightness(1.01)
-    contrast(0.93)
-    saturate(0.91)
-    drop-shadow(2px -2px 1px rgba(255, 230, 170, 0.3))
-    drop-shadow(-1px 1px 1px rgba(116, 197, 236, 0.2));
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.28));
 }
 
 /* Keep only the small per-character contact shadow positioned in the
@@ -6259,6 +6351,299 @@ body.page-video-active .trust-page {
   100% { opacity: 1; transform: scale(1); }
 }
 
+/* B+A cabinet integration. This opt-in stage class is mounted by Screen.
+   Coordinates remain in the canonical 1920 x 1080 space. No lower art changes. */
+.battle-fixed-stage.bcab-air-cabinet {
+  /* Clip the fixed canvas without creating a scroll container. Focus and
+     scrollIntoView must not shift the entire cabinet inside its viewport. */
+  overflow: clip;
+}
+
+.bcab-air-cabinet .bcab-air-tank {
+  --air-metal-gold: #ad8750;
+  position: absolute;
+  left: 30px;
+  top: 88px;
+  width: 276px;
+  height: 618px;
+  z-index: 20;
+  isolation: isolate;
+  overflow: visible;
+  border: 8px double var(--air-metal-gold);
+  border-radius: 30px 16px 18px 24px;
+  background:
+    linear-gradient(105deg, #bba06a22, transparent 15% 85%, #bba06a18),
+    repeating-linear-gradient(0deg, #ffffff03 0 1px, transparent 1px 4px), #080d11;
+  box-shadow: 0 0 0 3px #151616, 0 0 0 5px #5e482d, inset 0 0 0 3px #020608,
+    inset 0 5px 12px #d6bb7950, 0 12px 28px #000b;
+}
+
+.bcab-air-cabinet .bcab-air-tank::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid #d1ad6555;
+  border-radius: 18px 8px 10px 14px;
+  pointer-events: none;
+}
+
+.bcab-air-cabinet .bcab-air-tank-window {
+  position: absolute;
+  inset: 20px 4px 118px;
+  overflow: hidden;
+  border: 3px solid #88754a;
+  border-radius: 28px 20px 24px 24px;
+  background: radial-gradient(ellipse at 50% 40%, #183536, #081419 68%, #03080c);
+  box-shadow: inset 0 0 22px #000b, 0 0 0 3px #030709, 0 0 0 4px #c9ab6359;
+}
+
+.bcab-air-cabinet .bcab-air-tank-window canvas { display: block; width: 100%; height: 100%; }
+.bcab-air-cabinet .bcab-air-tank-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(108deg, #e5f5f51a, transparent 14% 76%, #d6b36d14);
+  box-shadow: inset 7px 0 10px #e5faff0c, inset -7px 0 12px #0009;
+  pointer-events: none;
+}
+
+.bcab-air-cabinet .bcab-air-route {
+  position: absolute;
+  left: 8px;
+  top: 465px;
+  width: 26px;
+  height: 68px;
+  z-index: 3;
+  border: 10px solid #b0d1df55;
+  border-top: 0;
+  border-right: 0;
+  border-radius: 0 0 0 16px;
+  box-shadow: -2px 2px 0 1px #a17b41, -5px 5px 0 #070b0e,
+    inset 3px -3px 5px #defaff88, 0 0 8px #7eb8d42b;
+  pointer-events: none;
+}
+
+.bcab-air-cabinet .bcab-air-route::before {
+  content: "";
+  position: absolute;
+  left: -19px;
+  top: -7px;
+  width: 30px;
+  height: 22px;
+  border: 3px double #baa36b;
+  border-radius: 4px;
+  background: #29464b8c;
+}
+
+/* Card-sized throat below the glass: stage mouth (60,614,216,112).
+   Kai/3D own the new center (168,670) and physical ejection path. */
+.bcab-air-cabinet .bcab-air-outlet {
+  position: absolute;
+  left: 22px;
+  top: 518px;
+  width: 216px;
+  height: 112px;
+  z-index: 4;
+  border: 6px double #b89a5c;
+  border-radius: 12px 12px 9px 9px;
+  background: linear-gradient(90deg, #4a412c, #020509 8% 92%, #4a412c);
+  box-shadow: inset 0 13px 17px #000, inset 0 -6px 8px #252b2e,
+    inset 5px 0 7px #000, inset -5px 0 7px #000;
+  pointer-events: none;
+}
+
+/* Original holder's gold arcs/stone remain an undistorted cropped mount.
+   Keep the clear throat open; only the separate lower lip masks its edge. */
+.bcab-air-cabinet .bcab-air-outlet::before {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: -22px;
+  width: 240px;
+  height: 150px;
+  z-index: -1;
+  border: 1px solid #8f7748;
+  border-radius: 32px 32px 22px 22px;
+  background: url("/images/cabinet/card-holder.png") center / 240px auto no-repeat #0c1012;
+  clip-path: polygon(evenodd, 0 0, 240px 0, 240px 150px, 0 150px, 0 0,
+    18px 22px, 18px 122px, 222px 122px, 222px 22px, 18px 22px);
+  box-shadow: 0 3px 0 #342b20, 0 6px 0 #080c10,
+    0 9px 12px #0009, inset 0 1px 1px #e4cf9470;
+}
+
+.bcab-air-cabinet .bcab-air-outlet::after {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 102px;
+  width: 240px;
+  height: 26px;
+  z-index: 2;
+  border: 1px solid #a88b50;
+  border-radius: 4px 4px 13px 13px;
+  background: linear-gradient(90deg, #bca36c, #4c4331 6%, #151b20 12% 88%, #4c4331 94%, #bca36c),
+    #13191d;
+  box-shadow: inset 0 3px 0 #dbbf7759, inset 0 -7px 5px #0009,
+    0 4px 0 #070b0e, 0 6px 6px #0008;
+}
+
+.bcab-air-cabinet .bcab-air-outlet-cards { z-index: 24; pointer-events: none; }
+.bcab-air-cabinet .bcab-air-outlet-cards img { object-fit: contain; filter: drop-shadow(0 4px 6px #0009); }
+.bcab-air-cabinet .bcab-air-tank[data-led-state="off"] .bcab-air-tank-window { opacity: .13; }
+.bcab-air-cabinet .bcab-air-tank.bcab-memboard-chance-wait,
+.bcab-air-cabinet .bcab-air-tank.bcab-air-tank-chance { box-shadow: 0 0 0 3px #151616, 0 0 0 5px #b7a16c, 0 0 18px #bda35e66; }
+.bcab-air-cabinet .bcab-air-tank[data-signal-active="true"] .bcab-air-tank-window { border-color: #ddc994; }
+.bcab-air-cabinet .bcab-air-tank-window > .bcab-panel-pulse { inset: 0; width: auto; height: auto; z-index: 4; opacity: 0; background: #fff; border-radius: inherit; }
+.bcab-air-cabinet .bcab-air-tank-window > .bcab-panel-pulse-light { animation: bcabPanelLightPulse var(--bcab-pulse-ms, 1000ms) steps(1) 1; }
+.bcab-air-cabinet .bcab-air-tank-window > .bcab-panel-pulse-onOff { background: #000; animation: bcabPanelLightPulse var(--bcab-pulse-ms, 600ms) steps(1) 1; }
+.bcab-air-cabinet .bcab-air-tank.bcab-signal-red { --air-metal-gold: #d68b63; }
+.bcab-air-cabinet .bcab-air-tank.bcab-signal-blue { --air-metal-gold: #7ab6d1; }
+.bcab-air-cabinet .bcab-air-tank.bcab-signal-green { --air-metal-gold: #7cc293; }
+.bcab-air-cabinet .bcab-air-tank.bcab-signal-white { --air-metal-gold: #e2e6d7; }
+
+.bcab-air-cabinet .bcab-led-panel {
+  left: 1610px;
+  right: auto;
+  width: 270px;
+  border: 8px double #a28149;
+  border-radius: 18px 26px 16px 12px;
+  background: linear-gradient(110deg, #b39c681b, transparent 18% 82%, #a78f5617),
+    repeating-linear-gradient(0deg, #ffffff03 0 1px, transparent 1px 4px), #0a0e12;
+  box-shadow: 0 0 0 3px #16191c, 0 0 0 5px #4a3b27, inset 0 0 0 3px #010405, 0 12px 28px #000a;
+}
+
+.bcab-air-cabinet .bcab-data-btn {
+  position: absolute;
+  left: 24px;
+  top: 30px;
+  width: 206px;
+  min-height: 120px;
+  margin: 0;
+  padding: 16px;
+  border: 9px double #9e8451;
+  border-radius: 10px;
+  color: #171d24;
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-indent: 0;
+  background: linear-gradient(145deg, #eef0ed, #a7adb0 62%, #7b8388);
+  box-shadow: 0 0 0 3px #020507, inset 0 0 0 2px #e3dec5, 0 5px 9px #000b;
+}
+.bcab-air-cabinet .bcab-data-btn:hover { border-color: #c3ae7d; box-shadow: 0 0 0 3px #020507, inset 0 0 0 2px #f7efdc, 0 5px 9px #000b; }
+.bcab-air-cabinet .bcab-data-btn:active { transform: translateY(2px); }
+
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn {
+  left: 29px;
+  top: 190px;
+  width: 196px;
+  height: 196px;
+  transform: none;
+  perspective: 700px;
+  transform-style: preserve-3d;
+  border: 12px double #a58a53;
+  background: conic-gradient(from 30deg, #d4cba7, #24282a 12%, #787668 22%, #0a0e13 45%, #918e78 70%, #24282a 85%, #d4cba7);
+  box-shadow: 0 0 0 4px #030508, 0 5px 10px #000a;
+  filter: none;
+}
+.bcab-air-cabinet .bcab-draw-btn::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 3px solid #8e9698;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 25%, #535b63, #252c34 58%, #090e15);
+  transform: translateZ(12px);
+  box-shadow: inset 0 3px 5px #d7e2e44d, inset 0 -4px 5px #0008,
+    0 2px 0 #666b67, 0 5px 0 #292f34, 0 9px 0 #10161c, 0 13px 10px #000c;
+  transition: transform 100ms ease-out, box-shadow 100ms ease-out;
+}
+.bcab-air-cabinet .bcab-draw-btn::after {
+  content: "DRAW";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #dedfda;
+  font-family: var(--fu);
+  font-size: 29px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-shadow: 0 2px 2px #000;
+  transform: translateZ(14px);
+  transition: transform 100ms ease-out;
+}
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn:not(:disabled):not(.bcab-draw-locked):not(:active):not([data-pressed="true"]):not([data-led-state="off"]) {
+  box-shadow: 0 0 0 4px #030508, 0 0 0 6px #d078496b, 0 0 17px #e77b4a55, 0 5px 10px #000a;
+}
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn:active,
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn[data-pressed="true"] { transform: none; }
+.bcab-air-cabinet .bcab-draw-btn:not(:disabled):active::before,
+.bcab-air-cabinet .bcab-draw-btn[data-pressed="true"]::before {
+  transform: translateZ(2px);
+  box-shadow: inset 0 5px 9px #000c, inset 0 -1px 2px #b6c2c42e, 0 2px 0 #14191e;
+}
+.bcab-air-cabinet .bcab-draw-btn:not(:disabled):active::after,
+.bcab-air-cabinet .bcab-draw-btn[data-pressed="true"]::after { transform: translateZ(4px); }
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn:disabled,
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn.bcab-draw-locked,
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn[data-led-state="off"],
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn[data-pressed="true"] {
+  filter: none;
+  box-shadow: 0 0 0 4px #030508, 0 5px 10px #000a;
+}
+.bcab-air-cabinet .bcab-led-panel .bcab-auto { left: 18px; top: 414px; bottom: auto; width: 160px; min-height: 44px; font-size: 14px; }
+.bcab-air-cabinet .bcab-led-panel .bcab-mascot { position: absolute; right: 12px; top: 402px; margin: 0; }
+.bcab-air-cabinet .bcab-led-panel .bcab-mascot img { height: 60px; }
+.bcab-air-cabinet .bcab-led-panel .bcab-logo { position: absolute; top: 484px; margin: 0; font-size: 23px; }
+.bcab-air-cabinet .bcab-led-panel .bcab-logo span { font-size: 16px; }
+.bcab-air-cabinet .bcab-led-panel .bcab-ticker { position: absolute; top: 544px; margin: 0; width: 226px; height: 48px; padding: 6px; }
+.bcab-air-cabinet .bcab-led-panel .bcab-grille { display: none; }
+.bcab-air-cabinet .bcab-data-btn:focus-visible { outline: 3px solid #83f2ff; outline-offset: 5px; }
+.bcab-air-cabinet .battle-cabinet-screen { outline: 3px double #aa8b51; outline-offset: 3px; box-shadow: 0 0 0 7px #080c10, 0 0 0 9px #5e492c, 0 10px 22px #000a; }
+.bcab-air-cabinet .bcab-table-space { left: calc(50% - 560px); }
+.bcab-air-cabinet .bcab-hand-label { display: none; }
+
+/* Independent header bezel; the field's 330/88/1250/618 box is unchanged. */
+.bcab-air-cabinet .bcab-top-hud {
+  position: absolute;
+  left: 330px;
+  top: 12px;
+  width: 1250px;
+  height: 66px;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr) 148px;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 12px;
+  z-index: 40;
+  border: 1px solid #887449;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #252a2e, #11191d 40%, #070e12);
+  box-shadow: 0 0 0 3px #060b10, inset 0 1px 0 #d4ba7c4d, 0 3px 7px #0008;
+  pointer-events: none;
+}
+.bcab-air-cabinet .bcab-top-hud-points,
+.bcab-air-cabinet .bcab-top-hud-round,
+.bcab-air-cabinet .bcab-top-hud-games { position: relative; min-width: 0; height: 100%; overflow: visible; }
+.bcab-air-cabinet .bcab-top-hud-points .battle-points-plaque {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 196px;
+  transform: translateY(-50%) scale(.86);
+  transform-origin: left center;
+  overflow: visible;
+  clip-path: none;
+}
+.bcab-air-cabinet .bcab-top-hud-round { display: flex; align-items: center; justify-content: center; padding-top: 10px; }
+.bcab-air-cabinet .bcab-top-hud-round .battle-progress-roadmap { width: min(100%, 640px); height: 40px; overflow: visible; }
+.bcab-air-cabinet .bcab-top-hud-games { display: flex; align-items: center; justify-content: flex-end; }
+.bcab-air-cabinet .bcab-top-hud-games .battle-game-counter { width: 132px; overflow: visible; clip-path: none; }
+.bcab-air-cabinet .bcab-top-hud .battle-hud-frame { object-fit: contain; }
+
 /* --- Right panel: LED / logotype / ticker / DATA / statue / grille --- */
 .bcab-led-panel {
   position: absolute;
@@ -6546,7 +6931,7 @@ body.page-video-active .trust-page {
   z-index: 16;
   transform: scale(1.03);
   transform-origin: center;
-  filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.5));
+  clip-path: inset(2px);
   pointer-events: none;
 }
 
@@ -6757,7 +7142,7 @@ body.page-video-active .trust-page {
     translate(-50%, -50%)
     scale(0.82);
   position: absolute;
-  left: 380px;
+  left: calc(50% - 560px);
   top: 0;
   width: 1120px;
   height: 350px;

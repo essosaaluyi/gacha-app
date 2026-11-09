@@ -97,3 +97,5 @@ export function overrideFakeoutToSuccess() {
 
   fakeoutState.predeterminedSuccess = true;
 }
+
+export function restoreAttackFakeout(value?:AttackFakeoutState){fakeoutState=value?structuredClone(value):emptyState();}

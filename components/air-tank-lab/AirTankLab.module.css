@@ -1,0 +1,60 @@
+.lab { min-height: 100svh; background: #080e13; color: #e5e8e8; padding: 28px clamp(16px, 4vw, 64px) 20px; font-family: Arial, "Noto Sans JP", sans-serif; color-scheme: dark; }
+.lab * { box-sizing: border-box; }
+.header { max-width: 1520px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 22px; border-bottom: 1px solid #293139; }
+.eyebrow { font-size: 10px; letter-spacing: .23em; color: #bda274; margin: 0 0 10px; }
+.header h1 { font-size: clamp(23px, 3vw, 36px); font-weight: 500; letter-spacing: .08em; line-height: 1.2; margin: 0; }
+.header h1 span { font-size: 12px; letter-spacing: .14em; color: #919ea7; display: inline-block; margin-left: 24px; }
+.badge { font-size: 11px; border: 1px solid #63513a; color: #cfb789; padding: 9px 12px; white-space: nowrap; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) 276px; max-width: 1520px; margin: auto; }
+.stage { height: clamp(540px, 73svh, 900px); min-width: 0; position: relative; overflow: hidden; }
+.canvas { width: 100%; height: 100%; }
+.canvas canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.overlay { position: absolute; inset: 0; display: grid; place-content: center; padding: 32px; text-align: center; background: #080e13e8; font-size: 14px; color: #d2b98d; }
+.stageLabel { position: absolute; top: 24px; left: 12px; display: flex; gap: 9px; align-items: center; pointer-events: none; font-size: 10px; letter-spacing: .13em; color: #c8d0d3; }
+.stageLabel > span:last-child { color: #7b8a95; border-left: 1px solid #45505a; padding-left: 10px; margin-left: 4px; }
+.dot { height: 5px; width: 5px; border-radius: 50%; background: #dab67c; box-shadow: 0 0 10px #e9b66c; }
+.gesture { position: absolute; bottom: 14px; width: 100%; text-align: center; pointer-events: none; color: #778791; font-size: 11px; }
+.panel { border-left: 1px solid #293139; padding: 28px 0 20px 24px; display: flex; flex-direction: column; gap: 22px; }
+.panel h2 { font-size: 18px; margin: 0 0 12px; font-weight: 500; }
+.description { font-size: 12px; color: #94a1a8; line-height: 1.9; margin: 0; }
+.lab button { font: inherit; cursor: pointer; color: #cdd4d7; background: #111b23; border: 1px solid #36414a; border-radius: 3px; padding: 10px 12px; transition: background .15s, border-color .15s; }
+.lab button:hover { background: #1c2932; border-color: #9e845d; }
+.lab button:focus-visible, .lab input:focus-visible { outline: 2px solid #e2c38c; outline-offset: 4px; }
+.lab button:disabled { cursor: default; opacity: .45; }
+.presets { display: grid; gap: 7px; }
+.presets button { text-align: left; display: flex; align-items: center; justify-content: space-between; min-height: 47px; }
+.presets strong { font-size: 13px; font-weight: 500; }
+.presets span { font-size: 10px; color: #8e9ca5; }
+.presets button[aria-pressed="true"] { border-color: #b99961; background: #2a251d; color: #f0d6a6; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; font-size: 11px; }
+.actions button:first-child { grid-column: 1 / -1; }
+.range { display: flex; flex-wrap: wrap; justify-content: space-between; font-size: 12px; color: #bbc4c9; gap: 12px; }
+.range output { color: #d7b77e; font-variant-numeric: tabular-nums; }
+.range input { width: 100%; accent-color: #ba965c; margin: 0; cursor: pointer; }
+.check { font-size: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.check input { accent-color: #ba965c; }
+.check span { font-size: 10px; color: #8898a1; }
+.export { border-top: 1px solid #293139; padding-top: 20px; margin-top: auto; }
+.glassControls { border-top: 1px solid #293139; padding-top: 18px; }
+.glassControls > div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; font-size: 11px; }
+.glassControls > p:last-child { color: #8b9fa9; font-size: 10px; line-height: 1.8; margin: 10px 0 0; }
+.export .record { width: 100%; color: #edcf9d; border-color: #79613e; font-size: 12px; }
+.export p { font-size: 10px; line-height: 1.8; color: #81929d; margin-bottom: 0; min-height: 36px; }
+.footer { border-top: 1px solid #293139; max-width: 1520px; margin: auto; padding-top: 14px; display: flex; justify-content: space-between; gap: 18px; color: #71838f; }
+.footer > div { display: flex; flex-direction: column; gap: 7px; font-size: 10px; }
+.footer strong { font-size: 14px; font-weight: 400; color: #b6c3c9; font-variant-numeric: tabular-nums; }
+.footer p { font-size: 10px; line-height: 1.8; margin: 0; text-align: right; }
+@media (max-width: 760px) {
+  .lab { padding: 20px 14px; }
+  .header h1 span { display: block; margin: 8px 0 0; font-size: 10px; }
+  .badge { font-size: 9px; padding: 7px; }
+  .workspace { grid-template-columns: 1fr; }
+  .stage { height: min(68svh, 660px); min-height: 430px; }
+  .panel { border-left: 0; border-top: 1px solid #293139; padding: 24px 0; gap: 20px; }
+  .presets { grid-template-columns: repeat(3, 1fr); }
+  .presets button { flex-direction: column; gap: 7px; text-align: center; padding: 10px 4px; }
+  .actions { grid-template-columns: 1fr 1fr 1fr; }
+  .actions button:first-child { grid-column: auto; }
+  .footer { flex-direction: column; }
+  .footer p { text-align: left; }
+}

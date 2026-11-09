@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Isolated git worktrees created by tooling.
     ".claude/**",
+    // Bundled local video tooling is not application source.
+    ".codex/video-tools/**",
   ]),
   {
     // The app tree is intentionally messy (parallel team work). These

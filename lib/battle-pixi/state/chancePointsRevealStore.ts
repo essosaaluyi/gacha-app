@@ -1,6 +1,6 @@
 // Single-Chance points gain (v-Next).
 //
-// Drawing exactly one Chance symbol gives a 1/2 shot at bonus points
+// Drawing exactly one Chance symbol gives a 40% shot at bonus points
 // (20/30/50 weighted 5:3:2). The win is deliberately NOT shown on the game
 // that earned it — it is queued and revealed on the player's next draw press,
 // so the payoff interrupts the following game.
@@ -10,6 +10,7 @@
 
 import { addPoints } from "@/lib/wallet/walletStore";
 import { playSfx } from "@/lib/audio/sfxStore";
+import { patchConfig } from "@/lib/game-config/patchConfig";
 
 // ---------------------------------------------------------------------------
 // ASSET PATHS — both reveals are PNG frame sequences, played as two layers:
@@ -70,7 +71,8 @@ export function chancePointsNumberBuilders(points: number) {
 }
 // ---------------------------------------------------------------------------
 
-export const CHANCE_POINTS_WIN_RATE = 0.5;
+export const CHANCE_POINTS_WIN_RATE =
+  patchConfig.tableCards.chancePointsWinRate;
 
 // Reward tiers and their relative weights (5:3:2).
 const CHANCE_POINTS_TIERS: { points: number; weight: number }[] = [
@@ -181,6 +183,12 @@ export function clearChancePointsReveal() {
 
 export function getChancePointsRevealState() {
   return state;
+}
+
+/** Restore committed pending/active reward without another points lottery. */
+export function restoreChancePointsReveal(value?: ChancePointsRevealState) {
+  state = value ? structuredClone(value) : { pending: null, active: null, key: 0 };
+  notify();
 }
 
 // Dev-only console helper: `__queueChancePoints(30, "UR3")` queues a reward so

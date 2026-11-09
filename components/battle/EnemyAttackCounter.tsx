@@ -7,6 +7,7 @@ import {
   getEnemyAttackCounterMax,
   subscribeEnemyAttackCounter,
 } from "@/lib/battle-pixi/state/enemyAttackCounterStore";
+import { isEnemyAttackModeActive, getEnemyAttackModeTurnsLeft, subscribeEnemyAttackMode } from "@/lib/battle-pixi/state/enemyAttackModeStore";
 
 const RADIUS = 44;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -23,6 +24,12 @@ function gaugeTone(ratio: number) {
 export default function EnemyAttackCounter() {
   const [counter, setCounter] = useState(getEnemyAttackCounter());
   const [max, setMax] = useState(getEnemyAttackCounterMax());
+  const [fatal, setFatal] = useState(isEnemyAttackModeActive());
+  const [remaining, setRemaining] = useState(getEnemyAttackModeTurnsLeft());
+  useEffect(() => subscribeEnemyAttackMode(() => {
+    setFatal(isEnemyAttackModeActive());
+    setRemaining(getEnemyAttackModeTurnsLeft());
+  }), []);
 
   useEffect(() => {
     return subscribeEnemyAttackCounter(() => {
@@ -31,9 +38,9 @@ export default function EnemyAttackCounter() {
     });
   }, []);
 
-  const ratio = max > 0 ? Math.max(0, Math.min(1, counter / max)) : 0;
+  const ratio = !fatal && max > 0 ? Math.max(0, Math.min(1, counter / max)) : 0;
   const tone = gaugeTone(ratio);
-  const held = counter <= 0;
+  const held = fatal || counter <= 0;
 
   return (
     <div
@@ -43,12 +50,16 @@ export default function EnemyAttackCounter() {
       style={{ ["--eag-color" as string]: tone.color }}
       role="img"
       aria-label={
-        held
-          ? "Enemy attack imminent"
+        fatal ? `Enemy Fatal attack window: ${remaining} following rescue draws remaining`
+          : held ? "Enemy Fatal ready: each Empty game has a 50 percent entry chance; other results do not enter"
           : `Enemy attacks in ${counter} of ${max} draws`
       }
     >
       <svg viewBox="0 0 100 100" className="enemy-attack-gauge-svg">
+        {fatal && <g transform="rotate(90 50 50)" fill="#ffe4c4">
+          <text x="50" y="43" textAnchor="middle" fontSize="12" fontWeight="800">FATAL</text>
+          <text x="50" y="66" textAnchor="middle" fontSize="22" fontWeight="800">{remaining}G</text>
+        </g>}
         <circle className="enemy-attack-gauge-track" cx="50" cy="50" r={RADIUS} />
         <circle
           className="enemy-attack-gauge-fill"

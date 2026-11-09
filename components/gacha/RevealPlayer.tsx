@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import RevealLoading from "./RevealLoading";
 
 type Props = {
   isRevealing: boolean;
@@ -36,17 +37,11 @@ export default function RevealPlayer({
   if (!isRevealing) return null;
 
   return (
-    <div className="mb-8 relative">
+    <div className="gacha-cinema">
       {!mainRevealStopped && (
         <>
           {!mainVideoReady && (
-            <div className="reveal-loading-layer mb-4">
-              <div className="reveal-loading-stage">
-                <div className="reveal-loading-ring" />
-                <div className="reveal-loading-core" />
-                <p className="reveal-loading-text">LOADING REVEAL</p>
-              </div>
-            </div>
+            <RevealLoading />
           )}
 
           <video
@@ -70,7 +65,7 @@ export default function RevealPlayer({
               }
             }}
             onEnded={finishReveal}
-            className={`w-full h-[70vh] md:h-auto object-cover rounded-2xl mb-4 ${
+            className={`gacha-cinema-video ${
               mainVideoReady ? "block" : "hidden"
             }`}
           />
@@ -80,13 +75,7 @@ export default function RevealPlayer({
       {freezeActive && (
         <>
           {!freezeVideoReady && (
-            <div className="reveal-loading-layer mb-4">
-              <div className="reveal-loading-stage">
-                <div className="reveal-loading-ring" />
-                <div className="reveal-loading-core" />
-                <p className="reveal-loading-text">FREEZE LOADING</p>
-              </div>
-            </div>
+            <RevealLoading />
           )}
 
           <video
@@ -96,7 +85,7 @@ export default function RevealPlayer({
             preload="auto"
             onCanPlay={() => setFreezeVideoReady(true)}
             onEnded={finishReveal}
-            className={`w-full h-[70vh] md:h-auto object-cover rounded-2xl mb-4 ${
+            className={`gacha-cinema-video ${
               freezeVideoReady ? "block" : "hidden"
             }`}
           />
@@ -105,7 +94,7 @@ export default function RevealPlayer({
 
       <button
         onClick={finishReveal}
-        className="bg-zinc-800 hover:bg-zinc-700 px-5 py-3 rounded-xl font-semibold"
+        className="gacha-cinema-skip"
       >
         Skip Reveal
       </button>

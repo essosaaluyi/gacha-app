@@ -11,6 +11,33 @@ export type FakeoutPresentation = "dialogue" | "chanceReveal";
 // reads this config, so importing back would close a dependency cycle.
 export type ChanceRevealColorName = "blue" | "green" | "red";
 
+// Hand-tuned card odds, written the way the odds sheet reads them: "1 in N".
+//
+// Empty is deliberately absent -- it is the remainder, and is what these seven
+// leave behind (currently 66.7%). Bar is pinned to zero rather than left out:
+// the Bar OUTCOME is not supposed to come from this lottery at all (triple and
+// fake BAR are their own flags in resultLottery), and zeroing it here keeps the
+// seven figures below exact instead of inflating them by the ~0.27% that Bar
+// would otherwise take and hand back when it is filtered.
+const CARD_ODDS: Record<string, number> = {
+  Attack: 12,
+  Reply: 9,
+  Coin: 15,
+  Defense: 18,
+  SingleChance: 91,
+  DoubleChance: 256,
+  TripleChance: 800,
+};
+
+function cardOddsPins(odds: Record<string, number>): Record<string, number> {
+  return {
+    ...Object.fromEntries(
+      Object.entries(odds).map(([result, oneInN]) => [result, 1 / oneInN])
+    ),
+    Bar: 0,
+  };
+}
+
 export const patchConfig = {
   // Gacha pull odds (%) by rarity. Editable in /admin; overrides the
   // spreadsheet-generated rarityRates when present.
@@ -26,10 +53,47 @@ export const patchConfig = {
     },
   },
 
+  // Effects owned by the three table-card symbols during normal battle.
+  tableCards: {
+    // Exactly one Chance card may queue a separate points reveal.
+    chancePointsWinRate: 0.4,
+    // A Chance card in the marked target socket adds this many percentage
+    // points to the normal 30%-per-Chance attack attempt.
+    chanceTargetAttackBonus: 30,
+    // Only Coin / Coin / Coin pays, and this is the total combination reward.
+    tripleCoinPoints: 15,
+  },
+
   // Feature 1: attack-attempt chance (%) when the target slot is Empty,
   // keyed by the rarity of the player's currently-active battle card.
   emptySlotAttack: {
     ratesByTier: { R: 10, SR: 20, SSR: 30, UR: 40 } as Record<string, number>,
+  },
+
+  // The W RATE printed on each player card. An Attack symbol on the target
+  // rolls this full rate; an Attack symbol away from the target rolls half.
+  // Every character owns its value independently; rarity never supplies a
+  // fallback. UR3 is the one variable card and rolls once per battle round.
+  playerWinRate: {
+    ratesByCard: {
+      R1: 10,
+      R2: 15,
+      R3: 15,
+      R4: 5,
+      SR1: 40,
+      SR2: 25,
+      SR3: 20,
+      SR4: 30,
+      SSR1: 80,
+      SSR2: 50,
+      SSR3: 60,
+      SSR4: 90,
+      UR1: 100,
+      UR2: 70,
+    } as Record<string, number>,
+    variableByCard: {
+      UR3: { min: 66, max: 89 },
+    } as Record<string, { min: number; max: number }>,
   },
 
   // The two "fatal" windows, both counted in draws.
@@ -342,10 +406,13 @@ export const patchConfig = {
     // Empty = spreadsheet values. Testing aid only; leave empty for release.
     // Example: { SingleChance: 0.5 } to exercise the chance reward quickly.
     //
-    // TEST ONLY — half of all hands are forced to a single Chance so the land
-    // cue, impact wave, and points reveal remain easy to test. Set back to {}
-    // before shipping to restore the spreadsheet odds.
-    forceResultProbability: { SingleChance: 0.5 } as Record<string, number>,
+    // The live card odds. Every outcome the player can draw is pinned here, so
+    // the spreadsheet's own shares are fully overridden and only Empty is left
+    // to absorb the remainder. See CARD_ODDS at the top of this file for the
+    // figures and why Bar sits at zero.
+    //
+    // Migrate into game-config.xlsx before release: a pin is still an override.
+    forceResultProbability: cardOddsPins(CARD_ODDS) as Record<string, number>,
   },
 };
 

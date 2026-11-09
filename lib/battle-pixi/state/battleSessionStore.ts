@@ -13,6 +13,18 @@ import type { BattleState } from "@/lib/battle-pixi/state/battleStateStore";
 import type { BattleMode } from "@/lib/battle-pixi/state/battleModeStore";
 import type { EnemyId } from "@/lib/battle-pixi/config/enemyConfig";
 import type { DefenseShieldGrade } from "@/lib/battle-pixi/state/defenseShieldStore";
+import type { PlayerWinRateSnapshot } from "@/lib/battle-pixi/state/playerWinRateStore";
+import type { PlayerBattleHandSnapshot } from "@/lib/battle-pixi/state/playerBattleCardStore";
+import type { BattleEnemyProgressionSnapshot } from "@/lib/battle-pixi/state/currentEnemyStore";
+import type { FatalPlan } from "./fatalPresentationStore";
+import type { EnemyFatalSnapshot } from "./enemyAttackModeStore";
+import type { PendingBattleHand } from "./pendingBattleHandStore";
+import { parseFatalPreview } from "../core/enemyFatalRoll";
+
+function isIsolatedFatalPreview() {
+  return typeof window !== "undefined" && parseFatalPreview(process.env.NODE_ENV === "production",
+    new URLSearchParams(window.location?.search).get("fatal-preview")) !== null;
+}
 
 const STORAGE_KEY = "battle_session_snapshot";
 const EXPIRY_MS = 12 * 60 * 60 * 1000; // 12 hours
@@ -24,10 +36,23 @@ export type BattleSessionSnapshot = {
   battleState: BattleState;
   sessionPoints: number;
   enemyAttackCounter: number;
+  enemyFatal?: EnemyFatalSnapshot;
+  playerFatal?: { gamesLeft: number; totalGames: number; hit: boolean; guaranteedBonusType?: "regular" | "super" | "superMax" | null };
+  fatalPlan?: FatalPlan | null;
+  pendingHand?: PendingBattleHand | null;
+  chancePoints?: import("./chancePointsRevealStore").ChancePointsRevealState;
+  bonusPresentation?: ReturnType<typeof import("./bonusPresentationStore").getBonusPresentationSnapshot>;
+  nestedBonus?: ReturnType<typeof import("./nestedBonusStore").getNestedBonusSnapshot>;
+  classicBonus?: ReturnType<typeof import("./bonusModeStore").getClassicBonusSnapshot>;
+  attackFakeout?: import("./attackFakeoutStore").AttackFakeoutState;
+  lastOutcome?: import("../core/resultLottery").BattleOutcome|null;
   enemyId: EnemyId | null;
+  enemyProgression?: BattleEnemyProgressionSnapshot;
   battleMode: BattleMode;
   /** Index of the active card in the player's deck, so resume keeps deck progress. */
-  playerCardIndex: number;
+  playerCardIndex: number | null;
+  playerHand?: PlayerBattleHandSnapshot;
+  playerWinRate?: PlayerWinRateSnapshot | null;
   barProgression?: {
     boostedGamesRemaining: number;
     pendingUr1Boost: boolean;
@@ -47,6 +72,7 @@ export type BattleSessionSnapshot = {
 };
 
 export function saveBattleSession(snapshot: BattleSessionSnapshot) {
+  if (isIsolatedFatalPreview()) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
   } catch {
@@ -84,6 +110,7 @@ export function hasSavedBattleSession(): boolean {
 }
 
 export function clearBattleSession() {
+  if (isIsolatedFatalPreview()) return;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {

@@ -47,3 +47,21 @@ next-env.d.ts
 
 # claude tooling worktrees + local temp
 .claude/worktrees/
+
+# Local video tools and Python caches
+/.codex/video-tools/
+__pycache__/
+*.py[cod]
+
+# Local-only editable production artwork / project files
+*.psd
+*.psb
+*.ai
+*.blend
+*.blend1
+*.c4d
+*.aep
+*.prproj
+*.kra
+*.clip
+*.xcf

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import TopBar from "@/components/TopBar";
+import SiteIcon from "@/components/site/SiteIcon";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -80,11 +81,16 @@ export default function LoginPage() {
 
       <div className="flex-1 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-zinc-900 p-6 rounded-2xl">
-        <h1 className="text-2xl font-bold mb-4">Login / Signup</h1>
+        <div className="site-dialog-symbol"><SiteIcon name="account" /></div>
+        <p className="site-eyebrow">WELCOME BACK</p>
+        <h1 className="text-2xl font-bold mb-4">Your next adventure awaits.</h1>
+        <p className="text-sm text-zinc-400 mb-6">Log in or sign up to save your collection.</p>
 
         <input
           className="w-full mb-3 p-3 rounded bg-zinc-800 border border-zinc-700"
           type="email"
+          aria-label="Email address"
+          autoComplete="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -93,6 +99,8 @@ export default function LoginPage() {
         <input
           className="w-full mb-4 p-3 rounded bg-zinc-800 border border-zinc-700"
           type="password"
+          aria-label="Password"
+          autoComplete="current-password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

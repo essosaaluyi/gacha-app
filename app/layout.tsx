@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "./struggle-overrides.css";
+import "./site-theme.css";
 import BGMPlayer from "@/components/BGMPlayer";
-import PageVideoBackground from "@/components/PageVideoBackground";
+import SiteTheme from "@/components/site/SiteTheme";
 
 export const metadata: Metadata = {
   title: {
@@ -45,13 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <PageVideoBackground />
-        <div
-          className="app-content-with-video"
-          style={{ position: "relative", zIndex: 1, minHeight: "100vh" }}
-        >
-          {children}
-        </div>
+        <SiteTheme>{children}</SiteTheme>
         <div className="global-bgm-player">
           <BGMPlayer />
         </div>

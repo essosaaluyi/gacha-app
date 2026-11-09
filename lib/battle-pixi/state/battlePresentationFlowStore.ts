@@ -12,11 +12,29 @@ export type BattlePresentationPhase =
 export type BattlePresentationFlowState = {
   phase: BattlePresentationPhase;
   reason: string;
+  summon: BattleSummonState;
 };
+
+export type BattleSummonState = {
+  enemyKey: string | null;
+  enemy: "waiting" | "summoning" | "ready";
+  enemyStartedAt: number | null;
+  playerIndex: number | null;
+  player: "absent" | "summoning" | "ready";
+  playerStartedAt: number | null;
+};
+
+function emptySummonState(): BattleSummonState {
+  return { enemyKey: null, enemy: "waiting", enemyStartedAt: null,
+    playerIndex: null, player: "absent", playerStartedAt: null };
+}
+
+const summonSounds = new Set<string>();
 
 let state: BattlePresentationFlowState = {
   phase: "round_intro",
   reason: "battle-reset",
+  summon: emptySummonState(),
 };
 let teaseTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners: (() => void)[] = [];
@@ -40,24 +58,77 @@ export function setBattlePresentationPhase(
   reason: string = phase
 ) {
   clearTeaseTimer();
-  state = { phase, reason };
+  state = { ...state, phase, reason };
   notify();
 }
 
 export function beginBattleTease(durationMs: number, reason: string) {
   clearTeaseTimer();
-  state = { phase: "tease", reason };
+  state = { ...state, phase: "tease", reason };
   notify();
 
   teaseTimer = setTimeout(() => {
     teaseTimer = null;
-    state = { phase: "next_round_ready", reason: `${reason}-complete` };
+    state = { ...state, phase: "next_round_ready", reason: `${reason}-complete` };
     notify();
   }, durationMs);
 }
 
 export function canRequestBattleDraw() {
-  return state.phase === "next_round_ready";
+  return state.phase === "next_round_ready" && areBattleSummonsReady();
+}
+
+export function areBattleSummonsReady() {
+  return state.summon.enemy === "ready" && state.summon.player === "ready";
+}
+
+export function prepareEnemySummon(enemyKey: string) {
+  if (state.summon.enemyKey === enemyKey) return;
+  state = { ...state, summon: { ...state.summon, enemyKey, enemy: "waiting", enemyStartedAt: null } };
+  notify();
+}
+
+export function startEnemySummon() {
+  if (!state.summon.enemyKey || state.summon.enemy !== "waiting") return;
+  state = { ...state, summon: { ...state.summon, enemy: "summoning", enemyStartedAt: Date.now() } };
+  notify();
+}
+
+export function preparePlayerSummon(index: number) {
+  if (state.summon.playerIndex === index && state.summon.player !== "absent") return;
+  clearTeaseTimer();
+  state = { ...state, phase: "round_intro", reason: "player-summon",
+    summon: { ...state.summon, playerIndex: index, player: "summoning", playerStartedAt: Date.now() } };
+  notify();
+}
+
+export function clearPlayerSummon() {
+  state = { ...state, summon: { ...state.summon, playerIndex: null, player: "absent", playerStartedAt: null } };
+  notify();
+}
+
+export function completeBattleSummon(side: "enemy" | "player", identity: string | number) {
+  const summon = state.summon;
+  if (side === "enemy" ? summon.enemyKey !== identity || summon.enemy !== "summoning"
+    : summon.playerIndex !== identity || summon.player !== "summoning") return;
+  state = { ...state, summon: { ...summon, [side]: "ready" } };
+  if (areBattleSummonsReady() && state.phase === "round_intro") {
+    state = { ...state, phase: "next_round_ready", reason: "summons-complete" };
+  }
+  notify();
+}
+
+export function claimBattleSummonSound(side: "enemy" | "player", identity: string | number) {
+  const key = `${side}:${identity}`;
+  if (summonSounds.has(key)) return false;
+  summonSounds.add(key);
+  return true;
+}
+
+export function restoreBattleSummons(enemyKey: string, playerIndex: number | null) {
+  state = { ...state, summon: { enemyKey, enemy: "ready", enemyStartedAt: null,
+    playerIndex, player: playerIndex === null ? "absent" : "ready", playerStartedAt: null } };
+  notify();
 }
 
 export function isBattlePresentationLocked() {
@@ -65,6 +136,8 @@ export function isBattlePresentationLocked() {
 }
 
 export function resetBattlePresentationFlow() {
+  summonSounds.clear();
+  state = { ...state, summon: emptySummonState() };
   setBattlePresentationPhase("round_intro", "battle-reset");
 }
 

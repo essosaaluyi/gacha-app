@@ -55,7 +55,7 @@ export default function StatsGraphPanel({ inline = false }: StatsGraphPanelProps
       onClick={() => setOpen((value) => !value)}
       aria-label={open ? "Close data counter" : "Open data counter"}
     >
-      DATA
+      DATA COUNTER
     </button>
   ) : (
     <button

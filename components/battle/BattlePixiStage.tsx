@@ -1,6 +1,18 @@
 "use client";
+import { TWO_STEP_DEAL_MS as CABINET_EJECT3D_DURATION_MS } from "@/components/battle/cabinet/CabinetTwoStepCards";
+import { getPendingBattleHand, savePendingBattleHand, clearPendingBattleHand } from "@/lib/battle-pixi/state/pendingBattleHandStore";
+import { activeDelay, createPresentationClock, type CabinetDealPhase } from "@/lib/battle-pixi/presentation/cabinetDealSequence";
+import { isDrawSequenceActive } from "@/lib/battle-pixi/state/drawSequenceGuard";
+import { parseFatalPreview, rollEnemyFatal, enemyFatalEscape, enemyFatalSurvives } from "@/lib/battle-pixi/core/enemyFatalRoll";
+import { commitFatalPlan, getFatalPresentation, setFatalStops, setFatalPresentationPhase,
+  takeFatalPlan, clearFatalPresentation, isFatalPresentationResolving, type FatalPlan } from "@/lib/battle-pixi/state/fatalPresentationStore";
+import { buildBattleSnapshot } from "@/lib/battle-pixi/state/battleSessionSync";
+import { saveBattleSession } from "@/lib/battle-pixi/state/battleSessionStore";
+import { getBattlePresentationFlow } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
+import { isCardOverviewOpen, subscribeCardOverview } from "@/lib/battle-pixi/config/cardOverview";
 import { setBattleState } from "@/lib/battle-pixi/state/battleStateStore";
 import { revealCard } from "@/lib/battle-pixi/presentation/cardRevealSystem";
+import { animateCabinetManualReveal } from "@/lib/battle-pixi/presentation/cabinetManualReveal";
 import { useEffect, useRef } from "react";
 import {
   Application,
@@ -23,19 +35,20 @@ import {
   animateTransformTo,
 } from "@/lib/battle-pixi/presentation/animations";
 import type { AnimationGuard } from "@/lib/battle-pixi/presentation/animations";
-import { CABINET_TABLE_DEPTH_SCALE } from "@/lib/battle-pixi/presentation/cabinetTableGeometry";
+import { projectPixiPointToCabinet, projectPixiQuadToCabinet, projectCabinetQuadToPixi, CABINET_TABLE_DEPTH_SCALE } from "@/lib/battle-pixi/presentation/cabinetTableGeometry";
 import {
   playSfx,
   playTripleChanceSurgeSfx,
 } from "@/lib/audio/sfxStore";
 import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
 import type { Card } from "@/lib/gacha/pullLogic";
-import type { BattleEnemy } from "@/lib/battle-pixi/config/enemyConfig";
+import { formatBattleRoundLabel, type BattleEnemy } from "@/lib/battle-pixi/config/enemyConfig";
 import {
   getEnemyCharacterName,
   getPlayerCharacterName,
 } from "@/lib/battle-pixi/config/characterNames";
 import { addBattleLog } from "@/lib/battle-pixi/state/battleLogStore";
+import { addBattlePoints } from "@/lib/battle-pixi/state/battlePointsStore";
 import { evaluateResult } from "@/lib/battle-pixi/core/evaluateResult";
 import {
   readCompletedHandFlash,
@@ -52,7 +65,7 @@ import {
   showReelTenpai,
 } from "@/lib/battle-pixi/state/reelComboStore";
 
-import { setEnemyAttackCounter } from "@/lib/battle-pixi/state/enemyAttackCounterStore";
+import { getEnemyAttackCounter, setEnemyAttackCounter } from "@/lib/battle-pixi/state/enemyAttackCounterStore";
 
 import { rollAttackAttempt } from "@/lib/battle-pixi/core/attackAttemptSystem";
 import { rollFakeoutPresentation } from "@/lib/battle-pixi/core/fakeoutPresentationLottery";
@@ -81,14 +94,20 @@ import {
   startFatalMode,
   registerFatalModeHit,
   consumeFatalModeTurn,
+  restorePlayerFatal,
+  getGuaranteedFatalBonusType,
+  setGuaranteedFatalBonusType,
 } from "@/lib/battle-pixi/state/fatalModeStore";
 
 import {
   isEnemyAttackModeActive,
   startEnemyAttackMode,
+  resetEnemyAttackMode,
+  consumeEnemyAttackModeTurn,
   registerPlayerCounter,
   registerEnemyAttackReset,
-  consumeEnemyAttackModeTurn,
+  getEnemyFatalShieldResolution,
+  holdEnemyFatalShieldResolution,
 } from "@/lib/battle-pixi/state/enemyAttackModeStore";
 import {
   awardDefenseShield,
@@ -96,26 +115,30 @@ import {
   consumeDefenseShieldForFatal,
   getDefenseShieldState,
   revealDefenseShield,
+  restoreDefenseShield,
   type DefenseShieldGrade,
-  type DefenseShieldResolution,
 } from "@/lib/battle-pixi/state/defenseShieldStore";
 
 import {
-  selectEnemyForRound,
   loadNextRoundEnemy,
   getCurrentEnemy,
+  getNormalBattleRounds,
+  subscribeCurrentEnemy,
 } from "@/lib/battle-pixi/state/currentEnemyStore";
 
 import {
   getCurrentRound,
   nextRound,
+  subscribeRound,
 } from "@/lib/battle-pixi/state/roundStore";
+import { getPlayerWinRateForRound } from "@/lib/battle-pixi/state/playerWinRateStore";
 
 import { showRoundInsert } from "@/lib/battle-pixi/state/roundInsertStore";
 import {
   hideAttackLandReveal,
   revealAttackLandWinner,
   startAttackLandStruggle,
+  getAttackLandRevealState,
 } from "@/lib/battle-pixi/state/attackLandRevealStore";
 import {
   armPlayerFatalModeOpening,
@@ -153,7 +176,6 @@ import {
   isNestedBonusActive,
   getNestedBonusState,
 } from "@/lib/battle-pixi/state/nestedBonusStore";
-import { initializePlayerBattleCards } from "@/lib/battle-pixi/state/playerBattleCardStore";
 import {
   armMagicCircleChanceText,
   hideMagicCircle,
@@ -168,7 +190,13 @@ import {
   loadNextPlayerBattleCard,
   getCurrentPlayerBattleCard,
   getRemainingPlayerBattleCards,
+  getPlayerBattleCardIndex,
+  subscribePlayerBattleCard,
+  markPlayerBattleCardDefeated,
 } from "@/lib/battle-pixi/state/playerBattleCardStore";
+import { getBattleMode, subscribeBattleMode } from "@/lib/battle-pixi/state/battleModeStore";
+import { getBattleState } from "@/lib/battle-pixi/state/battleStateStore";
+import { getGameCount } from "@/lib/battle-pixi/state/battleGameStore";
 import {
   clearAttackFakeoutInserts,
   showEnemyAttackFakeoutInsert,
@@ -176,6 +204,11 @@ import {
 } from "@/lib/battle-pixi/state/attackFakeoutInsertStore";
 import {
   canRequestBattleDraw,
+  areBattleSummonsReady,
+  prepareEnemySummon,
+  startEnemySummon,
+  preparePlayerSummon,
+  clearPlayerSummon,
   setBattlePresentationPhase,
   subscribeBattlePresentationFlow,
 } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
@@ -201,11 +234,7 @@ import {
 import { consumeBarBoostGame } from "@/lib/battle-pixi/state/barProgressionStore";
 
 function formatRoundInsertText(round: number) {
-  if (round <= 10) {
-    return `ROUND ${String(round).padStart(2, "0")}`;
-  }
-
-  return `ROUND EXTRA ${round - 10}`;
+  return formatBattleRoundLabel(round, getNormalBattleRounds());
 }
 
 function getRoundEnemyImage(enemyId: string | number) {
@@ -623,6 +652,12 @@ type BattlePixiStageProps = {
   cabinetMode?: boolean;
 };
 
+function canUseBattleControls() {
+  return !isCardOverviewOpen() && !isFatalPresentationResolving() && getBattleState() === "playing" &&
+    (getBattleMode() === "bonus" ||
+      (getBattleMode() === "battle" && getCurrentPlayerBattleCard() !== null && areBattleSummonsReady()));
+}
+
 // A dialogue buildup game queues BOTH sides up front: the player insert is
 // dispatched on the first flip and the enemy insert on the third, so the two
 // halves of the exchange bracket the hand.
@@ -640,7 +675,7 @@ export default function BattlePixiStage({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   // Cabinet mode remaps card/slot geometry onto the DOM cabinet pockets
-  // (disk exit gate + table slot pockets). Hand-tunable in patchConfig.
+  // (tank outlet handoff + table slot pockets). Hand-tunable in patchConfig.
   const L = cabinetMode ? { ...UI, ...patchConfig.cabinetTable } : UI;
 
   useEffect(() => {
@@ -652,12 +687,17 @@ export default function BattlePixiStage({
     let removeRoundIntroControl: (() => void) | null = null;
     let removeBonusConfirmControl: (() => void) | null = null;
     let removeFlowControl: (() => void) | null = null;
+    let removePlayerControl: (() => void) | null = null;
+    let removeOverviewControl: (() => void) | null = null;
     let disposeHandTimers: (() => void) | null = null;
+    let disposeDeal: (() => void) | null = null;
+    let removeVisibilityClock: (() => void) | null = null;
+    let removeFatalContext: (() => void) | null = null;
+    let flightFrame: number | null = null;
     let cancelled = false;
 
     const init = async () => {
       if (!wrapperRef.current) return;
-      initializePlayerBattleCards();
 
       const pixiApp = new Application();
       app = pixiApp;
@@ -679,6 +719,33 @@ export default function BattlePixiStage({
       pixiApp.canvas.style.width = "100%";
       pixiApp.canvas.style.height = "auto";
       pixiApp.canvas.style.display = "block";
+      let dealPhase: CabinetDealPhase | "idle" | "setting" | "set" | "dealing" = "idle";
+      const mixStartedAt = 0;
+      let ejectStartedAt = 0;
+      let ejectEndedAt = 0;
+      let ejectClock = 0;
+      let setCount=0;
+      let landingCorners: number[][] | null=null;
+      let measuredGeometry: unknown=null;
+      const emitCabinetPile = (state: "set" | "launching" | "consumed") => {
+        const cabinet = wrapperRef.current?.closest(".bcab-air-cabinet");
+        const surface = pixiApp.canvas.getBoundingClientRect();
+        const cabinetBounds = cabinet?.getBoundingClientRect();
+        const handoff = cabinet ? projectPixiPointToCabinet(
+          { x: L.CARD_START_X, y: L.CARD_START_Y },
+          surface, cabinet.getBoundingClientRect(),
+          { width: STAGE.WIDTH, height: STAGE.HEIGHT }
+        ) : null;
+        const sizedHandoff = handoff && cabinetBounds ? { ...handoff,
+          // Rotation precedes the table's non-uniform pitch. Swap the scale
+          // axes for the DOM portrait image before rotating it 90 degrees.
+          nativeWidth: cardBackArtTexture.width * L.CARD_SCALE,
+          nativeHeight: cardBackArtTexture.height * L.CARD_SCALE,
+          scaleX: surface.width / STAGE.WIDTH * 1920 / cabinetBounds.width,
+          scaleY: surface.height / STAGE.HEIGHT * 1080 / cabinetBounds.height,
+        } : null;
+        window.dispatchEvent(new CustomEvent("battle:cabinet-pile", { detail: { state, setCount, geometry:measuredGeometry, frontImages:currentBattleResult.cards.map(symbol=>`/images/battle-symbols/soft-edge/${symbol.toLowerCase()}.png`), handoff: sizedHandoff, phase: dealPhase, mixStartedAt, ejectStartedAt, ejectEndedAt, ejectClock } }));
+      };
 
       const stage = new Container();
       pixiApp.stage.addChild(stage);
@@ -689,15 +756,8 @@ export default function BattlePixiStage({
       // Cabinet mode keeps the canvas flat for exact pointer coordinates.
       // Holder geometry and landed cards receive perspective natively in Pixi.
 
-      const startingEnemy = selectEnemyForRound(1);
-      setEnemyAttackCounter(startingEnemy.attackCounter);
-      addBattleLog(`Round 1 Enemy: ${startingEnemy.name}`, "draw");
-      showRoundInsert(
-        formatRoundInsertText(1),
-        getEnemyCharacterName(startingEnemy).label,
-        startingEnemy.attackCounter,
-        getRoundEnemyImage(startingEnemy.id)
-      );
+      // Run state is prepared/restored by BattleScreen before this stage mounts.
+      // Asset loading and Strict Mode remounts must never reset its hand/enemy.
 
       const tableTexture = await Assets.load("/images/card-table.webp");
       const holderTexture = await Assets.load("/images/card-holder.webp");
@@ -808,10 +868,27 @@ export default function BattlePixiStage({
       let revealedCount = 0;
       let autoPlayEnabled = false;
       let autoProgressBusy = false;
-      let pendingDefeatState = false;
+      let dealBusy = false;
+      const presentationBlocked = () => document.visibilityState === "hidden" || isCardOverviewOpen() ||
+        getBattleMode() === "collection" || getBattlePresentationFlow().phase === "bonus_video";
+      const presentationClock = createPresentationClock(() => performance.now(), presentationBlocked);
+      document.addEventListener("visibilitychange", presentationClock.synchronize);
+      removeVisibilityClock = () => document.removeEventListener("visibilitychange", presentationClock.synchronize);
+      const pumpFlightClock = () => {
+        if (cancelled) return;
+        window.dispatchEvent(new CustomEvent("battle:cabinet-flight-clock", { detail: { time: presentationClock.now() } }));
+        if (dealBusy && ejectStartedAt > 0) flightFrame = window.requestAnimationFrame(pumpFlightClock);
+        else flightFrame = null;
+      };
+
+      let pendingPlayerReplacement = false;
+      const fatalPreview = parseFatalPreview(process.env.NODE_ENV === "production",
+        new URLSearchParams(window.location.search).get("fatal-preview"));
+      let fatalSequenceBusy = false;
       let queuedDrawAfterRoundIntro = false;
 
       const revealed = [false, false, false];
+      const settledSlots = [false, false, false];
 
       // --- Hand lifecycle: generation token + centralized cleanup ----------
       // Every draw is a "hand" with a monotonically increasing id. All of a
@@ -870,6 +947,7 @@ export default function BattlePixiStage({
       let handGeneration = 0;
       let cardPhase: CardPhase = "idle";
       const managedTimeouts = new Set<ReturnType<typeof setTimeout>>();
+      const revealMotions = new Set<() => void>();
 
       const setCardPhase = (next: CardPhase, reason: string) => {
         if (CARD_FSM_DEBUG && next !== cardPhase) {
@@ -918,13 +996,16 @@ export default function BattlePixiStage({
       // a superseded hand.
       const handTimeout = (fn: () => void, ms: number) => {
         const gen = handGeneration;
-        const id = setTimeout(() => {
-          managedTimeouts.delete(id);
-          if (cancelled || gen !== handGeneration) return;
-          fn();
-        }, ms);
-        managedTimeouts.add(id);
-        return id;
+        activeDelay({
+          now: () => performance.now(),
+          blocked: presentationBlocked,
+          cancelled: () => cancelled || gen !== handGeneration,
+          schedule: (callback, delay) => {
+            const id = setTimeout(() => { managedTimeouts.delete(id); callback(); }, delay);
+            managedTimeouts.add(id);
+            return id;
+          },
+        }, ms, fn);
       };
 
       // Snapshot the current hand id and return a guard for the animation
@@ -935,6 +1016,7 @@ export default function BattlePixiStage({
       };
 
       const clearManagedTimeouts = () => {
+        revealMotions.forEach(cancel => cancel()); revealMotions.clear();
         managedTimeouts.forEach((id) => clearTimeout(id));
         managedTimeouts.clear();
       };
@@ -955,6 +1037,7 @@ export default function BattlePixiStage({
       // The one centralized cleanup every new hand runs through.
       const beginNewHand = (reason: string) => {
         handGeneration += 1;
+        settledSlots.fill(false);
         clearManagedTimeouts();
         clearAttackTargetGlow();
         chanceWaitUntil = Number.NEGATIVE_INFINITY;
@@ -974,10 +1057,14 @@ export default function BattlePixiStage({
         }
       };
 
-      let currentBattleResult = drawBattleResult({ barChance: "none" });
+      // No lottery before a paid draw or when restoring a committed hand.
+      let currentBattleResult: ReturnType<typeof drawBattleResult> = {
+        result: "Empty", cards: ["Empty", "Empty", "Empty"], targetSlot: 0,
+      };
 
       const setCurrentBattleResult = (result: typeof currentBattleResult) => {
         currentBattleResult = result;
+        if(cabinetMode && cardsAreOut) persistPendingHand();
 
         if (result.barChance) {
           const playerCard = getCurrentPlayerBattleCard();
@@ -1144,14 +1231,19 @@ export default function BattlePixiStage({
       drawButton.cursor = "pointer";
       stage.addChild(drawButton);
 
+      let progressAfterSummon: (() => void) | null = null;
       const syncDrawAvailability = () => {
-        const enabled = canRequestBattleDraw() && !cardsAreOut;
+        const enabled = !dealBusy && canRequestBattleDraw() && !cardsAreOut && canUseBattleControls();
         drawButton.eventMode = enabled && !cabinetMode ? "static" : "none";
         drawButton.alpha = enabled ? 1 : 0.5;
         drawButton.cursor = enabled ? "pointer" : "default";
       };
 
-      removeFlowControl = subscribeBattlePresentationFlow(syncDrawAvailability);
+      removeFlowControl = subscribeBattlePresentationFlow(() => {
+        presentationClock.synchronize();
+        syncDrawAvailability();
+        progressAfterSummon?.();
+      });
       syncDrawAvailability();
 
       const setDrawButtonPressed = (pressed: boolean) => {
@@ -1211,7 +1303,6 @@ export default function BattlePixiStage({
       // This is the winner the third flip will name.
       let pendingStruggleWinner: "player" | "enemy" | null = null;
       let pendingFakeoutDialogue: PendingFakeoutDialogue | null = null;
-      let pendingEnemyFatalShieldResolution: DefenseShieldResolution | null = null;
       let pendingTripleDefenseGrade: DefenseShieldGrade | null = null;
 
       const handleEnemyDefeated = (
@@ -1228,8 +1319,9 @@ export default function BattlePixiStage({
         const pending = pendingEnemyDefeatPresentation;
         if (!pending) return;
         pendingEnemyDefeatPresentation = null;
+        resetEnemyAttackMode();
+        restorePlayerFatal();
         clearDefenseShield();
-        pendingEnemyFatalShieldResolution = null;
         handleBattleEnemyDefeated({
           setPendingNextRound: (value) => {
             pendingNextRound = value;
@@ -1246,7 +1338,7 @@ export default function BattlePixiStage({
         cardGroup.x = L.CARD_START_X;
         cardGroup.y = L.CARD_START_Y;
         // Cabinet mode: while the stack is "set" it is represented by the
-        // flat DOM pile at the disk exit (the canvas plane is tilted with the
+        // committed DOM cards at the tank outlet (the canvas plane is tilted with the
         // table, the disk is not). Pixi cards stay hidden until they travel
         // onto the table in releaseCardsToTable.
         handTimeout(() => {
@@ -1274,6 +1366,8 @@ export default function BattlePixiStage({
 
         if (!enemy) return;
 
+        prepareEnemySummon(`${round}:${enemy.id}`);
+
         showRoundInsert(
           formatRoundInsertText(round),
           getEnemyCharacterName(enemy).label,
@@ -1286,6 +1380,9 @@ export default function BattlePixiStage({
         if (!pendingNextRound) return false;
 
         pendingNextRound = false;
+        clearFatalPresentation();
+        resetEnemyAttackMode();
+        restorePlayerFatal();
         // A stored shield belongs to one enemy battle only. Clear it before
         // the next opponent is selected so it cannot leak across rounds.
         clearDefenseShield();
@@ -1307,12 +1404,132 @@ export default function BattlePixiStage({
         }
       };
 
+      const finishPlayerDefeat = () => {
+        if (!pendingPlayerReplacement) return false;
+        pendingPlayerReplacement = false;
+        clearPendingBattleHand();
+        clearFatalPresentation();
+        resetEnemyAttackMode();
+        restorePlayerFatal();
+        resetCardsToGroup();
+        clearDefenseShield();
+        const enemy = getCurrentEnemy();
+        if (enemy) setEnemyAttackCounter(enemy.attackCounter);
+        setBattlePresentationPhase("round_intro", "choose-replacement");
+        clearPlayerSummon();
+        const hasUnusedCards = loadNextPlayerBattleCard();
+        addBattleLog(hasUnusedCards
+          ? `Choose a card. Remaining: ${getRemainingPlayerBattleCards()}`
+          : "No player cards remaining.", hasUnusedCards ? "normal" : "fail");
+        if (!hasUnusedCards) setBattleState("gameOver");
+        return true;
+      };
+
+      const evaluateCommittedEnemyWindow = (
+        result: typeof currentBattleResult, evaluation: ReturnType<typeof evaluateResult>, entered: boolean
+      ): FatalPlan["enemy"] => {
+        const tripleDefense = result.cards.every(symbol => symbol === "Defense");
+        if (tripleDefense && !pendingTripleDefenseGrade) pendingTripleDefenseGrade = awardDefenseShield();
+        const escape = enemyFatalEscape(result.result, evaluation);
+        if (escape.counter) registerPlayerCounter();
+        if (escape.reset) registerEnemyAttackReset();
+        const enemyTurn = consumeEnemyAttackModeTurn();
+        if (enemyTurn) {
+          // Original semantics: look for one shield during the active
+          // window and retain that exact decision, including a failed roll.
+          if (!getEnemyFatalShieldResolution()) holdEnemyFatalShieldResolution(consumeDefenseShieldForFatal());
+          const shield = getEnemyFatalShieldResolution();
+          const plan: FatalPlan["enemy"] = { attack: true, tease: true, shield,
+            entered,
+            kind: enemyTurn.finished ? "resolution" : entered ? "entry" : "window",
+            survived: enemyTurn.finished ? enemyFatalSurvives(shield, enemyTurn.playerCountered, enemyTurn.playerResetEnemyAttack) : undefined };
+          addBattleLog("Enemy Fatal window turn " + enemyTurn.turnNumber, "fail");
+          return plan;
+        }
+        return null;
+      };
+
+      const completeFatalSequence = (after: () => void) => {
+        const plan = getFatalPresentation().plan;
+        if (!plan) { after(); return; }
+        if (fatalSequenceBusy) return;
+        fatalSequenceBusy = true;
+        const valid = () => getFatalPresentation().plan?.id === plan.id &&
+          plan.enemyKey === `${getCurrentRound()}:${getCurrentEnemy()?.id}` &&
+          plan.playerIndex === getPlayerBattleCardIndex() && getBattleMode() === "battle" && getBattleState() === "playing";
+        const finish = () => {
+          if (!valid()) return;
+          const committed = takeFatalPlan(plan.id);
+          if (!committed) return;
+          fatalSequenceBusy = false;
+          if (committed.enemy?.kind === "resolution") {
+            const shield = committed.enemy.shield;
+            resetEnemyAttackMode();
+            if (committed.enemy.survived) {
+              addBattleLog(shield ? `${shield.grade.toUpperCase()} Shield survived the enemy sequence.` : "Counter/reset: enemy attack survived.", "success");
+              const enemy = getCurrentEnemy();
+              if (enemy) setEnemyAttackCounter(enemy.attackCounter);
+            } else {
+              addBattleLog("Player Defeated!", "fail");
+              clearAttackFakeout();
+              clearResurrection();
+              pendingPlayerReplacement = true;
+              // Retire only after the warning and actual attack have played.
+              markPlayerBattleCardDefeated();
+            }
+          }
+          if (committed.enemyDefeat) pendingEnemyDefeatPresentation = committed.enemyDefeat;
+          after();
+          saveBattleSession(buildBattleSnapshot());
+        };
+        setFatalStops(3);
+        if (plan.enemy?.kind === "resolution") {
+          setBattlePresentationPhase("tease", "enemy-fatal-resolution");
+          const attack = () => {
+            if (!valid()) return;
+            setFatalPresentationPhase("attack");
+            handTimeout(finish, 1800);
+          };
+          if (plan.enemy.entered) {
+            setFatalPresentationPhase("warning");
+            handTimeout(attack, 650);
+          } else attack();
+        } else if (plan.enemy?.attack && plan.enemy.kind === "entry") {
+          setBattlePresentationPhase("tease", "enemy-fatal-warning");
+          setFatalPresentationPhase("warning");
+          handTimeout(() => {
+            if (!valid()) return;
+            finish();
+          }, 650);
+        } else if (plan.playerAttack) {
+          setBattlePresentationPhase("tease", "player-fatal-attack");
+          setFatalPresentationPhase("attack");
+          handTimeout(finish, 1800);
+        } else {
+          finish();
+        }
+      };
+
+      const invalidateFatalContext = () => {
+        const plan = getFatalPresentation().plan;
+        if (plan && (getBattleMode() !== "battle" ||
+          plan.enemyKey !== `${getCurrentRound()}:${getCurrentEnemy()?.id}` ||
+          plan.playerIndex !== getPlayerBattleCardIndex())) {
+          clearFatalPresentation();
+          fatalSequenceBusy = false;
+        }
+      };
+      const detachFatalContext = [subscribeCurrentEnemy(invalidateFatalContext),
+        subscribeRound(invalidateFatalContext), subscribeBattleMode(invalidateFatalContext)];
+      removeFatalContext = () => detachFatalContext.forEach(detach => detach());
+
       const startNewDraw = () => {
         // A successful attack-land struggle arms the next game's opening
         // insert. Consume it only on this first draw click, never on release
         // or on a later card flip.
         startPlayerFatalModeOpening();
         resetCardsToGroup();
+        fatalSequenceBusy = false;
         pendingFakeoutDialogue = null;
         pendingTripleDefenseGrade = null;
         // Last hand's target is stale the moment a new one is dealt; the new
@@ -1333,6 +1550,11 @@ export default function BattlePixiStage({
         // of completing into a hand that has already been recovered.
         handTimeout(() => {
           if (!cardsAreOut) return;
+          // User-controlled reveal is an unbounded wait, not a stalled deal.
+          // Keep the paid result and let actual third-stop completion resolve it.
+          if (getFatalPresentation().plan || getPendingBattleHand()) {
+            return;
+          }
 
           console.warn(
             `[card-fsm] hand#${handGeneration} never completed (phase ${cardPhase}); reopening the draw gate`
@@ -1369,18 +1591,47 @@ export default function BattlePixiStage({
           // kept sending release-cards that the engine then ignored — the
           // player could never draw again. Put the shell back to idle too.
           if (cabinetMode) {
-            window.dispatchEvent(
-              new CustomEvent("battle:cabinet-pile", {
-                detail: { state: "consumed" },
-              })
-            );
+            emitCabinetPile("consumed");
           }
 
-          setBattlePresentationPhase("next_round_ready", "watchdog-recovery");
+          if (!finishPlayerDefeat()) {
+            setBattlePresentationPhase("next_round_ready", "watchdog-recovery");
+          }
           syncDrawAvailability();
         }, HAND_WATCHDOG_MS);
 
         preparePendingNextRound();
+
+        if (fatalPreview) {
+          const windowPreview = ["attack", "window-reply", "window-chance", "window-defense"].includes(fatalPreview);
+          if (!windowPreview && fatalPreview !== "player") { resetEnemyAttackMode(); setEnemyAttackCounter(0); }
+          const entered = windowPreview && !isEnemyAttackModeActive();
+          if (entered) { setEnemyAttackCounter(0); startEnemyAttackMode(); }
+          const rescue = windowPreview && !entered;
+          const outcome = rescue && fatalPreview === "window-reply" ? "Reply" :
+            rescue && fatalPreview === "window-chance" ? "SingleChance" :
+            rescue && fatalPreview === "window-defense" ? "Defense" :
+            fatalPreview === "symbol" ? "Reply" : fatalPreview === "player" ? "Attack" : "Empty";
+          setCurrentBattleResult({ result: outcome,
+            cards: outcome === "Reply" ? ["Reply", "Reply", "Reply"] :
+              outcome === "Defense" ? ["Defense", "Defense", "Defense"] :
+              outcome === "SingleChance" ? ["Chance", "Empty", "Empty"] :
+              outcome === "Attack" ? ["Attack", "Empty", "Empty"] : ["Empty", "Empty", "Empty"], targetSlot: 0 });
+          if (rescue && fatalPreview === "window-defense") {
+            restoreDefenseShield({ grade: "purple", round: getCurrentRound() });
+            pendingTripleDefenseGrade = "purple";
+          }
+          const previewEnemy = windowPreview
+            ? evaluateCommittedEnemyWindow(currentBattleResult, evaluateResult(currentBattleResult), entered)
+            : fatalPreview === "player" ? null : {
+              attack: false, tease: fatalPreview !== "safe-clear", shield: null, kind: "entry" as const };
+          commitFatalPlan({ id: "preview:" + handGeneration, enemyKey: getCurrentRound() + ":" + getCurrentEnemy()?.id,
+            playerIndex: getPlayerBattleCardIndex(), enemy: previewEnemy,
+            playerAttack: fatalPreview === "player", enemyDefeat: null, result: currentBattleResult, settledSlots,
+            tripleDefenseGrade: pendingTripleDefenseGrade });
+          drawCardsFromHolder();
+          return;
+        }
 
         const boostedBarOdds = consumeBarBoostGame();
         setCurrentBattleResult(
@@ -1456,9 +1707,15 @@ export default function BattlePixiStage({
           addBattleLog(`Chance bonus: +${chancePointsWon}P pending`, "chance");
         }
 
+        const activePlayerCard = getCurrentPlayerBattleCard();
         const evaluation = evaluateResult(
           currentBattleResult,
-          getCurrentPlayerBattleCard()?.rarity
+          activePlayerCard?.rarity,
+          activePlayerCard?.name,
+          getPlayerWinRateForRound(
+            activePlayerCard?.name ?? "",
+            getCurrentRound()
+          )
         );
         const fatalModeWasActive = isFatalModeActive();
 
@@ -1468,17 +1725,27 @@ export default function BattlePixiStage({
         );
 
         let shouldStopBattleEvaluation = false;
+        let enemyFatalRoll: FatalPlan["enemy"] = null;
+        let playerFatalAttack = false;
 
-        if (
+        const isTripleBarWin = Boolean(
           currentBattleResult.barChance?.scope === "battle" &&
-          currentBattleResult.barChance.outcome === "success"
-        ) {
-          handleEnemyDefeated(
-            "barChance",
-            currentBattleResult.barChance.bonusType
+            currentBattleResult.barChance.outcome === "success"
+        );
+
+        if (isTripleBarWin) {
+          if (fatalModeWasActive) {
+            registerFatalModeHit();
+          } else {
+            startFatalMode({ guaranteedDefeat: true });
+            shouldStopBattleEvaluation = true;
+          }
+          setGuaranteedFatalBonusType(currentBattleResult.barChance?.bonusType ?? "regular");
+
+          addBattleLog(
+            "Triple BAR: attack landed and enemy defeat guaranteed.",
+            "success"
           );
-          shouldStopBattleEvaluation = true;
-          addBattleLog("Triple BAR win armed.", "success");
         }
 
         // v-Next patch (feature 3): a hidden win is armed — this game must
@@ -1576,9 +1843,9 @@ export default function BattlePixiStage({
             let overrideLanded = false;
             let overrideRate = 0;
 
-            if (evaluation.attackOnTarget) {
-              overrideRate = 100;
-              overrideLanded = rollAttackAttempt(100).success;
+            if (evaluation.attackOnTarget || evaluation.attackOffTarget) {
+              overrideRate = evaluation.attackCardRate;
+              overrideLanded = rollAttackAttempt(overrideRate).success;
             } else if (evaluation.chanceAttack) {
               overrideRate = evaluation.chanceAttackRate;
               overrideLanded = rollAttackAttempt(overrideRate).success;
@@ -1645,133 +1912,50 @@ export default function BattlePixiStage({
 
         stage.setChildIndex(targetMarker, stage.children.length - 1);
 
-        if (!shouldStopBattleEvaluation && isEnemyAttackModeActive()) {
-          const tripleDefensePredetermined = currentBattleResult.cards.every(
-            (symbol) => symbol === "Defense"
-          );
-
-          // Results are predetermined at draw time. Arm Triple Defense here
-          // during a fatal window so even its last turn can use the shield;
-          // the hologram itself still waits for the third visible flip.
-          if (tripleDefensePredetermined && !pendingTripleDefenseGrade) {
-            pendingTripleDefenseGrade = awardDefenseShield();
+        // Only entry changes. Once active, use the original multi-game
+        // escape window and ordinary committed cards, without an entry reroll.
+        if (!shouldStopBattleEvaluation) {
+          let entered = false;
+          const protectedOutcome = pendingEnemyDefeatPresentation !== null || getGuaranteedFatalBonusType() !== null ||
+            (isFatalModeActive() && getFatalModeGamesLeft() === 1 && hasFatalModeHit());
+          if (!isEnemyAttackModeActive() && getEnemyAttackCounter() <= 0) {
+            const roll = rollEnemyFatal(currentBattleResult.result, Math.random, protectedOutcome);
+            enemyFatalRoll = { ...roll, kind: "entry", shield: null };
+            if (roll.attack) { startEnemyAttackMode(); entered = true; }
           }
-
-          const playerCounter =
-            evaluation.chanceAttack ||
-            currentBattleResult.result === "Bar";
-
-          const resetEnemyAttack =
-            evaluation.attackOnTarget ||
-            currentBattleResult.result === "Reply";
-
-          if (playerCounter) {
-            registerPlayerCounter();
-          }
-
-          if (resetEnemyAttack) {
-            registerEnemyAttackReset();
-          }
-
-          const enemyTurn = consumeEnemyAttackModeTurn();
-
-          if (enemyTurn) {
-            if (enemyTurn.turnNumber === 1) {
-              addBattleLog("Enemy Fatal Mode Started!", "fail");
-            }
-
-            // A Triple Defense can finish revealing after the fatal window's
-            // first draw was evaluated. Keep checking until a shield is found,
-            // then hold that single result for the remainder of the sequence.
-            if (!pendingEnemyFatalShieldResolution) {
-              pendingEnemyFatalShieldResolution =
-                consumeDefenseShieldForFatal();
-
-              if (pendingEnemyFatalShieldResolution) {
-                addBattleLog(
-                  `${pendingEnemyFatalShieldResolution.grade.toUpperCase()} Shield consumed.`,
-                  "success"
-                );
-              }
-            }
-
-            addBattleLog(
-              `Enemy Fatal Mode Turn ${enemyTurn.turnNumber}`,
-              "fail"
-            );
-
-            addBattleLog(`Cards: ${currentBattleResult.cards.join(" | ")}`);
-
-            shouldStopBattleEvaluation = true;
-
-            if (enemyTurn.finished) {
-              const shieldResolution = pendingEnemyFatalShieldResolution;
-              pendingEnemyFatalShieldResolution = null;
-              const survivedFatalWindow = shieldResolution
-                ? shieldResolution.survived
-                : enemyTurn.playerCountered || enemyTurn.playerResetEnemyAttack;
-
-              if (shieldResolution) {
-                addBattleLog(
-                  `${shieldResolution.grade.toUpperCase()} Shield: ${Math.round(
-                    shieldResolution.survivalChance * 100
-                  )}% survival roll ${shieldResolution.survived ? "succeeded" : "failed"}.`,
-                  shieldResolution.survived ? "success" : "fail"
-                );
-              }
-
-              // Surviving the enemy's window is survival, not victory. A
-              // counter used to defeat the enemy outright, which meant a single
-              // Defense during the window won the round -- far too much for a
-              // defensive read. Both escapes now do the same thing: the player
-              // lives and the enemy's attack counter goes back to full. Killing
-              // the enemy stays something the player's own attack has to earn.
-              if (survivedFatalWindow) {
-                addBattleLog(
-                  shieldResolution
-                    ? "The stored shield absorbs the fatal sequence."
-                    : enemyTurn.playerCountered
-                      ? "Counter! The fatal blow is turned aside."
-                      : "Enemy attack count reset.",
-                  "success"
-                );
-
-                const currentEnemy = getCurrentEnemy();
-
-                if (currentEnemy) {
-                  setEnemyAttackCounter(currentEnemy.attackCounter);
-                }
-             } else {
-  addBattleLog("Player Defeated!", "fail");
-  clearAttackFakeout();
-  clearResurrection();
-
-  const loadedNextCard = loadNextPlayerBattleCard();
-
-  if (loadedNextCard) {
-    addBattleLog(
-      `Next Player Card Loaded. Remaining: ${getRemainingPlayerBattleCards()}`,
-      "success"
-    );
-
-    setBattleState("playing");
-  } else {
-    addBattleLog("No player cards remaining.", "fail");
-    pendingDefeatState = true;
-  }
-}
-            }
+          if (isEnemyAttackModeActive() && !protectedOutcome) {
+            const windowPlan = evaluateCommittedEnemyWindow(currentBattleResult, evaluation, entered);
+            if (windowPlan) { enemyFatalRoll = windowPlan; shouldStopBattleEvaluation = true; }
           }
         }
 
         if (!shouldStopBattleEvaluation && isFatalModeActive()) {
-          const fatalHit =
-            evaluation.attackOnTarget ||
-            evaluation.chanceAttack ||
-            currentBattleResult.result === "Bar" ||
-            currentBattleResult.result === "Reply" ||
-            currentBattleResult.result === "Defense";
+          let fatalHit = isTripleBarWin;
 
+          if (!fatalHit && (evaluation.attackOnTarget || evaluation.attackOffTarget)) {
+            const attackResult = rollAttackAttempt(evaluation.attackCardRate);
+            fatalHit = attackResult.success;
+            logEvent({
+              kind: "attackRoll",
+              detail: {
+                source: evaluation.attackOnTarget
+                  ? "fatalAttackOnTarget"
+                  : "fatalAttackOffTarget",
+                success: attackResult.success,
+                tier: getCurrentPlayerBattleCard()?.rarity ?? "R",
+                rate: evaluation.attackCardRate,
+              },
+            });
+          } else if (!fatalHit && evaluation.chanceAttack) {
+            fatalHit = rollAttackAttempt(evaluation.chanceAttackRate).success;
+          } else if (!fatalHit) {
+            fatalHit =
+              currentBattleResult.result === "Bar" ||
+              currentBattleResult.result === "Reply" ||
+              currentBattleResult.result === "Defense";
+          }
+
+          playerFatalAttack = fatalHit;
           if (fatalHit) {
             registerFatalModeHit();
           }
@@ -1790,8 +1974,18 @@ export default function BattlePixiStage({
 
             if (fatalTurn.finished) {
               if (fatalTurn.enemyDefeated) {
-                handleEnemyDefeated();
+                playerFatalAttack = true;
+                if (getGuaranteedFatalBonusType()) {
+                  handleEnemyDefeated(
+                    "barChance",
+                    getGuaranteedFatalBonusType()
+                  );
+                  setGuaranteedFatalBonusType(null);
+                } else {
+                  handleEnemyDefeated();
+                }
               } else {
+                setGuaranteedFatalBonusType(null);
                 addBattleLog("Enemy Survived!", "fail");
                 startEnemyAttackMode();
               }
@@ -1805,15 +1999,19 @@ export default function BattlePixiStage({
           let attackAttemptSuccess = false;
           let attackRollSource = "";
 
-          if (evaluation.attackOnTarget) {
+          if (evaluation.attackOnTarget || evaluation.attackOffTarget) {
+            addBattleLog(
+              `Attack ${evaluation.attackOnTarget ? "on" : "off"} target: ${evaluation.attackCardRate}%`,
+              "draw"
+            );
             addBattleLog("Attack Attempt!");
 
-            const attackResult = rollAttackAttempt(100);
+            const attackResult = rollAttackAttempt(evaluation.attackCardRate);
             attackAttemptSuccess = attackResult.success;
-            attackRollSource = "attackCard";
-          }
-
-          if (evaluation.chanceAttack) {
+            attackRollSource = evaluation.attackOnTarget
+              ? "attackCardOnTarget"
+              : "attackCardOffTarget";
+          } else if (evaluation.chanceAttack) {
             addBattleLog(
               `Chance Drawn: ${evaluation.chanceAttackRate}% attack chance`,
               "chance"
@@ -1824,11 +2022,9 @@ export default function BattlePixiStage({
             const attackResult = rollAttackAttempt(evaluation.chanceAttackRate);
             attackAttemptSuccess = attackResult.success;
             attackRollSource = "chance";
-          }
-
-          // v-Next patch (feature 1): an Empty target slot rolls for an
+          } else if (evaluation.emptySlotAttack) {
+            // v-Next patch (feature 1): an Empty target slot rolls for an
           // attack attempt at the active card's tier rate (R10/SR20/SSR30/UR40).
-          if (evaluation.emptySlotAttack) {
             const attackResult = rollAttackAttempt(
               evaluation.emptySlotAttackRate
             );
@@ -1853,7 +2049,7 @@ export default function BattlePixiStage({
                     ? evaluation.emptySlotAttackRate
                     : attackRollSource === "chance"
                       ? evaluation.chanceAttackRate
-                      : 100,
+                      : evaluation.attackCardRate,
               },
             });
           }
@@ -1899,9 +2095,6 @@ export default function BattlePixiStage({
           playSfx("vibration");
         }
 
-        const isTripleBarWin =
-          currentBattleResult.barChance?.scope === "battle" &&
-          currentBattleResult.barChance.outcome === "success";
         if (
           pendingEnemyDefeatPresentation &&
           (fatalModeWasActive || isTripleBarWin)
@@ -1910,6 +2103,13 @@ export default function BattlePixiStage({
           notifyCabinetProgress("set");
         }
 
+        if (enemyFatalRoll || playerFatalAttack || pendingEnemyDefeatPresentation) {
+          commitFatalPlan({ id: [getCurrentRound(), getGameCount(), handGeneration].join(":"),
+            enemyKey: getCurrentRound() + ":" + getCurrentEnemy()?.id, playerIndex: getPlayerBattleCardIndex(),
+            enemy: enemyFatalRoll, playerAttack: playerFatalAttack,
+            enemyDefeat: pendingEnemyDefeatPresentation, result: currentBattleResult, settledSlots, tripleDefenseGrade: pendingTripleDefenseGrade });
+          saveBattleSession(buildBattleSnapshot());
+        }
         drawCardsFromHolder();
       };
 
@@ -3091,133 +3291,154 @@ export default function BattlePixiStage({
         }
       };
 
+      const finishRevealedHand = () => {
+        clearPendingBattleHand();
+        // Celebration shine: all three symbols identical (Empties excluded)
+        // or the hand contains a Chance card — sweep 0.5s after settle.
+        const handCards = currentBattleResult.cards;
+        const identicalHand =
+          handCards[0] !== "Empty" &&
+          handCards.every((symbol) => symbol === handCards[0]);
+        const tripleDefense =
+          identicalHand && handCards[0] === "Defense";
+        const tripleChance =
+          identicalHand && handCards[0] === "Chance";
+
+        if (tripleDefense) {
+          const grade = pendingTripleDefenseGrade ?? awardDefenseShield();
+          pendingTripleDefenseGrade = null;
+          const transferToPlayer =
+            getDefenseShieldState().grade === grade;
+
+          if (transferToPlayer) {
+            addBattleLog(
+              `${grade.toUpperCase()} Defense Shield stored.`,
+              "success"
+            );
+          }
+
+          runDefenseShieldTableInteraction(grade, transferToPlayer);
+        }
+
+        if (tripleChance) {
+          runTripleChanceFrameSurge();
+        }
+
+        if (
+          !currentBattleResult.barChance &&
+          (identicalHand || handCards.includes("Chance"))
+        ) {
+          handTimeout(() => {
+            playSfx("tableShine");
+            runTableShineSweep();
+          }, 500);
+        }
+
+        // Combination flash. Read ONCE off the finished hand and timed to
+        // land with the shine sweep above, so the card lighting up and the
+        // table reacting to it read as one event rather than two.
+        const handFlash = readCompletedHandFlash(
+          handCards,
+          currentBattleResult.targetSlot
+        );
+
+        if (handFlash && !currentBattleResult.barChance) {
+          clearReelTenpai();
+          handTimeout(() => {
+            runComboTraceFlash(handFlash.intensity);
+          }, patchConfig.reelMechanics.flash.startDelayMs);
+        }
+        // v-Next patch (feature 3): the "normal" game has fully revealed —
+        // fire the crack/glitch after a beat of false calm.
+        if (isResurrectionGlitchPending()) {
+          setTimeout(() => {
+            triggerResurrectionReveal();
+          }, patchConfig.resurrection.revealDelayMs);
+        }
+
+        const enemyDefeatCommitted = pendingEnemyDefeatPresentation !== null;
+        if (enemyDefeatCommitted) {
+          commitEnemyDefeated();
+        }
+
+        const bonusState = getBonusModeState();
+        const bonusSequenceActive = bonusState.active || isNestedBonusActive();
+
+        if (!bonusSequenceActive && revealedCount === 3) {
+          const tripleCoin = handCards.every(
+            (symbol) => symbol === "Coin"
+          );
+
+          if (tripleCoin) {
+            const coinPoints = patchConfig.tableCards.tripleCoinPoints;
+            void addBattlePoints(coinPoints);
+            addBattleLog(`Triple Coin: +${coinPoints}P`, "success");
+          }
+        }
+
+        if (
+          enemyDefeatCommitted &&
+          currentBattleResult.barChance?.scope === "battle"
+        ) {
+          const barChance = currentBattleResult.barChance;
+          if (barChance.freeze) {
+            handTimeout(
+              beginBarChanceDistortion,
+              barChance.freezeDelayMs
+            );
+          } else {
+            handTimeout(() => {
+              setBattlePresentationPhase(
+                "next_round_ready",
+                "bar-chance-success-ready"
+              );
+            }, 500);
+          }
+        } else if (enemyDefeatCommitted) {
+          // The dedicated fatal insert owns this reveal beat. Bonus opening
+          // is scheduled when the three-second scene finishes.
+        } else if (bonusSequenceActive) {
+          // Apply the nested game the player has just been shown: points,
+          // loop counter and reward video all land here rather than at the
+          // press, so the bonus no longer runs a game ahead of its display.
+          resolveNestedBonusGame();
+
+          const videoStarted = playPendingBonusRevealVideo();
+          if (!videoStarted) {
+            const resultShown = showQueuedBonusResult();
+            if (!resultShown) {
+              setBattlePresentationPhase("next_round_ready", "bonus-reveal-complete");
+            }
+          }
+        } else if (pendingPlayerReplacement) {
+          setBattlePresentationPhase("round_intro", "replacement-pending");
+        } else if (!showResultCutIn(currentBattleResult)) {
+          setBattlePresentationPhase("next_round_ready", "reveal-complete");
+        }
+
+        // Persist the completed boundary after reward/bonus resolution. The
+        // pre-stop snapshot must never replay this already-applied hand.
+        saveBattleSession(buildBattleSnapshot());
+
+        handTimeout(() => {
+          cardsAreOut = false;
+          setCardPhase("idle", "hand-cleared");
+          finishPlayerDefeat();
+          syncDrawAvailability();
+        }, tripleDefense ? 1300 : tripleChance ? 1100 : 500);
+      };
+
       const handleRevealComplete = () => {
+        if (revealedCount >= 3) return;
         revealedCount += 1;
+        setFatalStops(revealedCount as 1 | 2 | 3, settledSlots);
+        if(getPendingBattleHand())persistPendingHand();
+        if (getFatalPresentation().plan) saveBattleSession(buildBattleSnapshot());
 
         if (revealedCount >= 3) {
           setCardPhase("clearing", "hand-fully-revealed");
 
-          // Celebration shine: all three symbols identical (Empties excluded)
-          // or the hand contains a Chance card — sweep 0.5s after settle.
-          const handCards = currentBattleResult.cards;
-          const identicalHand =
-            handCards[0] !== "Empty" &&
-            handCards.every((symbol) => symbol === handCards[0]);
-          const tripleDefense =
-            identicalHand && handCards[0] === "Defense";
-          const tripleChance =
-            identicalHand && handCards[0] === "Chance";
-
-          if (tripleDefense) {
-            const grade = pendingTripleDefenseGrade ?? awardDefenseShield();
-            pendingTripleDefenseGrade = null;
-            const transferToPlayer =
-              getDefenseShieldState().grade === grade;
-
-            if (transferToPlayer) {
-              addBattleLog(
-                `${grade.toUpperCase()} Defense Shield stored.`,
-                "success"
-              );
-            }
-
-            runDefenseShieldTableInteraction(grade, transferToPlayer);
-          }
-
-          if (tripleChance) {
-            runTripleChanceFrameSurge();
-          }
-
-          if (
-            !currentBattleResult.barChance &&
-            (identicalHand || handCards.includes("Chance"))
-          ) {
-            handTimeout(() => {
-              playSfx("tableShine");
-              runTableShineSweep();
-            }, 500);
-          }
-
-          // Combination flash. Read ONCE off the finished hand and timed to
-          // land with the shine sweep above, so the card lighting up and the
-          // table reacting to it read as one event rather than two.
-          const handFlash = readCompletedHandFlash(
-            handCards,
-            currentBattleResult.targetSlot
-          );
-
-          if (handFlash && !currentBattleResult.barChance) {
-            clearReelTenpai();
-            handTimeout(() => {
-              runComboTraceFlash(handFlash.intensity);
-            }, patchConfig.reelMechanics.flash.startDelayMs);
-          }
-          // v-Next patch (feature 3): the "normal" game has fully revealed —
-          // fire the crack/glitch after a beat of false calm.
-          if (isResurrectionGlitchPending()) {
-            setTimeout(() => {
-              triggerResurrectionReveal();
-            }, patchConfig.resurrection.revealDelayMs);
-          }
-
-          const enemyDefeatCommitted = pendingEnemyDefeatPresentation !== null;
-          if (enemyDefeatCommitted) {
-            commitEnemyDefeated();
-          }
-
-          const bonusState = getBonusModeState();
-          const bonusSequenceActive = bonusState.active || isNestedBonusActive();
-
-          if (
-            enemyDefeatCommitted &&
-            currentBattleResult.barChance?.scope === "battle"
-          ) {
-            const barChance = currentBattleResult.barChance;
-            if (barChance.freeze) {
-              handTimeout(
-                beginBarChanceDistortion,
-                barChance.freezeDelayMs
-              );
-            } else {
-              handTimeout(() => {
-                setBattlePresentationPhase(
-                  "next_round_ready",
-                  "bar-chance-success-ready"
-                );
-              }, 500);
-            }
-          } else if (enemyDefeatCommitted) {
-            // The dedicated fatal insert owns this reveal beat. Bonus opening
-            // is scheduled when the three-second scene finishes.
-          } else if (bonusSequenceActive) {
-            // Apply the nested game the player has just been shown: points,
-            // loop counter and reward video all land here rather than at the
-            // press, so the bonus no longer runs a game ahead of its display.
-            resolveNestedBonusGame();
-
-            const videoStarted = playPendingBonusRevealVideo();
-            if (!videoStarted) {
-              const resultShown = showQueuedBonusResult();
-              if (!resultShown) {
-                setBattlePresentationPhase("next_round_ready", "bonus-reveal-complete");
-              }
-            }
-          } else if (pendingDefeatState) {
-            pendingDefeatState = false;
-            // Losing the last card ends the run. There is no continue step:
-            // the continue mechanic was never wired (consumeContinue had no
-            // callers) and has been dropped, so this goes straight to game
-            // over, which BattleScreen turns into the run report.
-            setBattleState("gameOver");
-          } else if (!showResultCutIn(currentBattleResult)) {
-            setBattlePresentationPhase("next_round_ready", "reveal-complete");
-          }
-
-          handTimeout(() => {
-            cardsAreOut = false;
-            setCardPhase("idle", "hand-cleared");
-            syncDrawAvailability();
-          }, tripleDefense ? 1300 : tripleChance ? 1100 : 500);
+          completeFatalSequence(finishRevealedHand);
         }
       };
 
@@ -3252,7 +3473,7 @@ export default function BattlePixiStage({
         const center = getQuadCenter(quad);
         return {
           x: center.x,
-          y: center.y - CABINET_CARD_HOVER_LIFT,
+          y: center.y,
           rotation: 0,
         };
       });
@@ -3292,6 +3513,7 @@ export default function BattlePixiStage({
       };
 
       const placeCardFromHover = (cardIndex: number) => {
+        if (isCardOverviewOpen()) return;
         const card = drawCards[cardIndex];
         if (revealed[cardIndex] || !card.visible) return;
         if (getChanceWaitRemaining() > 0) return;
@@ -3307,7 +3529,7 @@ export default function BattlePixiStage({
           result.cards[cardIndex] === "Attack";
         // The dedicated Attack-target sound will be supplied later. Until
         // then every holder uses the normal physical placement cue.
-        playSfx("cardPlaced");
+        playSfx(cabinetMode ? "cardReveal" : "cardPlaced");
         // Reply / Coin are confirmed the instant the final card is flipped.
         const completesHand = revealed.filter(Boolean).length === 2;
         if (completesHand && result.result === "Reply") {
@@ -3318,8 +3540,8 @@ export default function BattlePixiStage({
         }
 
         // Lead the shortened cabinet landing without letting the cue trail it.
-        if (result.cards[cardIndex] === "Chance") {
-          handTimeout(() => playSfx("chanceCardLand"), cabinetMode ? 80 : 155);
+        if (!cabinetMode && result.cards[cardIndex] === "Chance") {
+          handTimeout(() => playSfx("chanceCardLand"), 155);
         }
 
         // Interruption cut-in: first flip of a scoring bonus hand. `revealed` is
@@ -3357,18 +3579,6 @@ export default function BattlePixiStage({
         // overlay to put a shockwave on. Sent per card rather than per hand
         // because the wave belongs to the card that landed, not to the slot it
         // was aimed at — under the cabinet's perspective those differ.
-        if (cabinetMode) {
-          window.dispatchEvent(
-            new CustomEvent("battle:vfx-card-landed", {
-              detail: {
-                symbol: result.cards[cardIndex],
-                onTarget: cardIndex === result.targetSlot,
-                stage: { x: landingOrigin.x, y: landingOrigin.y },
-              },
-            })
-          );
-        }
-
         // REACH only. The combination flash is NOT read here — the table
         // reports a finished hand, so it fires once from handleRevealComplete
         // after all three cards are down, not as each one lands.
@@ -3392,6 +3602,17 @@ export default function BattlePixiStage({
         };
 
         const finalizePlacement = () => {
+          if (settledSlots[cardIndex]) return;
+          settledSlots[cardIndex] = true;
+          if (cabinetMode) {
+            playSfx("cardPlaced");
+            if (result.cards[cardIndex] === "Chance") playSfx("chanceCardLand");
+            if (isAttackOnTarget) runAttackTargetInteraction(cardIndex);
+            window.dispatchEvent(new CustomEvent("battle:vfx-card-landed", { detail: {
+              symbol: result.cards[cardIndex], onTarget: cardIndex === result.targetSlot,
+              stage: { x: landingOrigin.x, y: landingOrigin.y },
+            } }));
+          }
           setCardPhase("placed", `settle-card-${cardIndex + 1}`);
 
           const barChance = currentBattleResult.barChance;
@@ -3498,9 +3719,31 @@ export default function BattlePixiStage({
             ? CABINET_CARD_FLIP_CLOSE_MS
             : undefined,
           openDurationMs: cabinetMode ? CABINET_CARD_FLIP_OPEN_MS : undefined,
-          onFaceSwap: cabinetMode ? startCabinetLanding : undefined,
+          onFaceSwap: cabinetMode && !(card instanceof PerspectiveMesh) ? startCabinetLanding : undefined,
+          present: cabinetMode && card instanceof PerspectiveMesh ? (swapFace, complete) => {
+            const surface = pixiApp.canvas.getBoundingClientRect();
+            const glass = wrapperRef.current?.closest(".bcab-table-glass")?.getBoundingClientRect();
+            const verticalProjection = (surface.height / STAGE.HEIGHT) / (surface.width / STAGE.WIDTH);
+            const clipTop = glass ? Math.max(0, (glass.top - surface.top) / (surface.height / STAGE.HEIGHT)) : 0;
+            stage.addChild(card);
+            let finished = false, cancel = () => {};
+            cancel = animateCabinetManualReveal({ rest: cardQuad, verticalProjection, clipTop,
+              now: () => presentationClock.now(), blocked: presentationBlocked, alive,
+              schedule: callback => window.requestAnimationFrame(callback), cancelFrame: id => window.cancelAnimationFrame(id),
+              onFrame: sample => {
+                card.x = landingOrigin.x; card.y = landingOrigin.y; card.rotation = 0; card.scale.set(L.CARD_SCALE);
+                setMeshQuad(card, toLocalQuad([...sample.quad] as Quad, landingOrigin.x, landingOrigin.y, L.CARD_SCALE));
+                hoverShadows[cardIndex].visible = sample.raised > 0.001;
+                hoverShadows[cardIndex].alpha = sample.raised * 0.55;
+              },
+              onFace: swapFace,
+              onComplete: () => { finished = true; revealMotions.delete(cancel); hoverShadows[cardIndex].visible = false; complete(); },
+            });
+            if (!finished) revealMotions.add(cancel);
+          } : undefined,
           onRevealComplete: () => {
             if (cabinetMode) {
+              if (card instanceof PerspectiveMesh) { finalizePlacement(); return; }
               handTimeout(
                 finalizePlacement,
                 Math.max(
@@ -3555,24 +3798,39 @@ export default function BattlePixiStage({
       };
 
       const releaseCardsToTable = () => {
+        if (isCardOverviewOpen()) return;
         if (!cardsAreOut || cardsReleased) return;
 
+        if (cabinetMode) setBattlePresentationPhase("draw_reveal", "automatic-eject");
         cardsReleased = true;
         notifyCabinetProgress("release");
         setCardPhase("releasing", "release-cards-to-table");
-        // Cards are released from the disk out to the table.
-        playSfx("drawCard");
+        // Cards are released from the tank outlet out to the table.
+        if (!cabinetMode) playSfx("drawCard");
 
         // The bonus takes the screen here and nowhere else: the opening video
         // (armed when the enemy fell) and the bonus background (armed on the
         // draw press) both land on the deal, so the battle scene stays up
         // until the cards it is replaced by are actually coming out.
-        consumeArmedBonusPresentation();
+        if (!cabinetMode) consumeArmedBonusPresentation();
 
         // The chance tease rides the cards coming off the deck.
         if (pendingChanceUpCue) {
           pendingChanceUpCue = false;
           playSfx("chanceUpDraw");
+        }
+        if(cabinetMode){
+          const root=wrapperRef.current?.closest(".bcab-air-cabinet")?.getBoundingClientRect();
+          drawCards.forEach((card,index)=>{
+            const q=root&&landingCorners?projectCabinetQuadToPixi(landingCorners[index],pixiApp.canvas.getBoundingClientRect(),root,{width:STAGE.WIDTH,height:STAGE.HEIGHT}):null;
+            if(q){landedCardQuads[index]=q;hoverTargets[index]={...getQuadCenter(q),rotation:0};
+              const xs=[q[0],q[2],q[4],q[6]],ys=[q[1],q[3],q[5],q[7]];
+              cardHitProxies[index].hitArea=new Rectangle(Math.min(...xs)-14,Math.min(...ys)-14,Math.max(...xs)-Math.min(...xs)+28,Math.max(...ys)-Math.min(...ys)+28);}
+            card.parent?.removeChild(card);stage.addChild(card);card.x=hoverTargets[index].x;card.y=hoverTargets[index].y;card.rotation=0;card.scale.set(L.CARD_SCALE);card.alpha=1;card.visible=true;
+            if(card instanceof PerspectiveMesh)setMeshQuad(card,toLocalQuad(landedCardQuads[index],card.x,card.y,L.CARD_SCALE));
+            handTimeout(()=>{card.eventMode="static";setCardPickable(index,true);},getChanceWaitRemaining());
+          });cardGroup.visible=false;attachPlacementHandlers();setCardPhase("hovering","physical3d-landed");
+          if(currentBattleResult.result==="Reply")runReplyFrameSparks();return;
         }
         const alive = aliveGuard();
         cardGroup.eventMode = "none";
@@ -3599,28 +3857,20 @@ const globalY = cardGroup.y + card.y;
           card.visible = true;
         });
 
-        if (cabinetMode) {
-          window.dispatchEvent(
-            new CustomEvent("battle:cabinet-pile", {
-              detail: { state: "consumed" },
-            })
-          );
-        }
-
         drawCards.forEach((card, index) => {
           const hover = hoverTargets[index];
           const launchDelay = index * 90;
-          // Cabinet mode travels the full disk-exit -> slot arc with a rotate,
+          // Cabinet mode travels the full outlet-handoff -> slot arc with a rotate,
           // so it gets a slightly longer, overshoot-free glide.
           const travelMs = cabinetMode ? 560 : 460;
 
           if (cabinetMode) {
-            // Seamless hand-off from the DOM disk pile: the Pixi card takes over
-            // exactly at the disk exit gate, rotated like the pile
-            // (.bcab-stack is rotate(90deg) == CARD_ROTATION), then rotates flat
+            // Seamless hand-off from the DOM outlet cards: the Pixi card takes over
+            // exactly at the measured canvas entry, rotated like the outlet card
+            // (90deg == CARD_ROTATION), then rotates flat
             // and glides onto the slot as one continuous motion -- no pop.
-            card.x = L.CARD_START_X + index * 6;
-            card.y = L.CARD_START_Y - index * 4;
+            card.x = L.CARD_START_X;
+            card.y = L.CARD_START_Y;
             card.rotation = L.CARD_ROTATION;
             // Start invisible and fade in *while moving* so there is no hard
             // "start point" on the table -- the card materializes in motion,
@@ -3701,15 +3951,23 @@ const globalY = cardGroup.y + card.y;
           setCardPhase("pile_set", "cards-out");
         }
 
-        // Tell the cabinet shell the stack is set at the disk exit.
+        // Tell the cabinet shell the committed cards are set at the outlet.
         if (cabinetMode && value) {
-          window.dispatchEvent(
-            new CustomEvent("battle:cabinet-pile", { detail: { state: "set" } })
-          );
+          emitCabinetPile("set");
+          persistPendingHand();
         }
       };
 
+      const persistPendingHand = () => {
+        savePendingBattleHand({version:1,enemyKey:getCurrentRound()+":"+getCurrentEnemy()?.id,playerIndex:getPlayerBattleCardIndex(),result:currentBattleResult,
+          phase:dealPhase==="set"||dealPhase==="setting"?"set":dealPhase==="dealing"?"dealing":"reveal",settledSlots,
+          enemyDefeat:pendingEnemyDefeatPresentation,
+          struggleWinner:pendingStruggleWinner ?? getPendingBattleHand()?.struggleWinner ?? null,
+          struggleCast:pendingStruggleWinner ? getAttackLandRevealState() : getPendingBattleHand()?.struggleCast});
+        saveBattleSession(buildBattleSnapshot());
+      };
       const runDrawRequest = (confirmBonusResult = false) => {
+        if (!canUseBattleControls()) return false;
         clearBarChance();
         // The previous game's chance reveal clears here, on the first draw
         // press of the next turn. It has to happen at this funnel rather than
@@ -3724,6 +3982,13 @@ const globalY = cardGroup.y + card.y;
         // previous game start no matter how it was triggered.
         lastDrawStartedAt = performance.now();
         setDrawButtonPressed(false);
+        if (fatalPreview) {
+          if (cardsAreOut) return false;
+          setBattlePresentationPhase("draw_reveal", "fatal-dev-preview");
+          startNewDraw();
+          setCardsOut(true);
+          return true;
+        }
         handleDrawButtonPress({
           cardsAreOut,
           setCardsAreOut: setCardsOut,
@@ -3737,7 +4002,10 @@ const globalY = cardGroup.y + card.y;
           setCurrentBattleResult,
           onBonusFinished: finishBonusSequence,
           confirmBonusResult,
+          immediateCommit: cabinetMode,
         });
+        if(cabinetMode && cardsAreOut) persistPendingHand();
+        return cardsAreOut || isDrawSequenceActive();
       };
 
       // Pachislot wait rule. A real cabinet enforces a minimum interval between
@@ -3746,7 +4014,22 @@ const globalY = cardGroup.y + card.y;
       // never rejected — it is accepted and held, then fires when the wait
       // expires, which is what "full wait" play feels like on a real machine.
       const requestDraw = () => {
-        if (!canRequestBattleDraw() || cardsAreOut) return;
+        if(cabinetMode && cardsAreOut && dealPhase==="set") {
+          if(presentationBlocked()||dealBusy||!canUseBattleControls())return;
+          dealBusy=true;dealPhase="dealing";ejectClock=presentationClock.now();ejectStartedAt=performance.now();playSfx("drawCard");
+          const root=wrapperRef.current?.closest(".bcab-air-cabinet")?.getBoundingClientRect();
+          if(root){const surface=pixiApp.canvas.getBoundingClientRect();
+            landingCorners=slotTargets.map((_,index)=>projectPixiQuadToCabinet(getLandedCardQuad(index),surface,root,{width:STAGE.WIDTH,height:STAGE.HEIGHT})!);
+            measuredGeometry={mouth:{x:168,y:710,width:168,height:120},bays:landingCorners};}
+          emitCabinetPile("launching");consumeArmedBonusPresentation();persistPendingHand();
+          flightFrame=window.requestAnimationFrame(pumpFlightClock);
+          handTimeout(()=>{window.dispatchEvent(new CustomEvent("battle:cabinet-flight-clock",{detail:{time:ejectClock+CABINET_EJECT3D_DURATION_MS}}));
+            releaseCardsToTable();
+            if(autoPlayEnabled){[0,1,2].forEach(index=>handTimeout(()=>{if(autoPlayEnabled)placeCardFromHover(index);},20+index*680+getChanceWaitRemaining()));}
+            ejectEndedAt=performance.now();dealBusy=false;dealPhase="ready";persistPendingHand();emitCabinetPile("consumed");},CABINET_EJECT3D_DURATION_MS);
+          return;
+        }
+        if (presentationBlocked() || dealBusy || !canUseBattleControls() || !canRequestBattleDraw() || cardsAreOut) return;
 
         // Failure and no-freeze success results clear on the next accepted
         // Draw click, even when the cabinet's 4.1s wait holds the new deal.
@@ -3761,6 +4044,16 @@ const globalY = cardGroup.y + card.y;
 
         const elapsed = performance.now() - lastDrawStartedAt;
 
+        if (cabinetMode) {
+          dealBusy=true;dealPhase="setting";setCount=0;emitCabinetPile("set");
+          if(!runDrawRequest()){dealBusy=false;dealPhase="idle";emitCabinetPile("consumed");return;}
+          const awaitCommitted=()=>{if(cancelled)return;if(!cardsAreOut){setTimeout(awaitCommitted,25);return;}
+            setCount=0;[1,2,3].forEach((count,index)=>handTimeout(()=>{setCount=count;if(index===0)playSfx("cardSetToDisk");emitCabinetPile("set");},index*160));
+            handTimeout(()=>{dealPhase="set";dealBusy=false;persistPendingHand();emitCabinetPile("set");},650);
+          };setTimeout(awaitCommitted,0);
+          return;
+        }
+
         if (elapsed >= DRAW_WAIT_MS) {
           runDrawRequest();
           return;
@@ -3772,13 +4065,14 @@ const globalY = cardGroup.y + card.y;
         waitHoldTimer = setTimeout(() => {
           waitHoldTimer = null;
           if (cancelled) return;
-          if (!canRequestBattleDraw() || cardsAreOut) return;
+          if (!canUseBattleControls() || !canRequestBattleDraw() || cardsAreOut) return;
           runDrawRequest();
         }, DRAW_WAIT_MS - elapsed);
       };
 
       const autoProgressOnce = () => {
-        if (autoProgressBusy || cardsAreOut || !canRequestBattleDraw()) return;
+        if(cabinetMode&&cardsAreOut&&dealPhase==="set"){requestDraw();return;}
+        if (!canUseBattleControls() || autoProgressBusy || cardsAreOut || !canRequestBattleDraw()) return;
         if (getBonusModeState().waitingForResultConfirm) return;
         if (getNestedBonusState().waitingForResultConfirm) return;
 
@@ -3791,19 +4085,27 @@ const globalY = cardGroup.y + card.y;
           return;
         }
 
+        if (cabinetMode) {
+          requestDraw();
+          return;
+        }
         autoProgressBusy = true;
         runDrawRequest();
 
         setTimeout(() => {
+          if (!autoPlayEnabled || isCardOverviewOpen() || cancelled) { autoProgressBusy = false; return; }
           releaseCardsToTable();
 
           setTimeout(() => {
+            if (!autoPlayEnabled || isCardOverviewOpen() || cancelled) { autoProgressBusy = false; return; }
             placeCardFromHover(0);
 
             setTimeout(() => {
+              if (!autoPlayEnabled || isCardOverviewOpen() || cancelled) { autoProgressBusy = false; return; }
               placeCardFromHover(1);
 
               setTimeout(() => {
+                if (!autoPlayEnabled || isCardOverviewOpen() || cancelled) { autoProgressBusy = false; return; }
                 placeCardFromHover(2);
 
                 setTimeout(() => {
@@ -3816,13 +4118,21 @@ const globalY = cardGroup.y + card.y;
       };
 
       const onRoundIntroComplete = () => {
+        startEnemySummon();
+        if (!canRequestBattleDraw()) return;
         if (!queuedDrawAfterRoundIntro) return;
         queuedDrawAfterRoundIntro = false;
         if (autoPlayEnabled) autoProgressOnce();
         else requestDraw();
       };
+      progressAfterSummon = () => {
+        if (queuedDrawAfterRoundIntro && canRequestBattleDraw()) onRoundIntroComplete();
+      };
 
-      const confirmBonusResult = () => runDrawRequest(true);
+      const confirmBonusResult = () => {
+        if (dealBusy || !(getBonusModeState().waitingForResultConfirm || getNestedBonusState().waitingForResultConfirm)) return;
+        runDrawRequest(true);
+      };
 
       window.addEventListener("battle:round-intro-complete", onRoundIntroComplete);
       removeRoundIntroControl = () => {
@@ -3837,25 +4147,8 @@ const globalY = cardGroup.y + card.y;
       drawButton.on("pointertap", requestDraw);
 
       if (cabinetMode) {
-        let releaseInFlight = false;
-        // Manual release: first slide the DOM disk pile across the disk->table
-        // gap to the exact point where the Pixi cards take over, THEN hand off
-        // to Pixi -- so the motion reads as one continuous deal, not a pop.
-        const releaseFromCabinet = () => {
-          if (!cardsAreOut || cardsReleased || releaseInFlight) return;
-          releaseInFlight = true;
-          window.dispatchEvent(
-            new CustomEvent("battle:cabinet-pile", {
-              detail: { state: "launching" },
-            })
-          );
-          handTimeout(() => {
-            releaseInFlight = false;
-            releaseCardsToTable();
-          }, 240);
-        };
         const setAutoPlay = (enabled: boolean) => {
-          autoPlayEnabled = enabled;
+          autoPlayEnabled = enabled && canUseBattleControls();
 
           if (autoPlayTimer) {
             clearInterval(autoPlayTimer);
@@ -3883,7 +4176,7 @@ const globalY = cardGroup.y + card.y;
         };
 
         window.addEventListener("battle:request-draw", requestDraw);
-        window.addEventListener("battle:release-cards", releaseFromCabinet);
+        // Cabinet release is automatic; no second-press release listener.
         window.addEventListener("battle:set-auto", toggleAutoFromCabinet);
         window.addEventListener(
           "battle:collection-dismissed",
@@ -3895,7 +4188,7 @@ const globalY = cardGroup.y + card.y;
             advanceAfterCollection
           );
           window.removeEventListener("battle:request-draw", requestDraw);
-          window.removeEventListener("battle:release-cards", releaseFromCabinet);
+
         };
         removeExternalAutoControl = () => {
           window.removeEventListener("battle:set-auto", toggleAutoFromCabinet);
@@ -3918,13 +4211,134 @@ const globalY = cardGroup.y + card.y;
         setDrawButtonPressed(false);
       });
 
+      let previousActiveIndex = getPlayerBattleCardIndex();
+      removeOverviewControl = subscribeCardOverview(() => {
+        presentationClock.synchronize();
+        if (isCardOverviewOpen()) {
+          autoPlayEnabled = false;
+          if (autoPlayTimer) clearInterval(autoPlayTimer);
+          autoPlayTimer = null;
+        }
+        syncDrawAvailability();
+      });
+      removePlayerControl = subscribePlayerBattleCard(() => {
+        const activeIndex = getPlayerBattleCardIndex();
+        if (activeIndex === null) {
+          autoPlayEnabled = false;
+          if (autoPlayTimer) clearInterval(autoPlayTimer);
+          autoPlayTimer = null;
+        } else if (previousActiveIndex === null && getBattleMode() === "battle") {
+          preparePlayerSummon(activeIndex);
+        }
+        previousActiveIndex = activeIndex;
+        syncDrawAvailability();
+      });
+      const restoreCommittedStruggle = (hand: NonNullable<ReturnType<typeof getPendingBattleHand>>) => {
+        if(!hand.struggleWinner) return;
+        const player=getCurrentPlayerBattleCard(), enemy=getCurrentEnemy();
+        startAttackLandStruggle(hand.struggleCast ?? {
+          playerImage:getPlayerFaceoffImage(player?.name) ?? PLAYER_CARD_BACK_IMAGE,
+          playerName:getPlayerCharacterName(player).label,
+          enemyImage:getEnemyFaceoffImage(enemy?.id) ?? PLAYER_CARD_BACK_IMAGE,
+          enemyName:getEnemyCharacterName(enemy).label,
+        });
+        if(hand.settledSlots.every(Boolean)) {
+          revealAttackLandWinner(hand.struggleWinner);
+          if(hand.struggleWinner === "player") armPlayerFatalModeOpening();
+          pendingStruggleWinner=null;
+        } else pendingStruggleWinner=hand.struggleWinner;
+      };
+      const pendingHand=getPendingBattleHand();
+      const resumedFatal = getFatalPresentation().plan ?? (pendingHand?{...pendingHand,id:"ordinary-restored",enemy:null,playerAttack:false}:null);
+      if (resumedFatal && (getBattleMode() === "battle" || getBattleMode() === "bonus")) {
+        // Resume exactly this paid hand and the slots actually settled. Cards
+        // in flight at unload remain unflipped; no stop is synthesized here.
+        const legacyResultMissing = !resumedFatal.result;
+        if(pendingHand){pendingEnemyDefeatPresentation=pendingHand.enemyDefeat;restoreCommittedStruggle(pendingHand);}
+        resetCardsToGroup();
+        if (resumedFatal.result) setCurrentBattleResult(resumedFatal.result);
+        pendingTripleDefenseGrade = resumedFatal.tripleDefenseGrade ?? null;
+        cardsAreOut = true;
+        cardsReleased = true;
+        cardGroup.visible = false;
+        drawCards.forEach((card, index) => {
+          const settled = resumedFatal.settledSlots?.[index] === true;
+          revealed[index] = settled;
+          settledSlots[index] = settled;
+          if (settled) revealedCount += 1;
+          cardGroup.removeChild(card);
+          stage.addChild(card);
+          const origin = settled && cabinetMode ? getQuadCenter(landedCardQuads[index]) : hoverTargets[index];
+          card.x = origin.x; card.y = origin.y; card.rotation = 0;
+          card.alpha = 1; card.visible = true; card.scale.set(L.CARD_SCALE);
+          // Legacy saves did not retain symbols. Keep neutral backs rather
+          // than invent/re-lottery a hand or run unknown symbol rewards.
+          card.texture = settled && !legacyResultMissing ? symbolTextures[currentBattleResult.cards[index]] : cardBackTexture;
+          if (card instanceof PerspectiveMesh) {
+            if (settled || cabinetMode) setMeshQuad(card, toLocalQuad(landedCardQuads[index], origin.x, origin.y, L.CARD_SCALE));
+            else setHoverCardMesh(card, landedCardQuads[index], L.CARD_SCALE);
+          }
+          setCardPickable(index, !settled);
+          card.eventMode = settled ? "none" : "static";
+          if (!settled && !cabinetMode) startHoverFloat(index);
+        });
+        const finishLegacyRecovery = () => {
+          cardsAreOut = false;
+          cardsReleased = false;
+          setCardPhase("idle", "legacy-fatal-recovered");
+          if (pendingEnemyDefeatPresentation) commitEnemyDefeated();
+          else if (!finishPlayerDefeat()) setBattlePresentationPhase("next_round_ready", "legacy-fatal-recovered");
+          syncDrawAvailability();
+        };
+        if (legacyResultMissing) {
+          const legacyGuard = aliveGuard();
+          drawCards.forEach((card, index) => {
+            const stopLegacyCard = () => {
+              if (!legacyGuard() || getFatalPresentation().plan?.id !== resumedFatal.id ||
+                isCardOverviewOpen() || settledSlots[index]) return;
+              settledSlots[index] = revealed[index] = true;
+              stopHoverFloat(index);
+              setCardPickable(index, false);
+              card.eventMode = "none";
+              const origin = cabinetMode ? getQuadCenter(landedCardQuads[index]) : slotTargets[index];
+              card.x = origin.x; card.y = origin.y; card.rotation = 0;
+              if (card instanceof PerspectiveMesh) setMeshQuad(card, toLocalQuad(landedCardQuads[index], origin.x, origin.y, L.CARD_SCALE));
+              revealedCount += 1;
+              setFatalStops(revealedCount as 1 | 2 | 3, settledSlots);
+              saveBattleSession(buildBattleSnapshot());
+              if (revealedCount === 3) completeFatalSequence(finishLegacyRecovery);
+            };
+            card.on("pointertap", stopLegacyCard);
+            cardHitProxies[index]?.on("pointertap", stopLegacyCard);
+          });
+        } else attachPlacementHandlers();
+        setBattlePresentationPhase("draw_reveal", "fatal-continue-hand");
+        setCardPhase(revealedCount === 3 ? "clearing" : "hovering", "fatal-continue");
+        if(pendingHand?.phase==="set") {
+          drawCards.forEach((card,index)=>{card.visible=false;setCardPickable(index,false);});cardsReleased=false;
+          dealPhase="set";setCount=3;dealBusy=false;pendingEnemyDefeatPresentation=pendingHand.enemyDefeat;
+          emitCabinetPile("set");
+        } else if (revealedCount === 3) completeFatalSequence(legacyResultMissing ? finishLegacyRecovery : finishRevealedHand);
+        syncDrawAvailability();
+      } else if (getBattleMode() === "battle" && getBattleState() === "playing") {
+        showCurrentRoundInsert();
+      } else if (getBattleMode() === "bonus") {
+        setBattlePresentationPhase("next_round_ready", "bonus-stage-ready");
+      }
+      window.dispatchEvent(new Event("battle:stage-ready"));
+
     };
 
     init();
 
     return () => {
       cancelled = true;
+      removeFatalContext?.();
+      removeVisibilityClock?.();
+      if (flightFrame !== null) window.cancelAnimationFrame(flightFrame);
 
+      disposeDeal?.();
+      disposeDeal = null;
       disposeHandTimers?.();
       disposeHandTimers = null;
 
@@ -3949,6 +4363,10 @@ const globalY = cardGroup.y + card.y;
       removeBonusConfirmControl = null;
       removeFlowControl?.();
       removeFlowControl = null;
+      removePlayerControl?.();
+      removePlayerControl = null;
+      removeOverviewControl?.();
+      removeOverviewControl = null;
 
       if (app) {
         try {

@@ -3,6 +3,7 @@
 // Feature 10: gift box overlay — milestone rewards + stubbed ad reward.
 
 import { useEffect, useRef, useState } from "react";
+import SoftDialog from "@/components/site/SoftDialog";
 import {
   claimAdReward,
   claimMilestone,
@@ -51,9 +52,8 @@ export default function GiftBoxOverlay({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md text-white">
-        <h2 className="text-2xl font-bold mb-1 text-center">Gift Box</h2>
+    <SoftDialog open onClose={onClose} title="Gift Box">
+      <div className="w-full text-left">
         <p className="text-zinc-400 text-sm mb-5 text-center">
           Rewards for playing. Claim them anytime.
         </p>
@@ -126,13 +126,7 @@ export default function GiftBoxOverlay({ onClose }: Props) {
           grants the bonus points.
         </p>
 
-        <button
-          onClick={onClose}
-          className="w-full bg-zinc-700 hover:bg-zinc-600 px-4 py-3 rounded-xl font-semibold"
-        >
-          Close
-        </button>
       </div>
-    </div>
+    </SoftDialog>
   );
 }

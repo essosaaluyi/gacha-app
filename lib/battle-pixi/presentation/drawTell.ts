@@ -78,6 +78,28 @@ const MID_RESULTS = ["DoubleChance", "Reply"] as const;
 const RUNGS: TellRung[] = ["white", "blue", "green", "red", "gold"];
 
 /**
+ * Keep anticipation exceptional rather than decorating ordinary draws. The
+ * same multiplier is applied to truthful and fake shares, so each colour keeps
+ * its reliability while the full ladder appears on roughly one draw in ten.
+ * Electricity remains rarer because only green and higher tiers use it.
+ */
+const TELL_FREQUENCY_SCALE = 0.3;
+
+function scaleTellShares(weights: Weights): Weights {
+  const scaled: Weights = {};
+  let used = 0;
+
+  for (const rung of RUNGS) {
+    const weight = (weights[rung] ?? 0) * TELL_FREQUENCY_SCALE;
+    scaled[rung] = weight;
+    used += weight;
+  }
+
+  scaled.none = Math.max(0, 100 - used);
+  return scaled;
+}
+
+/**
  * Fake rates, derived from the odds actually in force.
  *
  * Computed rather than written down, because a hard-coded table silently means
@@ -108,10 +130,12 @@ function deriveWeights(): { top: Weights; mid: Weights; quiet: Weights } {
   const topRate = rateOf(TOP_RESULTS);
   const midRate = rateOf(MID_RESULTS);
   const tier = topRate + midRate;
+  const top = scaleTellShares(TOP_SHARE);
+  const mid = scaleTellShares(MID_SHARE);
 
   // No tier at all would make every reliability undefined; leave the disc dark
   // rather than divide by zero.
-  if (tier <= 0) return { top: TOP_SHARE, mid: MID_SHARE, quiet: { none: 100 } };
+  if (tier <= 0) return { top, mid, quiet: { none: 100 } };
 
   const rest = 1 - tier;
   const quiet: Weights = {};
@@ -125,8 +149,8 @@ function deriveWeights(): { top: Weights; mid: Weights; quiet: Weights } {
     }
     // Share of the whole tier, blending the two classes by how often each occurs.
     const share =
-      (((TOP_SHARE[rung] ?? 0) / 100) * topRate +
-        ((MID_SHARE[rung] ?? 0) / 100) * midRate) /
+      (((top[rung] ?? 0) / 100) * topRate +
+        ((mid[rung] ?? 0) / 100) * midRate) /
       tier;
     const fake = share * (tier / rest) * ((1 - R) / R);
     quiet[rung] = fake * 100;
@@ -134,7 +158,7 @@ function deriveWeights(): { top: Weights; mid: Weights; quiet: Weights } {
   }
 
   quiet.none = Math.max(0, (1 - used) * 100);
-  return { top: TOP_SHARE, mid: MID_SHARE, quiet };
+  return { top, mid, quiet };
 }
 
 /** The predicate the stage uses to register a fatal-mode hit, mirrored here. */
