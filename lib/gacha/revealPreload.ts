@@ -1,11 +1,8 @@
-const primaryRevealVideos = ["/videos/standard.mp4", "/videos/standard2.mp4"];
-
-const secondaryRevealVideos = [
-  "/videos/SSR.mp4",
-  "/videos/gacha-reveal-UR1.mp4",
-  "/videos/gacha-reveal-UR2.mp4",
-  "/videos/freeze.mp4",
-];
+// Most draws without SR+ play standard.mp4, so it is the only video warmed on
+// page open. The other reveal videos are fetched once a pull has chosen one;
+// warming all six on open downloaded about 95 MB before the player pressed anything.
+const likelyRevealVideo = "/videos/standard.mp4";
+export const FREEZE_REVEAL_VIDEO = "/videos/freeze.mp4";
 
 const preloadedVideos = new Map<string, HTMLVideoElement>();
 const preloadLinks = new Set<string>();
@@ -55,9 +52,11 @@ function scheduleIdle(callback: () => void, timeout: number) {
 export function preloadRevealVideos() {
   if (typeof window === "undefined") return;
 
-  primaryRevealVideos.forEach(preloadVideo);
+  scheduleIdle(() => preloadVideo(likelyRevealVideo), 2200);
+}
 
-  scheduleIdle(() => {
-    secondaryRevealVideos.forEach(preloadVideo);
-  }, 2200);
+/** Start fetching the videos a pull has already chosen, before the player mounts. */
+export function preloadChosenRevealVideos(video: string, withFreeze: boolean) {
+  preloadVideo(video);
+  if (withFreeze) preloadVideo(FREEZE_REVEAL_VIDEO);
 }

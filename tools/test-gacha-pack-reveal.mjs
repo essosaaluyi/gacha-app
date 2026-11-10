@@ -335,7 +335,7 @@ function createPage({ member = false, ten = 1000, single = 100, canPay = true, p
       subscribeWallet: () => () => {}, spendPoints: async cost => { charges.push(cost); return canPay; },
     },
     "@/lib/gacha/revealLogic": { chooseRevealPlan: async () => ({ video: "/test.mp4", freezeChance: 0 }) },
-    "@/lib/gacha/revealPreload": { preloadRevealVideos() {} },
+    "@/lib/gacha/revealPreload": { preloadRevealVideos() {}, preloadChosenRevealVideos() {} },
     "@/lib/gacha/saveResults": {
       saveGuestResults: async cards => { guestSaves.push(cards); if (saveWait) await saveWait; },
       saveUserResults: async (...args) => memberSaves.push(args),

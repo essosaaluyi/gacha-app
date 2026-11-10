@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabase";
 import ResultActions from "@/components/gacha/ResultActions";
 import { type Card, pullMany } from "@/lib/gacha/pullLogic";
 import { chooseRevealPlan } from "@/lib/gacha/revealLogic";
-import { preloadRevealVideos } from "@/lib/gacha/revealPreload";
+import { preloadChosenRevealVideos, preloadRevealVideos } from "@/lib/gacha/revealPreload";
 import {
   saveGuestResults,
   saveUserResults,
@@ -210,12 +210,16 @@ export default function GachaPage() {
     const hasUR = pulled.some((card) => card.rarity === "UR");
     
 
-    if (hasUR && Math.random() * 100 < revealPlan.freezeChance) {
+    const freezeChanceHit = hasUR && Math.random() * 100 < revealPlan.freezeChance;
+
+    if (freezeChanceHit) {
       const randomFreezeTime = 6 + Math.random() * 10;
       setFreezeTime(randomFreezeTime);
     } else {
       setFreezeTime(null);
     }
+
+    preloadChosenRevealVideos(revealPlan.video, freezeChanceHit);
 
     setFreezeTriggered(false);
     revealFinishedRef.current = false;
