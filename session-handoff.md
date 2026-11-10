@@ -9,6 +9,49 @@
 - 未完了・既知の問題：
 - 次の担当への依頼：
 
+### 2026-11-10 ／ 担当：Claude（Tsukasa） ／ ブランチ：main
+- やったこと：
+  - リーダー名を Sora から Tsukasa に変更した（animation_director の Sora／ソラはそのまま）。AGENTS.md と本ファイルで、バックスラッシュが抜けていた `D:\archive\gacha-app`・`D:\asset-sources\gacha-app` の表記も直した。
+  - ffmpeg／ffprobe 9.0.2 を winget（Gyan.FFmpeg）でインストールした。PATH は新しいターミナルから有効になる。
+  - Hayate のラグ対策案のうち、画質が変わらない 2・3・4・5 を実装した。
+    - 2：Fatal インサートの 62MB の連番の先読みを、バトルのオープニング動画が終わってから始める（`warmUpReady`）。それより前に発動した場合は、従来どおりその場で読み込む。
+    - 3：ステージのテクスチャ11枚を `Promise.all` で並列に読み込む。soft-edge の記号7枚は可逆 WebP にした（表示される画素は完全一致を確認、5.0MB→3.3MB）。PNG 原本は `D:\asset-sources\gacha-app\images\battle-symbols\soft-edge\` へ移動した。
+    - 4：本番環境だけ、/images・/videos・/audio に `Cache-Control: public, max-age=31536000, immutable` を付ける。
+    - 5：ガチャ画面を開いたときに先読みする動画を、6本（約95MB）から standard.mp4 の1本に減らした。抽選で決まった動画と、フリーズ演出が当たったときの freeze.mp4 は、抽選直後に先読みする。
+  - 案 1・6・7・8 は、本番の素材は置き換えずに測定と比較用サンプルの作成だけ行った。サンプルは `outputs/compression-samples/`（Git 管理外）、作成スクリプトは `tools/make-compression-samples.sh`。
+- 変更したファイル：
+  - 5bdbdc9：AGENTS.md、session-handoff.md（改名とパス表記の修正）
+  - 9dbc304：lib/gacha/revealPreload.ts、app/gacha/page.tsx、tools/test-five-pull.mjs と tools/test-gacha-pack-reveal.mjs（スタブに新しい関数を追加）
+  - 83c816b：components/battle/PlayerFatalModeOpeningInsertTest.tsx、components/battle/BattleScreen.tsx
+  - e0a4f38：components/battle/BattlePixiStage.tsx（並列読み込み、DOM のカードの山も .webp に）、lib/air-tank-lab/model.ts（マイニガ担当。拡張子だけ .webp に変更）、soft-edge の PNG→WebP
+  - fe0d9a6：next.config.ts
+  - dfaf390：tools/make-compression-samples.sh、tools/compression-compare.html、tools/serve-compression-compare.mjs
+- 動作確認：
+  - tsc は成功。`node --test tools/test-*.mjs` は 153件すべて成功。`npm run build` も成功。
+  - `next start -p 3107` で一時的に確認し、/images・/videos・/audio に immutable が付くことを確認した。確認後は停止した。
+  - dev（:3000）で次を確認した。
+    - /gacha を開いたときの動画の先読みは standard.mp4 だけ。
+    - /battle?fatal-preview=safe-clear：開始して DRAW、3枚めくりまで。記号（EMPTY）は WebP で表示された。404 とエラーは0件。
+    - /、/menu、/inventory、/history、/gacha-pack-preview、/battle-perspective、/faceoff-preview、/effect-test：すべて200で、404 と画像の表示失敗は0件。
+  - サンプルの測定結果（SSIM は元の素材との一致度。1.0 で完全一致）：
+    - 案1：敵 one・two・four・six・seven の idle PNG 連番 → VP9 WebM（透過あり、CRF 30。enemy-eight と同じ 960px・25fps）。321.8MB → 15.3MB（−95%）、SSIM 0.990〜0.995。
+    - 案6：battle-opening は 1080p30・16.5Mbps と、他より高いビットレートだった。CRF 23 で 38.4MB → 5.7MB（SSIM 0.995）、CRF 26 で 4.4MB。
+    - 案6：ガチャ演出の動画5本は 1080p24・約6.0Mbps。CRF 23 で合計 92.0MB → 69.8MB（−24%、SSIM 約0.990）、CRF 26 で 52.2MB（−43%、SSIM 約0.986）。音声はそのままコピーした（AAC 317kbps）。
+    - 案7：chance-reveal の UR3 背景は、MP4 にすると 179.5MB → 1.5MB（SSIM 0.982）。ただし 180フレーム中27フレームが半透明（alpha の最小値は 171/255）なので、MP4 にするとこのフェードが失われる。採用するなら、フェードをコード側で付けるか、透過を残せる形式にする必要がある。
+    - 案7：chance-reveal の card-blue をフレームごとの WebP（透過あり）にすると、q85 で 80.8MB → 9.4MB（SSIM 0.997）、q75 で 7.4MB（SSIM 0.995）。
+    - 案8：points-gain の 20p をフレームごとの WebP（透過あり）にすると、q85 で 107.1MB → 16.2MB（SSIM 0.996）、q75 で 13.8MB（SSIM 0.993）。30p・50p も同じ程度になる見込み。
+  - 比較の方法：`node tools/serve-compression-compare.mjs` を実行し、http://127.0.0.1:3108/tools/compression-compare.html を開く。元とサンプルを同じフレームで並べ、拡大（2.5倍）、黒背景とチェック柄の切り替え、再生ができる。
+- 未完了・既知の問題：
+  - PowerShell の実行ポリシーは変更していない。セキュリティ設定の変更は Claude が行えないため、オーナーが自分で実行する（`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`）。
+  - ゲスト残高が0ptのため、本物のガチャを引く流れでの先読みは画面上で確認していない（テストでのみ確認）。Fatal インサートを実際に発動させる確認もしていない。
+  - immutable の影響で、同じファイル名のまま差し替えた素材は、一度訪れたプレイヤーには最長1年届かない。差し替えるときはファイル名を変えること。
+  - サンプルの SSIM は数値上の目安。実際に目で見ての確認はまだしていない。
+  - `outputs/compression-samples/report.tsv` には、最初の失敗した実行の行（容量0）が残っている。
+  - 既存の `public/videos/points-gain-mp4/`（各7.5MB）はコードから参照されていない。経緯は不明。
+- 次の担当への依頼：
+  - 案 1・6・7・8 の採用はオーナーの判断待ち。採用する場合は、比較ページで見比べたうえで、置き換えた素材は新しいファイル名で配信すること（immutable のため）。
+  - webm の透過は Safari では再生されない。案1を採用する場合は、Safari への対応方針も決める必要がある。
+
 ### 2026-11-10 ／ 担当：Claude（Tsukasa＝リーダー、Haku・Kura・Hayate） ／ ブランチ：main
 - やったこと：ファイル整理の第1〜第3段階。Tsukasa が準備（main の同期、作業ツリーが clean であることの確認、標準の `git gc`、.next の削除）と移動リストの作成を行い、3エージェントが並列で作業した。
   - Haku：使われていない素材を `D:\archive\gacha-app\` へ移動（ファイル794件＋フォルダ7件、1,794,552,439 バイト）。
