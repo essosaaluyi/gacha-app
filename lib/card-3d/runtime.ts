@@ -6,14 +6,14 @@ import { getCardDisplayCrop } from "@/components/gacha/pack-reveal/cardDisplayCr
 import { playSfx, type SfxName } from "@/lib/audio/sfxStore";
 import {
   CARD, SLOT_X, REST_Y, EJECT_MS, EJECT_STAGGER_MS, DEAL_MS, DEAL_STAGGER_MS, REVEAL,
-  outletLocal, dealPose, revealPose, revealFlash, tableQuat, type Pose,
+  outletLocal, outletExitDistance, dealPose, hoverPose, revealPose, revealFlash, tableQuat, OUTLET, OUTLET_CARD_TILT, type Pose,
 } from "./motion";
 import { bayTexture, cardHaloTexture, feltTexture, pillarTexture, radialGlowTexture, ringTexture, sparkTexture } from "./textures";
 
 export type Card3DPhase = "hidden" | "eject" | "outlet" | "deal" | "table" | "reveal" | "faceup";
 export type Card3DStats = { fps: number; frameMs: number; phases: Card3DPhase[]; simMs: number };
 export type Card3DLab = {
-  draw1(): void; draw2(): void; reveal(index: number): void; revealAll(): void; reset(): void;
+  audit(): string[]; draw1(): void; draw2(): void; reveal(index: number): void; revealAll(): void; reset(): void;
   setSpeed(speed: number): void; setPaused(paused: boolean): void; advance(ms: number): void;
   setSound(on: boolean): void; dispose(): void;
 };
@@ -104,31 +104,40 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
     return { gold, floor: floor.material as THREE.MeshStandardMaterial };
   });
 
-  // ── Outlet housing (left front). Cards sit inside, behind the front plate, and slide down out of the mouth.
+  // ── Outlet: a card shoe on the table. Cards lie face down inside and slide out of the
+  // front mouth toward the player. Solid walls hide whatever is still inside.
   const outlet = new THREE.Group();
-  outlet.position.set(-4.85, 1.2, 2.55); outlet.rotation.set(-0.6, 0.36, 0.04);
+  outlet.position.set(-5.9, 0, 0.15); outlet.rotation.set(0, 0.62, 0);
   scene.add(outlet);
-  const darkMetal = own(new THREE.MeshStandardMaterial({ color: "#1a2328", metalness: 0.85, roughness: 0.34 }));
+  const darkMetal = own(new THREE.MeshStandardMaterial({ color: "#2b3a42", metalness: 0.75, roughness: 0.4 }));
   const brass = own(new THREE.MeshStandardMaterial({ color: "#e2b65c", metalness: 1, roughness: 0.24, emissive: "#ffcf73", emissiveIntensity: 0 }));
-  const bevel = { bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.035, bevelSegments: 4, curveSegments: 12 };
-  // Cabinet module the outlet is set into.
-  const back = new THREE.Mesh(own(new THREE.ExtrudeGeometry(roundedRect(3.75, 2.15, 0.3), { depth: 0.3, ...bevel })), darkMetal);
-  back.position.set(0, 0.84, -0.45); back.castShadow = true; back.receiveShadow = true; outlet.add(back);
-  // Faceplate above the mouth (cards hide behind it), framed in gold.
-  const faceMat = own(new THREE.MeshStandardMaterial({ color: "#26343c", metalness: 0.55, roughness: 0.42 }));
-  const face = new THREE.Mesh(own(new THREE.ExtrudeGeometry(roundedRect(3.1, 1.5, 0.16), { depth: 0.2, ...bevel })), faceMat);
-  face.position.set(0, 0.84, 0.19); face.castShadow = true; outlet.add(face);
-  const ringShape = roundedRect(3.5, 1.9, 0.28); ringShape.holes.push(roundedRect(3.08, 1.48, 0.16) as unknown as THREE.Path);
-  const ring = new THREE.Mesh(own(new THREE.ExtrudeGeometry(ringShape, { depth: 0.1, ...bevel })), brass);
-  ring.position.set(0, 0.84, 0.36); ring.castShadow = true; outlet.add(ring);
-  const statusLine = new THREE.Mesh(own(new THREE.PlaneGeometry(2.1, 0.03)), own(new THREE.MeshBasicMaterial({ color: new THREE.Color("#58e6dc").multiplyScalar(1.3), toneMapped: false })));
-  statusLine.position.set(0, 0.32, 0.43); outlet.add(statusLine);
-  const slotShadow = new THREE.Mesh(own(new THREE.PlaneGeometry(2.5, 0.5)), own(new THREE.MeshBasicMaterial({ color: "#000", transparent: true, opacity: 0.55, depthWrite: false })));
-  slotShadow.position.set(0, 0.02, -0.02); outlet.add(slotShadow);
-  // Invisible depth mask: hides the part of each card that is still inside the cabinet.
-  // Drawn after the table (renderOrder 1) and before the cards (renderOrder 2), so the table still shows through.
-  const occluder = new THREE.Mesh(own(new THREE.BoxGeometry(2.6, 4.2, 0.62)), own(new THREE.MeshBasicMaterial({ colorWrite: false })));
-  occluder.position.set(0, 2.17, -0.12); occluder.renderOrder = 1; outlet.add(occluder);
+  const bevel = { bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 4, curveSegments: 12 };
+  const { width: OW, height: OH, depth: OD } = OUTLET, front = OD / 2;
+  // Side profile (u = -z, v = y): low front with the mouth, rising toward the back like a dealer shoe.
+  const profile = new THREE.Shape();
+  profile.moveTo(-front, 0); profile.lineTo(-front, OH); profile.lineTo(front, OH + 0.5); profile.lineTo(front, 0); profile.lineTo(-front, 0);
+  const shoeGeo = own(new THREE.ExtrudeGeometry(profile, { depth: OW, ...bevel }));
+  shoeGeo.rotateY(Math.PI / 2); shoeGeo.translate(-OW / 2, 0, 0);
+  const shoe = new THREE.Mesh(shoeGeo, darkMetal); shoe.castShadow = true; shoe.receiveShadow = true; outlet.add(shoe);
+  // Gold frame around the mouth, and a dark slot behind the cards.
+  const [mouthLo, mouthHi] = OUTLET.mouthY, mouthH = mouthHi - mouthLo, mouthMid = (mouthLo + mouthHi) / 2;
+  const mouthRing = roundedRect(OUTLET.mouthHalfWidth * 2 + 0.3, mouthH + 0.26, 0.12);
+  mouthRing.holes.push(roundedRect(OUTLET.mouthHalfWidth * 2, mouthH, 0.06) as unknown as THREE.Path);
+  const ring = new THREE.Mesh(own(new THREE.ExtrudeGeometry(mouthRing, { depth: 0.06, ...bevel, bevelSize: 0.02, bevelThickness: 0.02 })), brass);
+  ring.position.set(0, mouthMid, front + 0.04); ring.castShadow = true; outlet.add(ring);
+  const slot = new THREE.Mesh(own(new THREE.PlaneGeometry(OUTLET.mouthHalfWidth * 2, mouthH)), own(new THREE.MeshBasicMaterial({ color: "#020304" })));
+  slot.position.set(0, mouthMid, front + 0.045); outlet.add(slot);
+  // Gold trim along the top front edge and a status light on the slope.
+  const trim = new THREE.Mesh(own(new THREE.BoxGeometry(OW + 0.1, 0.07, 0.07)), brass); trim.position.set(0, OH + 0.03, front + 0.02); outlet.add(trim);
+  // Gold corner posts and a band around the back, so the shoe reads as part of the cabinet.
+  for (const side of [-1, 1]) {
+    const post = new THREE.Mesh(own(new THREE.BoxGeometry(0.09, OH, 0.09)), brass); post.position.set(side * (OW / 2 + 0.02), OH / 2, front + 0.02); post.castShadow = true; outlet.add(post);
+    const rail = new THREE.Mesh(own(new THREE.BoxGeometry(0.07, 0.07, OD)), brass);
+    rail.position.set(side * (OW / 2 + 0.02), OH + 0.25 + 0.02, 0); rail.rotation.x = Math.atan2(0.5, OD); outlet.add(rail);
+  }
+  const backBand = new THREE.Mesh(own(new THREE.BoxGeometry(OW + 0.1, 0.07, 0.07)), brass); backBand.position.set(0, OH + 0.52, -front - 0.02); outlet.add(backBand);
+  const statusLine = new THREE.Mesh(own(new THREE.PlaneGeometry(OW * 0.7, 0.035)), own(new THREE.MeshBasicMaterial({ color: new THREE.Color("#58e6dc").multiplyScalar(1.3), toneMapped: false })));
+  statusLine.rotation.x = -Math.PI / 2 + Math.atan2(0.5, OD); statusLine.position.set(0, OH + 0.12, front - 0.55); outlet.add(statusLine);
 
   // ── Cards ───────────────────────────────────────────────────────────
   const shape = roundedRect(CARD.width, CARD.height, CARD.radius);
@@ -145,21 +154,22 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
     return t;
   };
   const backTex = loadTex(PLAYER_CARD_BACK_IMAGE, { left: 4 / 600, right: 4 / 600, top: 2 / 900, bottom: 2 / 900 });
-  const gloss = { roughness: 0.36, metalness: 0.02, clearcoat: 0.7, clearcoatRoughness: 0.22, specularIntensity: 0.6 };
-  const backMat = own(new THREE.MeshPhysicalMaterial({ map: backTex, ...gloss, clearcoat: 0.25, clearcoatRoughness: 0.35, envMapIntensity: 0.28 }));
+  // Printed card under a hard acrylic coat: matte ink, tight crisp highlights (no milky haze).
+  const gloss = { roughness: 0.62, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05, specularIntensity: 0.25 };
+  const backMat = own(new THREE.MeshPhysicalMaterial({ map: backTex, ...gloss, envMapIntensity: 0.45 }));
 
   const haloTex = own(cardHaloTexture()), glowTex = own(radialGlowTexture()), ringTex = own(ringTexture()), pillarTex = own(pillarTexture()), sparkTex = own(sparkTexture());
   const additive = (map: THREE.Texture, color: string) => own(new THREE.MeshBasicMaterial({ map, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
 
   type CardState = {
-    group: THREE.Group; front: THREE.MeshPhysicalMaterial; phase: Card3DPhase; t0: number; outletPose?: Pose;
+    group: THREE.Group; front: THREE.MeshPhysicalMaterial; phase: Card3DPhase; t0: number; outletPose?: Pose; pull?: THREE.Vector3; revealFrom?: THREE.Vector3;
     color: THREE.Color; halo: THREE.Mesh; glow: THREE.Sprite; ring: THREE.Mesh; pillar: THREE.Mesh; pillarCore: THREE.Mesh;
     sparks: THREE.Points; sparkVel: Float32Array; sparkBase: Float32Array; impactAt: number; landAt: number;
   };
   const cards: CardState[] = fronts.slice(0, 3).map((url, i) => {
     const rarity = url.match(/\/player\/(R|SR|SSR|UR)\d/)?.[1] ?? "R";
     const color = new THREE.Color(RARITY_COLOR[rarity]);
-    const front = own(new THREE.MeshPhysicalMaterial({ map: loadTex(url, getCardDisplayCrop(url)), ...gloss, emissive: "#ffffff", emissiveIntensity: 0, envMapIntensity: 0.9 }));
+    const front = own(new THREE.MeshPhysicalMaterial({ map: loadTex(url, getCardDisplayCrop(url)), ...gloss, emissive: "#ffffff", emissiveIntensity: 0, envMapIntensity: 0.55 }));
     const group = new THREE.Group();
     const edge = new THREE.Mesh(edgeGeo, [hidden, edgeMat]); edge.castShadow = true;
     const f = new THREE.Mesh(faceGeo, front); f.position.z = CARD.thickness / 2 + 0.0006; f.castShadow = true;
@@ -201,7 +211,7 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
   const outletPose = (i: number, u: number): Pose => {
     outlet.updateMatrixWorld();
     const position = outletLocal(i, u).applyMatrix4(outlet.matrixWorld);
-    const quaternion = outlet.getWorldQuaternion(new THREE.Quaternion()).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    const quaternion = outlet.getWorldQuaternion(new THREE.Quaternion()).multiply(tableQuat(0, OUTLET_CARD_TILT));
     return { position, quaternion, squash: 0 };
   };
 
@@ -219,13 +229,14 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
     if (!cards.every((c) => c.phase === "outlet")) return;
     sfx("drawCard");
     cards.forEach((c, i) => {
-      c.outletPose = outletPose(i, 1); c.phase = "deal"; c.t0 = simNow + i * DEAL_STAGGER_MS; c.landAt = c.t0 + DEAL_MS * 0.86;
-      schedule(c.landAt, () => sfx("cardPlaced", 0.45));
+      c.outletPose = outletPose(i, 1); c.phase = "deal"; c.t0 = simNow + i * DEAL_STAGGER_MS; c.landAt = c.t0 + DEAL_MS;
+      // Slide straight out along the shoe axis (toward the player) before lifting off.
+      c.pull = new THREE.Vector3(0, 0, outletExitDistance(i)).applyQuaternion(outlet.quaternion);
     });
   };
   const reveal = (i: number) => {
     const c = cards[i]; if (!c || c.phase !== "table") return;
-    c.phase = "reveal"; c.t0 = simNow; c.impactAt = simNow + REVEAL.impact;
+    c.revealFrom = c.group.position.clone(); c.phase = "reveal"; c.t0 = simNow; c.impactAt = simNow + REVEAL.impact;
     schedule(simNow + 40, () => sfx("cardReveal"));
     schedule(c.impactAt, () => { sfx("cardPlaced"); shakeAt = simNow; });
   };
@@ -243,6 +254,27 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
     if (o) reveal(o.userData.index as number);
   };
   renderer.domElement.addEventListener("pointerdown", onPointer);
+
+  // ── QA: every card corner must stay above the table and may enter the shoe only through the mouth.
+  const audit = () => {
+    const bad: string[] = [];
+    outlet.updateMatrixWorld();
+    const toOutlet = outlet.matrixWorld.clone().invert();
+    const hw = CARD.width / 2, hh = CARD.height / 2, ht = CARD.thickness / 2;
+    cards.forEach((c, i) => {
+      if (!c.group.visible) return;
+      c.group.updateMatrixWorld();
+      for (const x of [-hw, 0, hw]) for (const y of [-hh, 0, hh]) for (const z of [-ht, ht]) {
+        const w = new THREE.Vector3(x, y, z).applyMatrix4(c.group.matrixWorld);
+        if (w.y < -0.002) bad.push(`card${i} ${c.phase} below table y=${w.y.toFixed(3)}`);
+        const o = w.clone().applyMatrix4(toOutlet);
+        const inside = Math.abs(o.x) < OUTLET.width / 2 + 0.04 && o.y > 0 && o.y < OUTLET.height + 0.5 * (OUTLET.depth / 2 - o.z) / OUTLET.depth + 0.04 && Math.abs(o.z) < OUTLET.depth / 2 + 0.04;
+        const inMouth = Math.abs(o.x) < OUTLET.mouthHalfWidth && o.y > OUTLET.mouthY[0] && o.y < OUTLET.mouthY[1];
+        if (inside && !inMouth) bad.push(`card${i} ${c.phase} through shoe wall at (${o.x.toFixed(2)},${o.y.toFixed(2)},${o.z.toFixed(2)})`);
+      }
+    });
+    return bad;
+  };
 
   // ── Per-frame update ────────────────────────────────────────────────
   let shakeAt = -1e9;
@@ -263,12 +295,12 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
         if (t >= EJECT_MS) c.phase = "outlet";
       } else if (c.phase === "outlet") apply(c, outletPose(i, 1));
       else if (c.phase === "deal") {
-        apply(c, t < 0 ? c.outletPose! : dealPose(c.outletPose!, i, t));
+        apply(c, t < 0 ? c.outletPose! : dealPose(c.outletPose!, c.pull!, i, t));
         if (t >= DEAL_MS) c.phase = "table";
-      } else if (c.phase === "table") apply(c, { position: new THREE.Vector3(SLOT_X[i], REST_Y, 0), quaternion: tableQuat(0), squash: 0 });
+      } else if (c.phase === "table") apply(c, hoverPose(i, simNow - c.landAt));
       else if (c.phase === "reveal" || c.phase === "faceup") {
         const rt = c.phase === "faceup" ? REVEAL.done : t;
-        apply(c, revealPose(i, rt, liftedPoint(i), tiltToCamera));
+        apply(c, revealPose(i, rt, liftedPoint(i), tiltToCamera, c.revealFrom));
         flash = revealFlash(rt);
         if (c.phase === "reveal" && t >= REVEAL.done) c.phase = "faceup";
       }
@@ -348,7 +380,7 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
   raf = requestAnimationFrame(loop);
 
   return {
-    draw1, draw2, reveal, revealAll, reset,
+    draw1, draw2, reveal, revealAll, reset, audit,
     setSpeed: (s) => { speed = s; }, setPaused: (p) => { paused = p; },
     advance: (ms) => { simNow += ms; update(); renderer.render(scene, camera); },
     setSound: (on) => { sound = on; },

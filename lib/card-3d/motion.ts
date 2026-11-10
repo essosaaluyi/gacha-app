@@ -9,7 +9,7 @@ export const REST_Y = CARD.thickness / 2 + 0.006;
 export const EJECT_STAGGER_MS = 160;
 export const EJECT_MS = 340;
 export const DEAL_STAGGER_MS = 150;
-export const DEAL_MS = 620;
+export const DEAL_MS = 900;
 /** Reveal beats, matching the owner reference (lift → white flash → slam → impact). */
 export const REVEAL = { liftEnd: 400, flipStart: 70, flipEnd: 430, flashPeak: 430, holdEnd: 660, impact: 860, done: 1250 } as const;
 export const IMPACT_MS = REVEAL.impact;
@@ -32,41 +32,58 @@ export function tableQuat(flip: number, tilt = 0, roll = 0) {
 
 export type Pose = { position: THREE.Vector3; quaternion: THREE.Quaternion; squash: number };
 
-/** Outlet: cards slide down out of the mouth, 1→2→3, each a little lower and nearer. */
+/** Outlet: a card shoe sitting on the table. Cards lie flat, face down, and slide out of the
+ * mouth toward the player (outlet-local +z), stacked bottom→top with stepped overhangs. */
+export const OUTLET = { width: 2.7, height: 1.15, depth: 3.7, mouthY: [0.26, 0.78] as const, mouthHalfWidth: 1.14 } as const;
+const OUTLET_FRONT_Z = OUTLET.depth / 2;
+const STACK_Y = (index: number) => 0.44 + index * 0.075;
+/** How far each card sticks out of the mouth once set (lowest card furthest, so all three read). */
+const OVERHANG = (index: number) => 1.75 - index * 0.32;
+export const OUTLET_CARD_TILT = 0.07;
 export function outletLocal(index: number, u: number) {
-  const hiddenY = 1.78, outY = -0.08 - (2 - index) * 0.24;
-  const y = THREE.MathUtils.lerp(hiddenY, outY, ease.outBack(u, 1.2));
-  return new THREE.Vector3((index - 1) * 0.06, y, 0.04 + index * 0.05);
+  const hiddenZ = -0.15, outZ = OUTLET_FRONT_Z - CARD.height / 2 + OVERHANG(index);
+  const z = THREE.MathUtils.lerp(hiddenZ, outZ, ease.outBack(u, 1.15));
+  return new THREE.Vector3((index - 1) * 0.04, STACK_Y(index), z);
+}
+/** Extra slide needed for the whole card to clear the mouth (plus a small margin). */
+export const outletExitDistance = (index: number) => CARD.height - OVERHANG(index) + 0.6;
+
+/** After the deal, cards hover face down above their bays, tilted a little toward the player. */
+export const HOVER = { y: 0.95, z: 0.25, tilt: 0.24, bob: 0.045 } as const;
+export function hoverPose(slot: number, sinceLanded: number): Pose {
+  const ramp = clamp01(sinceLanded / 500);
+  const bob = Math.sin(sinceLanded / 330 + slot * 1.7) * HOVER.bob * ramp;
+  return { position: new THREE.Vector3(SLOT_X[slot], HOVER.y + bob, HOVER.z), quaternion: tableQuat(0, HOVER.tilt), squash: 0 };
 }
 
-export function dealPose(start: Pose, slot: number, t: number): Pose {
+/** Deal: slide fully out toward the player, then arc up and over to hover above the bay. */
+export function dealPose(start: Pose, pull: THREE.Vector3, slot: number, t: number): Pose {
   const u = clamp01(t / DEAL_MS);
-  // 0–0.18: pull the card fully out of the mouth; then an arc onto the slot.
-  const pull = ease.outCubic(u / 0.18);
-  const travel = ease.inOutCubic((u - 0.12) / 0.88);
-  const end = new THREE.Vector3(SLOT_X[slot], REST_Y, 0);
-  const from = start.position.clone().add(new THREE.Vector3(0.15, -0.35, 0.25).multiplyScalar(pull));
-  const control = from.clone().lerp(end, 0.5).add(new THREE.Vector3(0, 2.4, -0.4));
-  const a = from.clone().lerp(control, travel), b = control.clone().lerp(end, travel);
+  const p = ease.inOutCubic(u / 0.34);
+  const travel = ease.inOutCubic((u - 0.34) / 0.66);
+  const from = start.position.clone().add(pull.clone().multiplyScalar(p));
+  const end = hoverPose(slot, 0);
+  // Rise first (clear of the shoe), then travel over to the bay.
+  const control = new THREE.Vector3(THREE.MathUtils.lerp(from.x, end.position.x, 0.3), Math.max(from.y, end.position.y) + 2.3, from.z + 0.2);
+  const a = from.clone().lerp(control, travel), b = control.clone().lerp(end.position, travel);
   const position = a.lerp(b, travel);
-  // Small settle: the card skids 0.1 further, then eases back into the bay.
-  const settle = u > 0.86 ? Math.sin(((u - 0.86) / 0.14) * Math.PI) * 0.1 : 0;
-  position.x += settle * Math.sign(end.x - start.position.x || 1) * 0.4;
-  position.y += u > 0.86 ? Math.sin(((u - 0.86) / 0.14) * Math.PI) * 0.06 : 0;
-  const spin = Math.sin(travel * Math.PI) * 0.35 * (slot - 1 || 0.6);
-  const quaternion = start.quaternion.clone().slerp(tableQuat(0), ease.inOutCubic((u - 0.1) / 0.8)).premultiply(qAxis(Y, spin));
+  // Arrive with a soft overshoot downward, then settle into the hover.
+  position.y -= u > 0.85 ? Math.sin(((u - 0.85) / 0.15) * Math.PI) * 0.12 : 0;
+  const spin = Math.sin(travel * Math.PI) * 0.15 * (slot - 1 || 0.7);
+  const quaternion = start.quaternion.clone().slerp(end.quaternion, ease.inOutCubic(travel)).premultiply(qAxis(Y, spin));
   return { position, quaternion, squash: 0 };
 }
 
 /** Flip-and-land reveal. `lifted` is the point near the camera where the card hangs and flashes. */
-export function revealPose(slot: number, t: number, lifted: THREE.Vector3, tiltToCamera: number): Pose {
+export function revealPose(slot: number, t: number, lifted: THREE.Vector3, tiltToCamera: number, from?: THREE.Vector3): Pose {
   const rest = new THREE.Vector3(SLOT_X[slot], REST_Y, 0);
+  const hover = from ?? hoverPose(slot, 0).position;
   const { liftEnd, flipStart, flipEnd, holdEnd, impact } = REVEAL;
   let position: THREE.Vector3, tilt: number, squash = 0;
   if (t < liftEnd) {
     const a = ease.outCubic(t / liftEnd);
-    position = rest.clone().lerp(lifted, a);
-    tilt = tiltToCamera * a;
+    position = hover.clone().lerp(lifted, a);
+    tilt = HOVER.tilt + (tiltToCamera - HOVER.tilt) * a;
   } else if (t < holdEnd) {
     const h = (t - liftEnd) / (holdEnd - liftEnd);
     position = lifted.clone().add(new THREE.Vector3(0, Math.sin(h * Math.PI) * 0.08, 0));
