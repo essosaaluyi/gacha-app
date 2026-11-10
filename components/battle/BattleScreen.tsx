@@ -915,6 +915,7 @@ export default function BattleScreen() {
                     // listens for the production post-win draw trigger.
                     mode={fatalModeOpeningEnabled ? fatalModeOpeningParam : null}
                     tone={fatalModeOpeningTone}
+                    warmUpReady={openingChecked && !openingActive}
                   />
                   <EnemyFatalTease
                     active={Boolean(fatalPresentation.plan?.enemy?.tease) &&

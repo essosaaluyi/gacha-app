@@ -48,6 +48,12 @@ type PlayerFatalModeOpeningInsertTestProps = {
   cardId?: "R4";
   mode: PlayerFatalModeOpeningInsertMode;
   tone?: PlayerFatalModeOpeningInsertTone;
+  /**
+   * False while the battle opening video is still loading or playing. The
+   * 62 MB frame warm-up waits for it so the two do not compete for bandwidth.
+   * A trigger before then still loads the frames on demand.
+   */
+  warmUpReady?: boolean;
 };
 
 const framePath = (index: number) =>
@@ -58,7 +64,7 @@ const framePath = (index: number) =>
  *
  * The sequence is ~61MB of full-screen RGBA, far too much to fetch at the
  * moment the insert fires — the beat would arrive late every time. So it is
- * warmed once in the background when the battle screen mounts and reused for
+ * warmed once in the background after the battle opening and reused for
  * every later trigger. The promise is the lock: concurrent callers await the
  * same warm-up rather than starting a second one.
  */
@@ -89,6 +95,7 @@ function loadFrames() {
 
 export default function PlayerFatalModeOpeningInsertTest({
   mode,
+  warmUpReady = true,
 }: PlayerFatalModeOpeningInsertTestProps) {
   const [runId, setRunId] = useState(0);
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -103,13 +110,14 @@ export default function PlayerFatalModeOpeningInsertTest({
     });
   }, []);
 
-  // Warm the sequence as soon as the battle screen is up, so the insert is
+  // Warm the sequence once the battle opening has finished, so the insert is
   // instant whenever it is eventually won.
   useEffect(() => {
+    if (!warmUpReady) return;
     loadFrames().catch((error) => {
       console.warn("Fatal-mode insert preload failed:", error);
     });
-  }, []);
+  }, [warmUpReady]);
 
   const active = mode === null ? productionState.active : previewVisible;
   const runKey = mode === null ? productionState.key : runId;
