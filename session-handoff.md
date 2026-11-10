@@ -1,5 +1,21 @@
 # Session Handoff
 
+新しい記録は一番上に追加すること。
+
+### YYYY-MM-DD ／ 担当：Codex または Claude ／ ブランチ：
+- やったこと：
+- 変更したファイル：
+- 動作確認：
+- 未完了・既知の問題：
+- 次の担当への依頼：
+
+### 2026-11-10 ／ 担当：Codex ／ ブランチ：main
+- やったこと：Codex と Claude の共通ルールを AGENTS.md に集約し、Claude.md から参照する方針を追加。`docs/project-readme` は README のみの変更（1コミット）で、origin/main と競合しないことを確認。ブランチのマージ・push は未確認。
+- 変更したファイル：AGENTS.md、CLAUDE.md、session-handoff.md
+- 動作確認：文書差分を確認。コードのテスト・ビルドは未実施（文書のみ）。
+- 未完了・既知の問題：未完了。今回の文書変更および README ブランチのマージ・push は未確認。
+- 次の担当への依頼：Claude は初回作業時に AGENTS.md の内容を確認すること。
+
 Updated: 2026-11-09 (Asia/Tokyo)
 
 ## Current brief

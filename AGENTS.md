@@ -4,6 +4,28 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+## プロジェクト概要
+- Webブラウザで遊べるガチャゲーム。技術構成は Next.js / React、PixiJS。3D 表現には Three.js も使用する。
+- 主な構成：`app/` はページ、`components/` は UI、`lib/` はゲームロジック・状態・描画、`public/` は画像・動画・音声、`game-config/` は設定元、`tools/` と `scripts/` は補助処理。
+- 開発サーバー：`npm run dev`。ビルド：`npm run build`（`package.json` で確認）。
+
+## Codex / Claude の担当
+- Codex：キャラクター・UI・エフェクト等の画像素材の生成と組み込み、3D 表現、アニメーション、ガチャ・バトル演出など見た目に関わる調整。
+- Claude：ガチャ抽選・戦闘・状態管理などのゲームロジック、確率・ステータス・バランスのデータ設計、アセット読み込み・テクスチャ・描画の最適化、リファクタリング・設計見直し・コードレビュー。
+- 担当外の作業が必要なら大きく変更せず、`session-handoff.md` の「次の担当への依頼」に記録する。相手の担当範囲を変更した場合は理由を同ファイルに記録する。既存の専門役の担当も尊重し、必要なら所有者間で調整する。
+
+## 作業開始
+1. 変更を始める前に作業ツリーを確認する。未コミット変更を保全し、許可なく破棄・退避しない。
+2. `git fetch origin` と `git pull --ff-only origin main` で `main` を同期する。同期できない場合は停止して報告する。
+3. `main` に未統合の `claude/`・`codex/` 等のブランチを確認する。引き継ぎと差分を調べ、内容が安全で独立している場合のみ統合する。競合・不明点・未コミット作業がある場合はマージせず所有者に報告する。
+4. `session-handoff.md` 冒頭の最新記録を読んでから作業する。
+
+## 作業中・終了時
+- 1タスクごとにコミットする。素材は既存の配置・命名規則に従い、PSD 等の制作データは Git に含めない。
+- `outputs/` は Git 管理外。必要な検証結果は `session-handoff.md` に要約する。
+- 可能なら `main` にコミットして push する。別ブランチの場合はブランチ名を引き継ぎに記録する。
+- 作業ごとに `session-handoff.md` の先頭へ記録を追加し、同記録もコミット・push する。未完了・既知の不具合・未実施の確認は隠さず、「未確認」と明記する。
+
 ## Shared Preview Source Of Truth
 
 - Canonical workspace: `C:\Users\essos\Desktop\gacha-app`.

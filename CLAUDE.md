@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Gacha Battle App
 
 ## Shared cross-tool handoff
