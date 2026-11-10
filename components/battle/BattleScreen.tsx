@@ -1195,7 +1195,7 @@ export default function BattleScreen() {
               }`}
             >
               <video
-                src="/videos/openings/battle-opening.mp4"
+                src="/videos/openings/battle-opening.v2.mp4"
                 autoPlay
                 muted
                 playsInline

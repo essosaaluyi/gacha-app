@@ -51,32 +51,32 @@ export function chooseRevealVideoFromSettings(
 
   if (hasUR) {
     return weightedPick([
-      { video: "/videos/standard.mp4", weight: settings.reveal_ur_standard ?? 20 },
-      { video: "/videos/standard2.mp4", weight: settings.reveal_ur_standard2 ?? 15 },
-      { video: "/videos/SSR.mp4", weight: settings.reveal_ur_ssr ?? 15 },
-      { video: "/videos/gacha-reveal-UR1.mp4", weight: settings.reveal_ur_ur1 ?? 37 },
-      { video: "/videos/gacha-reveal-UR2.mp4", weight: settings.reveal_ur_ur2 ?? 13 },
+      { video: "/videos/standard.v2.mp4", weight: settings.reveal_ur_standard ?? 20 },
+      { video: "/videos/standard2.v2.mp4", weight: settings.reveal_ur_standard2 ?? 15 },
+      { video: "/videos/SSR.v2.mp4", weight: settings.reveal_ur_ssr ?? 15 },
+      { video: "/videos/gacha-reveal-UR1.v2.mp4", weight: settings.reveal_ur_ur1 ?? 37 },
+      { video: "/videos/gacha-reveal-UR2.v2.mp4", weight: settings.reveal_ur_ur2 ?? 13 },
     ]);
   }
 
   if (hasSSR) {
     return weightedPick([
-      { video: "/videos/standard.mp4", weight: settings.reveal_ssr_standard ?? 35 },
-      { video: "/videos/standard2.mp4", weight: settings.reveal_ssr_standard2 ?? 25 },
-      { video: "/videos/SSR.mp4", weight: settings.reveal_ssr_ssr ?? 40 },
+      { video: "/videos/standard.v2.mp4", weight: settings.reveal_ssr_standard ?? 35 },
+      { video: "/videos/standard2.v2.mp4", weight: settings.reveal_ssr_standard2 ?? 25 },
+      { video: "/videos/SSR.v2.mp4", weight: settings.reveal_ssr_ssr ?? 40 },
     ]);
   }
 
   if (srOrHigherCount >= 3) {
     return weightedPick([
-      { video: "/videos/standard.mp4", weight: settings.reveal_sr3_standard ?? 40 },
-      { video: "/videos/standard2.mp4", weight: settings.reveal_sr3_standard2 ?? 60 },
+      { video: "/videos/standard.v2.mp4", weight: settings.reveal_sr3_standard ?? 40 },
+      { video: "/videos/standard2.v2.mp4", weight: settings.reveal_sr3_standard2 ?? 60 },
     ]);
   }
 
   return weightedPick([
-    { video: "/videos/standard.mp4", weight: settings.reveal_default_standard ?? 80 },
-    { video: "/videos/standard2.mp4", weight: settings.reveal_default_standard2 ?? 20 },
+    { video: "/videos/standard.v2.mp4", weight: settings.reveal_default_standard ?? 80 },
+    { video: "/videos/standard2.v2.mp4", weight: settings.reveal_default_standard2 ?? 20 },
   ]);
 }
 

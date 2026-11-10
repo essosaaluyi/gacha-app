@@ -1,7 +1,7 @@
-// Most draws without SR+ play standard.mp4, so it is the only video warmed on
+// Most draws without SR+ play standard.v2.mp4, so it is the only video warmed on
 // page open. The other reveal videos are fetched once a pull has chosen one;
 // warming all six on open downloaded about 95 MB before the player pressed anything.
-const likelyRevealVideo = "/videos/standard.mp4";
+const likelyRevealVideo = "/videos/standard.v2.mp4";
 export const FREEZE_REVEAL_VIDEO = "/videos/freeze.mp4";
 
 const preloadedVideos = new Map<string, HTMLVideoElement>();

@@ -45,7 +45,7 @@ export default function GachaPage() {
   const [message, setMessage] = useState("");
   const [isRevealing, setIsRevealing] = useState(false);
   const [pullCount, setPullCount] = useState(5);
-  const [revealVideo, setRevealVideo] = useState("/videos/standard.mp4");
+  const [revealVideo, setRevealVideo] = useState("/videos/standard.v2.mp4");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [, setPoints] = useState<number>(0);
   const [, setEmail] = useState<string | null>(null);
