@@ -9,6 +9,38 @@
 - 未完了・既知の問題：
 - 次の担当への依頼：
 
+### 2026-11-10 ／ 担当：Claude（Sora＝リーダー、Haku・Kura・Hayate） ／ ブランチ：main
+- やったこと：ファイル整理の第1〜第3段階。Sora が準備（main の同期、作業ツリーが clean であることの確認、標準の `git gc`、.next の削除）と移動リストの作成を行い、3エージェントが並列で作業した。
+  - Haku：使われていない素材を `D:\archive\gacha-app\` へ移動（ファイル794件＋フォルダ7件、1,794,552,439 バイト）。
+  - Kura：WebP 版が使われている PNG/JPG 原本839件を `D:\asset-sources\gacha-app\` へ移動（1,885,314,365 バイト）。`tools/optimize-png-assets.py` を、新しい原本の場所から読むよう更新。
+  - Hayate：ラグ要因の調査（読み取りのみ）。
+  - コードが実行時に `.png` パスを組み立てるフォルダ（敵の idle 連番、points-gain、chance-reveal、fatalmode-insert、soft-edge、digits、attack-fakeout の icons、faceoffs の edited）は移動対象から外した。
+- 変更したファイル：
+  - cbb49da：Haku 分の削除995件
+  - 6bd9969：Kura 分の削除839件と `tools/optimize-png-assets.py`
+  - AGENTS.md：4役の名前と担当、作業ルール3項目
+  - session-handoff.md
+  - Git 管理外の tmp、output、.tmp-video-tools、tsconfig.tsbuildinfo、.next-dev.*.log も archive へ移動した。
+- 動作確認：
+  - プロジェクトのサイズ（node_modules・.next を除く）：17.64GB → 11.92GB（12,803,584,388 バイト、約5.71GB 減）。内訳は git gc で .git が 9.03GB → 6.75GB（約2.28GB 減。tmp_obj／tmp_pack の残りは0件）、Haku 分が約1.67GB、Kura 分が約1.76GB。.next（1.44GB）は削除したあと再生成された。
+  - 両エージェントとも移動の失敗は0件。コード内に書かれた素材パス146件はすべて実在する。
+  - `npm run build` は成功。
+  - dev サーバー（:3000）で次の画面を開き、404、画像の表示失敗、動画エラーはいずれも0件。元の場所に戻したファイルはない。
+    - トップ、メニュー、ガチャ、カード一覧（inventory）、履歴
+    - ガチャ演出：/gacha-pack-preview で5枚パックを一覧表示まで
+    - バトル：safe-clear fixture で DRAW と3枚めくり（素材リクエスト106件）
+    - battle-perspective、faceoff-preview、effect-test
+- 未完了・既知の問題：
+  - 準備段階で :3000 の確認を誤り（Get-NetTCPConnection が待ち受けを返さなかった）、既存の dev サーバー（PID 37652／42408）が動いたまま .next を削除してしまった。検証のときにそのサーバーを止め、Terminal パネルのタブ「dev server :3000」で `npm.cmd run dev` を起動し直した（PowerShell の実行ポリシーで npm.ps1 が使えないため）。
+  - サーバーのログに出る「Module not found」は、古いサーバーにつながっていたブラウザのタブから届いたもの。該当ファイルはすべて存在し、新しく読み込んだ画面では再現しない。
+  - 更新した Python スクリプトは、この PC に Python がないため実行していない。
+  - chance-reveal、points-gain、ボーナス演出、Fatal インサートは実際に再生しておらず、コード上で移動対象から外したことだけを確認した。実機と本番課金のフローも未確認。
+  - 次は今回触っていない：重複ファイル830件、outputs、.claude/worktrees、BGM1/2、enemy*.png、.codex、design-source。
+- 次の担当への依頼：
+  - 原本は `D:\asset-sources\gacha-app\`、使われていない素材は `D:\archive\gacha-app\` にあり、どちらも Git 管理外。WebP を作り直すときは `GACHA_ASSET_SOURCE_ROOT` の設定を確認すること。
+  - Hayate のラグ対策案は未着手で、オーナーの判断待ち。上位の案は、敵1/2/4/6/7 の idle PNG 連番を webm にする、fatalmode の先読みを後ろにずらす、Pixi テクスチャを並列で読み込む、Cache-Control に immutable を付ける、ガチャ動画の先読みを結果の1本だけにする。
+  - 役割名の注意：リーダーの Sora は、AGENTS.md にある animation_director の Sora／ソラとは別の役割。
+
 ### 2026-11-10 ／ 担当：Claude ／ ブランチ：main
 - やったこと：外付けSSD「SSD-PUTA」（D:、NTFS、容量465.76GB、作業前の空き357.93GB）へプロジェクトをバックアップ。robocopy で `C:UsersessosDesktopgacha-app` を `D:ackupgacha-app_2026-11-10` へコピー（.git・.env.local・未追跡／Git管理外ファイル・PSD を含む。再生成できる node_modules と .next は除外）。続けてファイル整理の調査を実施（調査のみ）。
 - 変更したファイル：session-handoff.md（この記録のみ）。プロジェクトのファイルはコピー元として読んだだけで、変更・移動・削除なし。
