@@ -9,6 +9,60 @@
 - 未完了・既知の問題：
 - 次の担当への依頼：
 
+### 2026-11-10（2回目） ／ 担当：Claude（Tsukasa） ／ ブランチ：main
+- やったこと：
+  - オーナーが比較ページで確認し、次を本番に採用した。どれもファイル名に `.v2` を付けて差し替え、コードの参照も変えた。元の素材は `D:\asset-sources\gacha-app\videos\`（public と同じ構成）へ移動した。
+    - 案6：battle-opening と、ガチャ演出の動画5本（standard、standard2、SSR、gacha-reveal-UR1、gacha-reveal-UR2）を CRF 23 で再エンコードしたもの。
+    - 案7：chance-reveal の card-blue のフレームを WebP q85（透過あり）にしたもの（`card-blue000.v2.webp` など）。
+    - 案8：points-gain の 20p・30p・50p のフレームを WebP q85（透過あり）にしたもの。
+  - 案1（敵 one・two・four・six・seven の idle）と案7の UR3 は、透過 webm をやめて、WebP のスプライトシート（Pixi のテクスチャアトラス）で比較サンプルを作り直した。本番は置き換えていない。
+    - 作り方：全フレームで見えている範囲をまとめて切り抜き、4096px 以内のシートに均等に並べて、WebP q85（透過あり）にする。シートごとに TexturePacker 形式の JSON を付けた。
+    - ffmpeg で透過 WebP を作れたので、sharp は入れていない。
+  - AGENTS.md に作業ルールを2つ追加した（どちらも未記載だった）。
+    - Safari で動かない形式（透過 webm だけ、など）に依存しない。HEVC の透過は前提にしない。
+    - 素材を差し替えるときは、ファイル名にバージョンを付ける。
+  - `outputs/compression-samples/report.tsv` から、容量0の行と重複していた UR3 の行を取り除いた（22行）。
+- 変更したファイル：
+  - 3a069b2：動画6本の `.v2.mp4` と、元の mp4 の移動。参照の変更は `lib/gacha/revealLogic.ts`、`lib/gacha/revealPreload.ts`、`app/gacha/page.tsx`、`components/battle/BattleScreen.tsx`。
+  - 8a0b909：card-blue と points-gain の 720フレームを `.v2.webp` に差し替え、PNG を移動。コードは `lib/battle-pixi/state/chancePointsRevealStore.ts` と `lib/battle-pixi/state/fakeoutChanceRevealStore.ts`。fakeout の方は、WebP 版がある色だけ `.v2.webp` を使い、ほかの色は `.png` のまま動く。
+  - 99b126e：AGENTS.md
+  - e9779fb：`tools/make-spritesheet-samples.mjs`（新規）、`tools/compression-compare.html`、`tools/serve-compression-compare.mjs`、`tools/make-compression-samples.sh`
+- 動作確認：
+  - tsc は成功。テストは153件すべて成功。`npm run build` も成功。
+  - 本番に採用した素材で、public の容量は 536.0MB から 134.9MB になった（約401MB 減）。
+    - 動画：battle-opening は 38.4MB → 5.7MB、ガチャ動画5本は合計 92.0MB → 69.8MB。
+    - フレーム：card-blue は 80.8MB → 9.4MB（SSIM 0.997）、points-gain は3段階の合計で 324.8MB → 50.0MB（SSIM 0.996、30p と 50p も同じ値を実測）。
+  - dev（:3000）での表示確認：
+    - battle-opening.v2 は実際のバトル開始の流れで再生された。1920×1080、エラーなし。
+    - ガチャ動画5本の v2：ブラウザで読み込み、途中まで移動してデコードできた。長さは元と同じ。
+    - card-blue と points-gain の新しいフレーム：ゲームと同じ `new Image()` の方法で 720枚すべて読み込めた。透過は保たれていて、181枚目で止まる動きも従来どおり。
+  - スプライトシートのサンプル（SSIM は色の一致度。α誤差は透過の値のずれの最大で、255段階）：
+
+    | 対象 | 元 | シート | 参考：WebM | SSIM | α誤差 | GPU メモリ |
+    |---|---|---|---|---|---|---|
+    | 敵 one | 62.0MB | 8.0MB（5枚） | 2.1MB | 0.992 | 1 | 425 → 228MB |
+    | 敵 two | 80.6MB | 19.2MB（6枚） | 5.3MB | 0.993 | 1 | 422 → 317MB |
+    | 敵 four | 60.2MB | 10.7MB（8枚） | 2.6MB | 0.997 | 1 | 429 → 435MB |
+    | 敵 six | 51.1MB | 7.7MB（4枚） | 2.0MB | 0.991 | 1 | 429 → 185MB |
+    | 敵 seven | 53.1MB | 10.6MB（3枚） | 2.6MB | 0.993 | 1 | 418 → 182MB |
+    | UR3 | 171.2MB | 9.6MB（10枚） | MP4 1.4MB | 0.991 | 0 | 530 → 530MB |
+
+  - 読み込みとデコードにかかった時間（キャッシュなし、このPCの中で計測）：
+    - 敵：PNG 連番は 300〜400ms、シートは 166〜287ms。
+    - UR3：PNG 連番は 463ms、シートは 246ms。
+    - 20Mbps の回線を想定した転送時間は、敵が 21〜34秒 → 3〜8秒、UR3 が 72秒 → 4秒。
+  - UR3 の半透明のフェード（フレーム 32〜58、透過の最小値 171）：シートでも再現された。ffmpeg では透過の誤差が0、ブラウザのフル解像度では最大1。比較ページでも、元とシートは背景が透けて見え、MP4 は透けないことを目で確認した。
+- 未完了・既知の問題：
+  - chance-reveal と points-gain の演出は、発動が抽選しだいで、自動操作ではカードを場に出す操作も通らなかった。そのため、ゲームの中で実際に再生されるところは見ていない（新しいフレームの読み込みと透過までは確認済み）。
+  - ゲスト残高が0のため、本物のガチャからの動画再生も見ていない（動画のデコードまでは確認済み）。
+  - 既存の敵 3・5・8〜13 の idle は透過 webm だけなので、今回追加したルールに合わない。Safari では表示されない。
+  - スプライトシートでもデコード後の GPU メモリは大きい（敵1体あたり 180〜435MB）。スマートフォンでは足りなくなるおそれがある。
+  - 敵 four は見えている範囲がほぼ全面（960×928）で、切り抜いても小さくならない。
+  - 前回の記録で「`public/videos/points-gain-mp4/` はコードから参照されていない」と書いたのは誤り。キャラクター層として使われていて、数字の層だけがフレーム連番。
+- 次の担当への依頼：
+  - 案1と UR3 のシートを本番に入れるには、Pixi で再生する部品が必要になる（敵は今は DOM の img 連番か webm）。採用するかどうかはオーナーの判断待ち。
+  - 比較ページ：`node tools/serve-compression-compare.mjs` を実行し、http://127.0.0.1:3108/tools/compression-compare.html を開く。「読み込み時間を測る」ボタンで計測できる。
+
 ### 2026-11-10 ／ 担当：Claude（Tsukasa） ／ ブランチ：main
 - やったこと：
   - リーダー名を Sora から Tsukasa に変更した（animation_director の Sora／ソラはそのまま）。AGENTS.md と本ファイルで、バックスラッシュが抜けていた `D:\archive\gacha-app`・`D:\asset-sources\gacha-app` の表記も直した。
