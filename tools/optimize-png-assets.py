@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -10,6 +11,26 @@ from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_IMAGES = PROJECT_ROOT / "public" / "images"
+
+# Original PNG masters whose .webp is used by the game live outside the repo,
+# with the same relative layout. Override with GACHA_ASSET_SOURCE_ROOT.
+ASSET_SOURCE_ROOT = Path(os.environ.get("GACHA_ASSET_SOURCE_ROOT", r"D:\asset-sources\gacha-app"))
+SOURCE_IMAGES = ASSET_SOURCE_ROOT / "public" / "images"
+
+
+def image_rel(path: Path) -> Path:
+    """Path relative to public/images, whether it sits in the repo or the source root."""
+    try:
+        return path.relative_to(PUBLIC_IMAGES)
+    except ValueError:
+        return path.relative_to(SOURCE_IMAGES)
+
+
+def display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
 
 SKIP_DIR_NAMES = {
     "references",
@@ -29,7 +50,7 @@ class OptimizationProfile:
 
 
 def profile_for(path: Path) -> OptimizationProfile:
-    rel = path.relative_to(PUBLIC_IMAGES)
+    rel = image_rel(path)
     parts = rel.parts
     name = path.name.lower()
 
@@ -60,7 +81,7 @@ def profile_for(path: Path) -> OptimizationProfile:
 
 
 def should_skip(path: Path) -> bool:
-    rel = path.relative_to(PUBLIC_IMAGES)
+    rel = image_rel(path)
     parts = set(rel.parts)
     return bool(parts & SKIP_DIR_NAMES) or bool(parts & SKIP_PATH_PARTS)
 
@@ -83,7 +104,10 @@ def resize_to_fit(image: Image.Image, max_width: int | None, max_height: int | N
 
 def optimize_png(path: Path, dry_run: bool) -> dict[str, str | int | float]:
     profile = profile_for(path)
-    output = path.with_suffix(".webp")
+    # WebP output always goes to the runtime location inside public/images.
+    output = (PUBLIC_IMAGES / image_rel(path)).with_suffix(".webp")
+    if not dry_run:
+        output.parent.mkdir(parents=True, exist_ok=True)
 
     with Image.open(path) as opened:
         image = opened.convert("RGBA")
@@ -106,7 +130,7 @@ def optimize_png(path: Path, dry_run: bool) -> dict[str, str | int | float]:
     savings = 0 if not output_bytes else 1 - (output_bytes / original_bytes)
 
     return {
-        "source": str(path.relative_to(PROJECT_ROOT)),
+        "source": display_path(path),
         "output": str(output.relative_to(PROJECT_ROOT)),
         "original_mb": round(original_bytes / 1024 / 1024, 3),
         "optimized_mb": round(output_bytes / 1024 / 1024, 3),
@@ -128,7 +152,13 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    pngs = sorted(PUBLIC_IMAGES.rglob("*.png"))
+    # Repo PNGs first; masters from the external source root fill in the rest.
+    by_rel: dict[Path, Path] = {}
+    for root in (PUBLIC_IMAGES, SOURCE_IMAGES):
+        if root.is_dir():
+            for found in root.rglob("*.png"):
+                by_rel.setdefault(found.relative_to(root), found)
+    pngs = [by_rel[rel] for rel in sorted(by_rel)]
     rows = []
     skipped = []
 
