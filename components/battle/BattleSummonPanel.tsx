@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- Local cabinet card artwork already includes its frame. */
 import { useEffect, useId, useRef, useState } from "react";
-import type { KeyboardEvent, PointerEvent, RefObject } from "react";
+import type { CSSProperties, KeyboardEvent, PointerEvent, RefObject } from "react";
 import type { Card } from "@/lib/gacha/pullLogic";
 import type { BattleEnemy } from "@/lib/battle-pixi/config/enemyConfig";
 import { getPlayerCharacterName } from "@/lib/battle-pixi/config/characterNames";
@@ -196,8 +196,10 @@ function SummonHand({ enemy, cards, selectedIndex, onSelect, onSummon, disabled 
         <div className={styles.cards} ref={scroll} role="group" aria-label="召喚する手札" aria-describedby={`${id}-help`}>
           {cards.map((choice, position) => {
             const name = getPlayerCharacterName(choice.card);
+            // Fan layout: --i from the left (front card), --n total; geometry lives in the CSS.
+            const fan = { "--i": position, "--n": cards.length } as CSSProperties;
             return <button
-              key={choice.index} type="button" className={styles.card}
+              key={choice.index} type="button" className={styles.card} style={fan}
               ref={element => { if (element) cardButtons.current.set(choice.index, element); else cardButtons.current.delete(choice.index); }}
               aria-label={`手札${position + 1}、${name.label}。クリックやEnterで概要、ドラッグまたはShift+Enterで召喚を確認`}
               aria-pressed={selectedIndex === choice.index}
@@ -226,10 +228,9 @@ function SummonHand({ enemy, cards, selectedIndex, onSelect, onSummon, disabled 
             </button>;
           })}
         </div>
+        {/* The fan shows every card at once, so the old scroll arrows are gone. */}
         <div className={styles.handLabel}>
-          {cards.length > 3 && <button type="button" disabled={unavailable || displayed !== null} aria-label="前の手札を見る" onClick={() => scroll.current?.scrollBy({ left: -160 })}>←</button>}
           <h2 id={`${id}-title`}>YOUR HAND <small>{cards.length}枚</small></h2>
-          {cards.length > 3 && <button type="button" disabled={unavailable || displayed !== null} aria-label="次の手札を見る" onClick={() => scroll.current?.scrollBy({ left: 160 })}>→</button>}
         </div>
         <p id={`${id}-help`} className={styles.help}>{cards.length ? "クリックで概要 / ドラッグで召喚" : "召喚できるカードがありません"}</p>
         <p className={styles.srOnly}>EnterまたはSpaceで概要、Shift+Enterで召喚を確認。Escapeで閉じます。</p>
