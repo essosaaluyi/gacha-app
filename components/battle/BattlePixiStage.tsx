@@ -744,7 +744,7 @@ export default function BattlePixiStage({
           scaleX: surface.width / STAGE.WIDTH * 1920 / cabinetBounds.width,
           scaleY: surface.height / STAGE.HEIGHT * 1080 / cabinetBounds.height,
         } : null;
-        window.dispatchEvent(new CustomEvent("battle:cabinet-pile", { detail: { state, setCount, geometry:measuredGeometry, frontImages:currentBattleResult.cards.map(symbol=>`/images/battle-symbols/soft-edge/${symbol.toLowerCase()}.png`), handoff: sizedHandoff, phase: dealPhase, mixStartedAt, ejectStartedAt, ejectEndedAt, ejectClock } }));
+        window.dispatchEvent(new CustomEvent("battle:cabinet-pile", { detail: { state, setCount, geometry:measuredGeometry, frontImages:currentBattleResult.cards.map(symbol=>`/images/battle-symbols/soft-edge/${symbol.toLowerCase()}.webp`), handoff: sizedHandoff, phase: dealPhase, mixStartedAt, ejectStartedAt, ejectEndedAt, ejectClock } }));
       };
 
       const stage = new Container();
@@ -759,13 +759,23 @@ export default function BattlePixiStage({
       // Run state is prepared/restored by BattleScreen before this stage mounts.
       // Asset loading and Strict Mode remounts must never reset its hand/enemy.
 
-      const tableTexture = await Assets.load("/images/card-table.webp");
-      const holderTexture = await Assets.load("/images/card-holder.webp");
-      const drawButtonTexture = await Assets.load("/images/draw-button.webp");
-      // Unified card back: every surface (disk pile, table, non-cabinet mode)
-      // uses the v8 cabinet design (same 600x900 canvas as the legacy back,
-      // so every scale/position stays identical).
-      const cardBackArtTexture = await Assets.load(PLAYER_CARD_BACK_IMAGE);
+      // All eleven stage textures are requested together. Awaiting them one by
+      // one made the stage wait for eleven round trips before it could draw.
+      const symbolNames = ["Attack", "Defense", "Coin", "Reply", "Bar", "Chance", "Empty"] as const;
+      const [tableTexture, holderTexture, drawButtonTexture, cardBackArtTexture, ...symbolList] =
+        await Promise.all([
+          Assets.load("/images/card-table.webp"),
+          Assets.load("/images/card-holder.webp"),
+          Assets.load("/images/draw-button.webp"),
+          // Unified card back: every surface (disk pile, table, non-cabinet mode)
+          // uses the v8 cabinet design (same 600x900 canvas as the legacy back,
+          // so every scale/position stays identical).
+          Assets.load(PLAYER_CARD_BACK_IMAGE),
+          // Lossless WebP: the visible pixels are identical to the old PNGs.
+          ...symbolNames.map((name) =>
+            Assets.load(`/images/battle-symbols/soft-edge/${name.toLowerCase()}.webp`)
+          ),
+        ]);
 
       // The DOM disk pile (.bcab-back, 136x198) shows this art inside a 9px
       // rounded rect with a 2px --gold-deep border. Bake the identical framing
@@ -797,15 +807,9 @@ export default function BattlePixiStage({
       });
       backComposite.destroy({ children: true });
 
-      const symbolTextures = {
-        Attack: await Assets.load("/images/battle-symbols/soft-edge/attack.png"),
-        Defense: await Assets.load("/images/battle-symbols/soft-edge/defense.png"),
-        Coin: await Assets.load("/images/battle-symbols/soft-edge/coin.png"),
-        Reply: await Assets.load("/images/battle-symbols/soft-edge/reply.png"),
-        Bar: await Assets.load("/images/battle-symbols/soft-edge/bar.png"),
-        Chance: await Assets.load("/images/battle-symbols/soft-edge/chance.png"),
-        Empty: await Assets.load("/images/battle-symbols/soft-edge/empty.png"),
-      };
+      const symbolTextures = Object.fromEntries(
+        symbolNames.map((name, index) => [name, symbolList[index]])
+      ) as Record<(typeof symbolNames)[number], Texture>;
 
       // Target indicator.
       //

@@ -91,7 +91,7 @@ export function createTank(renderer: THREE.WebGLRenderer, options: { embedded?: 
   let disposed = false;
   const prepareCards = async () => {
     // These are the current Stage's lottery faces, not summon-character portraits.
-    const urls = [PLAYER_CARD_BACK_IMAGE, ...["attack", "defense", "coin", "reply", "bar", "chance", "empty"].map(n => `/images/battle-symbols/soft-edge/${n}.png`)];
+    const urls = [PLAYER_CARD_BACK_IMAGE, ...["attack", "defense", "coin", "reply", "bar", "chance", "empty"].map(n => `/images/battle-symbols/soft-edge/${n}.webp`)];
     const result = await Promise.allSettled(urls.map(load));
     if (disposed) { textures.forEach(t => t.dispose()); return; }
     if (result.some(r => r.status === "rejected")) throw new Error("カード画像を読み込めませんでした。再読み込みしてください。");
