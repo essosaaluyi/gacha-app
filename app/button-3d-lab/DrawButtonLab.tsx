@@ -42,7 +42,7 @@ export default function DrawButtonLab() {
       },
     });
     const reset = () => { clear(); setLanded(0); go("ready"); };
-    (window as unknown as { __button3d?: unknown }).__button3d = { press: b.press, setLamp: b.setLamp, reset };
+    (window as unknown as { __button3d?: unknown }).__button3d = { press: b.press, setLamp: b.setLamp, vibrate: b.vibrate, setPaused: b.setPaused, advance: b.advance, reset };
     setApi({ button: b, reset });
     return () => { clear(); b.dispose(); setApi(null); };
   }, []);
@@ -61,6 +61,7 @@ export default function DrawButtonLab() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
           <button type="button" onClick={() => api?.button.press()}>押す</button>
           <button type="button" onClick={() => api?.reset()}>リセット</button>
+          <button type="button" onClick={() => api?.button.vibrate()}>当たり確定バイブ（保管用）</button>
           <button type="button" onClick={() => { const next = !sound; setSound(next); api?.button.setSound(next); }}>効果音：{sound ? "ON" : "OFF"}</button>
         </div>
         <p style={{ margin: 0, fontSize: 12, opacity: .7, textAlign: "center" }}>
