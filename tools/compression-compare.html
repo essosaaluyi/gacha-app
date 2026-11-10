@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compression Compare</title>
+<style>
+  /* Open this file directly (file://) from tools/. It reads originals from ../public
+     and samples from ../outputs/compression-samples. Nothing is uploaded. */
+  :root { --bg: #15171c; --panel: #20232b; --text: #e8e8ea; --muted: #9aa0ab; --line: #323744; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p { color: var(--muted); margin: 0 0 16px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+  select, button, label { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  figcaption { color: var(--muted); font-size: 12px; margin-bottom: 6px; word-break: break-all; }
+  .stage { aspect-ratio: var(--ar, 1); display: grid; place-items: center; border-radius: 4px; overflow: hidden;
+           background: repeating-conic-gradient(#3a3d46 0 25%, #2a2c33 0 50%) 0 0 / 24px 24px; }
+  .stage.dark { background: #000; }
+  .stage > * { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; }
+  .zoom .stage > * { transform: scale(2.5); transform-origin: var(--zx, 50%) var(--zy, 50%); }
+</style>
+</head>
+<body>
+<h1>圧縮サンプル比較</h1>
+<p>左が本番の元素材、右が試作サンプル。同じフレームで止めて、拡大と背景切り替えで見比べる。</p>
+<div class="bar">
+  <select id="pick"></select>
+  <button id="play">再生 / 停止</button>
+  <label>フレーム <input id="frame" type="range" min="0" max="179" value="0"></label>
+  <label><input id="zoom" type="checkbox"> 2.5倍</label>
+  <label><input id="dark" type="checkbox"> 黒背景</label>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+const S = "../outputs/compression-samples/";
+const pad = (n, w) => String(n).padStart(w, "0");
+const seq = (base, prefix, w, ext) => (f) => `${base}/${prefix}${pad(f, w)}.${ext}`;
+const enemies = ["one", "two", "four", "six", "seven"];
+const sets = [
+  ...enemies.map((e) => ({ label: `敵 ${e} idle（PNG連番 → WebM）`, ar: 1, frames: 120, fps: 25,
+    a: { kind: "seq", src: seq(`../public/images/battle-characters/enemy-${e}/idle`, "", 4, "png") },
+    b: { kind: "video", src: `${S}enemy-${e}-idle.crf30.webm` } })),
+  ...["battle-opening", "standard", "standard2", "SSR", "gacha-reveal-UR1", "gacha-reveal-UR2"].map((v) => ({
+    label: `${v}（CRF 23 / 26）`, ar: 16 / 9, video: true,
+    a: { kind: "video", src: `../public/videos/${v === "battle-opening" ? "openings/" : ""}${v}.mp4` },
+    b: { kind: "video", src: `${S}${v}.crf23.mp4` }, c: { kind: "video", src: `${S}${v}.crf26.mp4` } })),
+  { label: "chance-reveal UR3（PNG連番 → MP4）", ar: 1250 / 618, frames: 180, fps: 30,
+    a: { kind: "seq", src: seq("../public/videos/chance-reveal/UR3", "crv-bg-ur3", 3, "png") },
+    b: { kind: "video", src: `${S}chance-UR3.crf23.mp4` } },
+  { label: "chance-reveal card-blue（PNG → WebP q85 / q75）", ar: 1250 / 618, frames: 180, fps: 30,
+    a: { kind: "seq", src: seq("../public/videos/chance-reveal/card-blue", "card-blue", 3, "png") },
+    b: { kind: "seq", src: seq(`${S}chance-card-blue-webp-q85`, "card-blue", 3, "webp") },
+    c: { kind: "seq", src: seq(`${S}chance-card-blue-webp-q75`, "card-blue", 3, "webp") } },
+  { label: "points-gain 20p（PNG → WebP q85 / q75）", ar: 1250 / 618, frames: 180, fps: 30,
+    a: { kind: "seq", src: seq("../public/videos/points-gain/20p", "20p", 3, "png") },
+    b: { kind: "seq", src: seq(`${S}points-gain-20p-webp-q85`, "20p", 3, "webp") },
+    c: { kind: "seq", src: seq(`${S}points-gain-20p-webp-q75`, "20p", 3, "webp") } },
+];
+const pick = document.getElementById("pick"), grid = document.getElementById("grid"), frame = document.getElementById("frame");
+sets.forEach((s, i) => pick.add(new Option(s.label, i)));
+let current, timer = 0, panes = [];
+function build() {
+  clearInterval(timer); timer = 0;
+  current = sets[pick.value];
+  grid.innerHTML = ""; panes = [];
+  frame.max = (current.frames || 300) - 1; frame.value = 0;
+  const names = { a: "元（本番）", b: "サンプル", c: "サンプル（強め）" };
+  for (const key of ["a", "b", "c"]) {
+    const p = current[key]; if (!p) continue;
+    const fig = document.createElement("figure");
+    const cap = document.createElement("figcaption");
+    const stage = document.createElement("div"); stage.className = "stage"; stage.style.setProperty("--ar", current.ar);
+    const el = document.createElement(p.kind === "video" ? "video" : "img");
+    if (p.kind === "video") { el.src = p.src; el.muted = true; el.playsInline = true; el.preload = "auto"; }
+    cap.textContent = `${names[key]} — ${p.kind === "video" ? p.src : p.src(0)}`;
+    stage.append(el); fig.append(cap, stage); grid.append(fig);
+    panes.push({ p, el });
+  }
+  show(0);
+}
+function show(f) {
+  for (const { p, el } of panes) {
+    if (p.kind === "video") { const fps = current.fps || 30; el.currentTime = current.video ? (f / (frame.max || 1)) * (el.duration || 0) : f / fps; }
+    else el.src = p.src(f);
+  }
+}
+frame.oninput = () => show(+frame.value);
+pick.onchange = build;
+document.getElementById("play").onclick = () => {
+  if (timer) { clearInterval(timer); timer = 0; return; }
+  timer = setInterval(() => { frame.value = (+frame.value + 1) % (+frame.max + 1); show(+frame.value); }, 1000 / (current.fps || 30));
+};
+document.getElementById("zoom").onchange = (e) => document.body.classList.toggle("zoom", e.target.checked);
+document.getElementById("dark").onchange = (e) => document.querySelectorAll(".stage").forEach((s) => s.classList.toggle("dark", e.target.checked));
+grid.addEventListener("mousemove", (e) => {
+  const st = e.target.closest(".stage"); if (!st) return;
+  const r = st.getBoundingClientRect();
+  document.body.style.setProperty("--zx", `${((e.clientX - r.left) / r.width) * 100}%`);
+  document.body.style.setProperty("--zy", `${((e.clientY - r.top) / r.height) * 100}%`);
+});
+build();
+</script>
+</body>
+</html>
