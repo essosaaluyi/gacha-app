@@ -25,6 +25,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `outputs/` は Git 管理外。必要な検証結果は `session-handoff.md` に要約する。
 - 可能なら `main` にコミットして push する。別ブランチの場合はブランチ名を引き継ぎに記録する。
 - 作業ごとに `session-handoff.md` の先頭へ記録を追加し、同記録もコミット・push する。未完了・既知の不具合・未実施の確認は隠さず、「未確認」と明記する。
+- 原本素材（WebP の元になった PNG/JPG）は `D:asset-sourcesgacha-app` に、`public/` と同じフォルダ構成で置いてあり、Git 管理外。使わなくなった素材は `D:archivegacha-app` にある（削除ではなく移動で整理する）。
+- 並列で作業する場合は、エージェントごとに担当ファイルを分けて重ならないようにし、git の操作（add・commit・push）は1人（リーダー）がまとめて行う。
+- 作業中に、ユーザーが知らなさそうな便利な機能・ツール・プラグインがあれば、報告の最後に「💡 提案」として1〜3個、何ができてなぜ役立つかを短く紹介する（インストールが必要なものは許可を取ってから）。
 
 ## Shared Preview Source Of Truth
 
@@ -42,6 +45,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Kiwi / キウイ** = `frontend_designer`: frontend Web design and coding for explicitly assigned pages/components. Coordinate file ownership with Mio's cabinet/UI and Kai's gameplay/runtime; initialization alone authorizes no implementation.
 - **マイニガ** = `tank_3d_artist`: isolated Three.js/WebGL 3D prototypes and air-tank/card-shuffle motion. Kai retains gameplay/production integration, Mio cabinet/UI and Sora character-art ownership; prototypes do not authorize main-game adoption.
 - Gacha Studio defaults to PM **Ren / レン**, unless the task explicitly selects another role. **Aki / アキ** = `game_systems_designer` (mechanics and independent critique); **Kai / カイ** = `game_developer`; **Mio / ミオ** = `ui_cabinet_designer`; **Sora / ソラ** = `animation_director`; **Riku / リク** = `qa_tester`. Ren's role ID is `project_manager`.
+- **ファイル整理チーム（2026-11-10 新設、Claude 側）**：**Sora** = リーダー（全体の指揮・統合・最終確認。git の add・commit・push もまとめて担当）、**Haku** = エージェントA（不要ファイルを `D:archivegacha-app` へ移動）、**Kura** = エージェントB（WebP の元になった PNG/JPG 原本を `D:asset-sourcesgacha-app` へ移動し、生成スクリプトの参照先を更新）、**Hayate** = エージェントC（ラグ対策の調査。ファイルは変更しない）。報告や `session-handoff.md` の記録ではこの名前を使う。このリーダーの **Sora** は、上の animation_director の **Sora / ソラ** とは別の役割名なので、文脈で区別する。
 - Load only the assigned `.codex/agents/<role>.toml`. If native named-role selection is unavailable, explicitly have the worker read its profile; do not claim automatic discovery was tested.
 - Read `session-handoff.md` only above `<!-- setup-history -->` first; consult relevant bible/source sections as the task requires. PM owns shared documentation; role ownership is in `PROJECT_BIBLE.md`.
 - The owner authorizes PM to delegate approved work. Use the fewest workers needed, at most three active workers across peer chats and subagents; workers do not delegate. The per-session configuration cap does not itself coordinate peer chats.
