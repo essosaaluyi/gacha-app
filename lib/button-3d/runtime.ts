@@ -3,8 +3,8 @@ import { playSfx, type SfxName } from "@/lib/audio/sfxStore";
 
 /**
  * Real three.js arcade push button: dark metal bezel, lamp ring, violet collar,
- * LED dot diffuser and a clear acrylic dome with "DRAW" printed on its surface.
- * Lamp: gray (ready) → sky (card set, waiting for the next press) → off.
+ * LED dot plate with "DRAW" engraved into it, seen through a clear acrylic dome.
+ * Lamp: gray (ready) → sky (card set, waiting for the next press) → off (dealing) → gray after the last card lands.
  */
 export type LampState = "gray" | "sky" | "off";
 export type DrawButton3D = {
@@ -38,8 +38,7 @@ function tex(c: HTMLCanvasElement, srgb = true) {
 }
 
 /** Hex grid of LED dots, brighter toward the centre (emissive) or as a dark base map. */
-function dotTexture(emissive: boolean) {
-  const S = 1024, { c, g } = canvas(S, S);
+function drawDots(g: CanvasRenderingContext2D, S: number, emissive: boolean) {
   g.fillStyle = emissive ? "#000" : "#0b1428"; g.fillRect(0, 0, S, S);
   const step = 15, r = 3.6;
   for (let row = 0, y = 0; y < S + step; row++, y += step * 0.866) {
@@ -55,8 +54,56 @@ function dotTexture(emissive: boolean) {
     const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
     grad.addColorStop(0, "rgba(255,255,255,0.25)"); grad.addColorStop(0.6, "rgba(255,255,255,0.08)"); grad.addColorStop(1, "rgba(255,255,255,0)");
     g.globalCompositeOperation = "lighter"; g.fillStyle = grad; g.fillRect(0, 0, S, S);
+    g.globalCompositeOperation = "source-over";
   }
-  return tex(c, !emissive);
+}
+
+/**
+ * LED plate with the label engraved (cut into the flat plate, not printed on the dome).
+ * Returns colour, emissive and tangent-space normal maps built from one letter mask:
+ * the cut floor is frosted, the cut walls shade via the normal map and catch the lamp (edge-lit acrylic).
+ */
+function engravedPlate(label: string) {
+  const S = 1024;
+  const mask = canvas(S, S);
+  mask.g.fillStyle = "#000"; mask.g.fillRect(0, 0, S, S);
+  mask.g.textAlign = "center"; mask.g.textBaseline = "middle";
+  const font = (s: number) => `900 ${s}px "Arial Black", "Segoe UI", Arial, sans-serif`;
+  let size = 250; mask.g.font = font(size);
+  while (mask.g.measureText(label).width > S * 0.62 && size > 60) { size -= 6; mask.g.font = font(size); }
+  mask.g.fillStyle = "#fff"; mask.g.fillText(label, S / 2, S * 0.55); // a little toward the player
+  const hard = mask.g.getImageData(0, 0, S, S).data;
+  const bevel = canvas(S, S);
+  bevel.g.filter = "blur(2px)"; bevel.g.drawImage(mask.c, 0, 0);
+  const softMask = bevel.g.getImageData(0, 0, S, S).data;
+  const height = new Float32Array(S * S);
+  for (let i = 0; i < S * S; i++) height[i] = 1 - softMask[i * 4] / 255; // 1 = plate top, 0 = bottom of the cut
+
+  const col = canvas(S, S), emi = canvas(S, S), nor = canvas(S, S);
+  drawDots(col.g, S, false); drawDots(emi.g, S, true);
+  const cImg = col.g.getImageData(0, 0, S, S), eImg = emi.g.getImageData(0, 0, S, S), nImg = nor.g.createImageData(S, S);
+  const floor = [26, 36, 62], strength = 7;
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const i = y * S + x, p = i * 4;
+      const hx = height[y * S + Math.min(S - 1, x + 1)] - height[y * S + Math.max(0, x - 1)];
+      const hy = height[Math.min(S - 1, y + 1) * S + x] - height[Math.max(0, y - 1) * S + x];
+      // Canvas y runs down while texture v runs up (flipY), hence the sign on ny.
+      let nx = -hx * strength, ny = hy * strength, nz = 1; const len = Math.hypot(nx, ny, nz); nx /= len; ny /= len; nz /= len;
+      nImg.data[p] = (nx * 0.5 + 0.5) * 255; nImg.data[p + 1] = (ny * 0.5 + 0.5) * 255; nImg.data[p + 2] = (nz * 0.5 + 0.5) * 255; nImg.data[p + 3] = 255;
+      const m = hard[p] / 255, edge = Math.min(1, Math.hypot(hx, hy) * 3);
+      // Seen from the player's side (canvas bottom), the near lip hides the floor next to it (shadow band)
+      // while the far wall of each cut faces the camera and catches the lamp (bright band).
+      const under = (dy: number) => hard[(Math.min(S - 1, Math.max(0, y + dy)) * S + x) * 4] / 255;
+      const shade = m * Math.max(1 - under(9), 0.6 * (1 - under(18))), wall = m * (1 - under(-8));
+      for (let k = 0; k < 3; k++) {
+        cImg.data[p + k] = (cImg.data[p + k] * (1 - m) + floor[k] * m) * (1 - 0.45 * edge * m) * (1 - 0.85 * shade) + 110 * wall * (1 - shade);
+        eImg.data[p + k] = Math.min(255, eImg.data[p + k] * (1 - m) + 255 * (0.16 * m * (1 - 0.9 * shade) + 0.25 * edge * m + 0.85 * wall * (1 - shade)));
+      }
+    }
+  }
+  col.g.putImageData(cImg, 0, 0); emi.g.putImageData(eImg, 0, 0); nor.g.putImageData(nImg, 0, 0);
+  return { map: tex(col.c), emissiveMap: tex(emi.c, false), normalMap: tex(nor.c, false) };
 }
 
 /** Collar: violet → pink plastic, with a bright lamp band along the bottom (emissive). */
@@ -71,21 +118,6 @@ function collarTexture(emissive: boolean) {
   }
   g.fillStyle = grad; g.fillRect(0, 0, 8, 256);
   return tex(c, !emissive);
-}
-
-function labelTexture(label: string) {
-  const S = 1024, { c, g } = canvas(S, S);
-  g.textAlign = "center"; g.textBaseline = "middle";
-  let size = 250;
-  const font = (s: number) => `900 ${s}px "Arial Black", "Segoe UI", Arial, sans-serif`;
-  g.font = font(size);
-  while (g.measureText(label).width > S * 0.56 && size > 60) { size -= 6; g.font = font(size); }
-  // Printed slightly toward the player (lower half of the top view) so it sits mid-dome on screen.
-  const y = S * 0.6;
-  g.lineJoin = "round"; g.lineWidth = size * 0.07; g.strokeStyle = "rgba(10,40,80,0.55)";
-  g.strokeText(label, S / 2, y);
-  g.fillStyle = "#ffffff"; g.fillText(label, S / 2, y);
-  return tex(c);
 }
 
 function radialTexture(stops: [number, string][]) {
@@ -115,6 +147,7 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
   renderer.setClearColor(0x000000, 0);
+  renderer.transmissionResolutionScale = 1; // full-res refraction so the engraving under the dome stays sharp
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.domElement.style.cssText = "display:block;width:100%;height:100%;touch-action:manipulation";
   host.appendChild(renderer.domElement);
@@ -149,25 +182,32 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
 
   // ── Soft contact shadow (the page behind the transparent canvas is the cabinet panel).
   const shadowTex = own(radialTexture([[0, "rgba(0,0,0,0.85)"], [0.55, "rgba(0,0,0,0.5)"], [1, "rgba(0,0,0,0)"]]));
-  const shadow = new THREE.Mesh(own(new THREE.PlaneGeometry(3.6, 3.6)), own(new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })));
+  const shadow = new THREE.Mesh(own(new THREE.PlaneGeometry(3.3, 3.3)), own(new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.003; scene.add(shadow);
 
-  // ── Bezel (lathe profile: inner wall, rounded lip, outer skirt).
-  const profile = [[1.035, 0.04], [1.035, 0.17], [1.06, 0.205], [1.12, 0.228], [1.22, 0.228], [1.3, 0.205], [1.35, 0.15], [1.375, 0.06], [1.38, 0]]
-    .map(([x, y]) => new THREE.Vector2(x, y));
-  const bezelMat = own(new THREE.MeshPhysicalMaterial({ color: "#0c1630", metalness: 0.6, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.07 }));
-  scene.add(new THREE.Mesh(own(new THREE.LatheGeometry(profile, 160)), bezelMat));
+  // ── Bezel: one lathe per face so every edge is a hard, crisp circle (no smoothed-over lip).
+  const profile = [[1.035, 0.04], [1.035, 0.19], [1.065, 0.222], [1.3, 0.222], [1.34, 0.185], [1.36, 0]];
+  const bezelMat = own(new THREE.MeshPhysicalMaterial({ color: "#0c1630", metalness: 0.65, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.04 }));
+  for (let i = 0; i < profile.length - 1; i++) {
+    const face = [profile[i], profile[i + 1]].map(([x, y]) => new THREE.Vector2(x, y));
+    scene.add(new THREE.Mesh(own(new THREE.LatheGeometry(face, 200)), bezelMat));
+  }
   const well = new THREE.Mesh(own(new THREE.CircleGeometry(1.04, 96)), own(new THREE.MeshStandardMaterial({ color: "#05080f", roughness: 0.8 })));
   well.rotation.x = -Math.PI / 2; well.position.y = 0.04; scene.add(well);
+  // Polished metal trim on both bezel edges: sharp highlight lines that define the circle.
+  const trimMat = own(new THREE.MeshStandardMaterial({ color: "#c8d3e6", metalness: 1, roughness: 0.12 }));
+  for (const [r, y, t] of [[1.302, 0.218, 0.011], [1.05, 0.212, 0.009]]) {
+    const trim = new THREE.Mesh(own(new THREE.TorusGeometry(r, t, 12, 220)), trimMat);
+    trim.rotation.x = Math.PI / 2; trim.position.y = y; scene.add(trim);
+  }
 
-  // Lamp ring sunk into the bezel lip + light leaking out of the gap around the collar.
+  // Lamp ring set in a dark groove on the bezel top (no blur halo: a clean, solid ring of light).
+  const groove = new THREE.Mesh(own(new THREE.RingGeometry(1.125, 1.215, 200)), own(new THREE.MeshStandardMaterial({ color: "#03060c", roughness: 0.6 })));
+  groove.rotation.x = -Math.PI / 2; groove.position.y = 0.2225; scene.add(groove);
   const ringMat = own(new THREE.MeshStandardMaterial({ color: "#1a2433", roughness: 0.25, metalness: 0.1, emissive: "#000000", emissiveIntensity: 1.25 }));
-  const ring = new THREE.Mesh(own(new THREE.TorusGeometry(1.17, 0.024, 20, 200)), ringMat);
-  ring.rotation.x = Math.PI / 2; ring.position.y = 0.226; scene.add(ring);
-  const glowTex = own(radialTexture([[0, "rgba(255,255,255,0)"], [0.7, "rgba(255,255,255,0)"], [0.82, "rgba(255,255,255,0.9)"], [0.86, "rgba(255,255,255,0.35)"], [1, "rgba(255,255,255,0)"]]));
+  const ring = new THREE.Mesh(own(new THREE.TorusGeometry(1.17, 0.028, 20, 220)), ringMat);
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.216; scene.add(ring);
   const additive = (map: THREE.Texture) => own(new THREE.MeshBasicMaterial({ map, color: "#000000", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
-  const halo = new THREE.Mesh(own(new THREE.PlaneGeometry(2.86, 2.86)), additive(glowTex));
-  halo.rotation.x = -Math.PI / 2; halo.position.y = 0.232; scene.add(halo);
   const gapMat = own(new THREE.MeshBasicMaterial({ color: "#000000", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, side: THREE.DoubleSide }));
   const gap = new THREE.Mesh(own(new THREE.RingGeometry(0.99, 1.035, 128)), gapMat);
   gap.rotation.x = -Math.PI / 2; gap.position.y = 0.2; scene.add(gap);
@@ -177,26 +217,23 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   const collarMat = own(new THREE.MeshPhysicalMaterial({ map: own(collarTexture(false)), emissiveMap: own(collarTexture(true)), emissive: "#000000", emissiveIntensity: 1.6, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.05 }));
   const collar = new THREE.Mesh(own(new THREE.CylinderGeometry(DOME.base, DOME.base, DOME.seat, 160, 1, true)), collarMat);
   collar.position.y = DOME.seat / 2; cap.add(collar);
-  const plateMat = own(new THREE.MeshStandardMaterial({ map: own(dotTexture(false)), emissiveMap: own(dotTexture(true)), emissive: "#000000", emissiveIntensity: 1.2, roughness: 0.55, metalness: 0.1 }));
+  const plateMaps = engravedPlate(options.label ?? "DRAW");
+  const plateMat = own(new THREE.MeshStandardMaterial({
+    map: own(plateMaps.map), emissiveMap: own(plateMaps.emissiveMap), normalMap: own(plateMaps.normalMap), normalScale: new THREE.Vector2(1.4, 1.4),
+    emissive: "#000000", emissiveIntensity: 1.2, roughness: 0.42, metalness: 0.1,
+  }));
   const plate = new THREE.Mesh(own(new THREE.CircleGeometry(DOME.base - 0.005, 128)), plateMat);
   plate.rotation.x = -Math.PI / 2; plate.position.y = DOME.seat - 0.04; cap.add(plate);
 
   const R = (DOME.base ** 2 + DOME.height ** 2) / (2 * DOME.height);
   const domeY = DOME.seat + DOME.height - R;
   const domeMat = own(new THREE.MeshPhysicalMaterial({
-    color: "#ffffff", metalness: 0, roughness: 0.04, transmission: 1, thickness: 0.45, ior: 1.49,
+    color: "#ffffff", metalness: 0, roughness: 0.04, transmission: 1, thickness: 0.22, ior: 1.49,
     attenuationColor: new THREE.Color("#e4f4ff"), attenuationDistance: 3, clearcoat: 1, clearcoatRoughness: 0.02,
     specularIntensity: 1, envMapIntensity: 1.25,
   }));
   const dome = new THREE.Mesh(own(capGeometry(R, DOME.base)), domeMat);
   dome.position.y = domeY; cap.add(dome);
-  const labelTex = own(labelTexture(options.label ?? "DRAW"));
-  const labelMat = own(new THREE.MeshPhysicalMaterial({
-    map: labelTex, transparent: true, depthWrite: false, roughness: 0.35, clearcoat: 0.6,
-    emissive: "#ffffff", emissiveMap: labelTex, emissiveIntensity: 0.2, polygonOffset: true, polygonOffsetFactor: -2,
-  }));
-  const label = new THREE.Mesh(own(capGeometry(R + 0.004, DOME.base)), labelMat);
-  label.position.y = domeY; cap.add(label);
   const inner = new THREE.PointLight("#ffffff", 0, 3.2, 1.6); inner.position.y = DOME.seat + 0.12; cap.add(inner);
   const coreTex = own(radialTexture([[0, "rgba(255,255,255,0.8)"], [0.4, "rgba(255,255,255,0.25)"], [1, "rgba(255,255,255,0)"]]));
   const core = new THREE.Mesh(own(new THREE.CircleGeometry(0.95, 64)), additive(coreTex));
@@ -212,14 +249,11 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
     const p = lampPower * (1 + 0.18 * hover) + flash * (lampPower > 0.05 ? 0.9 : 0);
     lit.copy(lampColor).multiplyScalar(p);
     ringMat.emissive.copy(lit); ringMat.color.copy(dark).lerp(tmp.copy(lampColor), Math.min(1, lampPower));
-    halo.material.color.copy(lit).multiplyScalar(0.55);
     gapMat.color.copy(lit).multiplyScalar(0.6);
     collarMat.emissive.copy(lit).multiplyScalar(0.3);
     plateMat.emissive.copy(lit).multiplyScalar(0.85);
     core.material.color.copy(lit).multiplyScalar(0.28);
     inner.color.copy(lampColor); inner.intensity = p * 2.2;
-    // The print catches the lamp from below: white ink tinted by the lamp, dim when off.
-    labelMat.emissive.copy(tmp.set("#ffffff").lerp(lampColor, 0.35)); labelMat.emissiveIntensity = 0.04 + 0.5 * Math.min(1.4, p);
   }
 
   // ── Interaction ─────────────────────────────────────────────────────

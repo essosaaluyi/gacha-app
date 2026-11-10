@@ -3,34 +3,48 @@
 import { useEffect, useRef, useState } from "react";
 import { mountDrawButton3D, type DrawButton3D, type LampState } from "@/lib/button-3d/runtime";
 
-const LABEL: Record<LampState, string> = {
-  gray: "グレー（待機中：押すとカードをセット）",
-  sky: "スカイブルー（カードセット済み：次の押下待ち）",
-  off: "消灯（ドロー済み）",
+type Phase = "ready" | "set" | "dealing";
+const LABEL: Record<Phase, string> = {
+  ready: "グレー（待機中：押すとカードをセット）",
+  set: "スカイブルー（カードセット済み：次の押下待ち）",
+  dealing: "消灯（カードを展開中）",
 };
+const LAMP: Record<Phase, LampState> = { ready: "gray", set: "sky", dealing: "off" };
+/** Simulated landing times after the second press (ms); the real game will call this on its own last landing. */
+const LANDINGS = [900, 1500, 2100];
 
 export default function DrawButtonLab() {
   const host = useRef<HTMLDivElement>(null);
-  const [button, setButton] = useState<DrawButton3D | null>(null);
-  const [lamp, setLamp] = useState<LampState>("gray");
+  const [api, setApi] = useState<{ button: DrawButton3D; reset(): void } | null>(null);
+  const [phase, setPhase] = useState<Phase>("ready");
+  const [landed, setLanded] = useState(0);
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
     if (!host.current) return;
-    let state: LampState = "gray";
-    const go = (next: LampState) => { state = next; b.setLamp(next); setLamp(next); };
-    // gray → (press: card set) → sky → (press: draw) → off. Pressing while off does nothing.
+    let state: Phase = "ready";
+    let timers: number[] = [];
+    const go = (next: Phase) => { state = next; b.setLamp(LAMP[next]); setPhase(next); };
+    const clear = () => { timers.forEach(clearTimeout); timers = []; };
+    // gray → press (card set) → sky → press (draw) → off while the cards deal → last card lands → gray.
     const b = mountDrawButton3D(host.current, {
       onPress: () => {
-        if (state === "gray") { go("sky"); return "cardSetToDisk"; }
-        if (state === "sky") { go("off"); return "drawCard"; }
-        return null;
+        if (state === "ready") { go("set"); setLanded(0); return "cardSetToDisk"; }
+        if (state === "set") {
+          go("dealing");
+          timers = LANDINGS.map((at, i) => window.setTimeout(() => {
+            setLanded(i + 1);
+            if (i === LANDINGS.length - 1) go("ready");
+          }, at));
+          return "drawCard";
+        }
+        return null; // lamp off: the button does nothing while cards are dealt
       },
     });
-    const reset = () => go("gray");
-    (window as unknown as { __button3d?: unknown }).__button3d = { press: b.press, setLamp: (s: LampState) => go(s), reset };
-    setButton({ ...b, setLamp: go });
-    return () => { b.dispose(); setButton(null); };
+    const reset = () => { clear(); setLanded(0); go("ready"); };
+    (window as unknown as { __button3d?: unknown }).__button3d = { press: b.press, setLamp: b.setLamp, reset };
+    setApi({ button: b, reset });
+    return () => { clear(); b.dispose(); setApi(null); };
   }, []);
 
   return (
@@ -38,13 +52,20 @@ export default function DrawButtonLab() {
       <div style={{ display: "grid", gap: 14, justifyItems: "center", width: "min(720px, 100%)" }}>
         <h1 style={{ margin: 0, fontSize: 18, letterSpacing: ".12em" }}>DRAW BUTTON 3D（試作）</h1>
         <div ref={host} style={{ width: "min(640px, 100%)", aspectRatio: "1 / 1" }} />
-        <p data-lamp={lamp} style={{ margin: 0, fontSize: 15 }}>ランプ：{LABEL[lamp]}</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-          <button type="button" onClick={() => button?.press()}>押す</button>
-          <button type="button" onClick={() => button?.setLamp("gray")}>リセット（グレーに戻す）</button>
-          <button type="button" onClick={() => { const next = !sound; setSound(next); button?.setSound(next); }}>効果音：{sound ? "ON" : "OFF"}</button>
+        <p data-phase={phase} style={{ margin: 0, fontSize: 15 }}>ランプ：{LABEL[phase]}</p>
+        <div aria-label="テーブルに置かれたカード" style={{ display: "flex", gap: 8 }}>
+          {LANDINGS.map((_, i) => (
+            <span key={i} style={{ width: 34, height: 48, borderRadius: 4, border: "1px solid #8aa4c8", background: i < landed ? "#cfe3ff" : "transparent", transition: "background .2s" }} />
+          ))}
         </div>
-        <p style={{ margin: 0, fontSize: 12, opacity: .7 }}>ドームをクリックしても押せます。グレー → 押す（カードセット）→ スカイブルー → 押す（ドロー）→ 消灯</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+          <button type="button" onClick={() => api?.button.press()}>押す</button>
+          <button type="button" onClick={() => api?.reset()}>リセット</button>
+          <button type="button" onClick={() => { const next = !sound; setSound(next); api?.button.setSound(next); }}>効果音：{sound ? "ON" : "OFF"}</button>
+        </div>
+        <p style={{ margin: 0, fontSize: 12, opacity: .7, textAlign: "center" }}>
+          ドームをクリックしても押せます。グレー → 押す（カードセット）→ スカイブルー → 押す（ドロー）→ 消灯して展開 → 最後のカードが置かれたらグレー
+        </p>
       </div>
     </main>
   );
