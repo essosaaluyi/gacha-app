@@ -11,8 +11,6 @@ export type SlotXZ = { x: number; z: number };
 
 export const EJECT_STAGGER_MS = 160;
 export const EJECT_MS = 340;
-export const DEAL_STAGGER_MS = 420;
-export const DEAL_MS = 1050;
 /** Reveal beats, matching the owner reference (lift → white flash → slam → impact). */
 export const REVEAL = { liftEnd: 400, flipStart: 70, flipEnd: 430, flashPeak: 430, holdEnd: 660, impact: 860, done: 1250 } as const;
 
@@ -56,37 +54,38 @@ export const outletExitDistance = (index: number) => CARD.height - OVERHANG(inde
 export const dealSlotFor = (index: number) => 2 - index;
 
 // ── Hover ──────────────────────────────────────────────────────────────
-/** After the deal, cards hover face down above their bays, tilted a little toward the player. */
-export const HOVER = { y: 0.95, z: 0.25, tilt: 0.24, bob: 0.045 } as const;
+/** After the deal, cards hover face down, lifted toward the screen centre (easier to click) and
+ * bobbing up and down on screen so they read as clickable. */
+export const HOVER = { y: 1.5, z: -1.05, pullIn: 0.86, tilt: 0.24, bob: 0.13, periodMs: 1500 } as const;
 export function hoverPose(slot: SlotXZ, slotIndex: number, sinceLanded: number): Pose {
-  const ramp = clamp01(sinceLanded / 500);
-  const bob = Math.sin(sinceLanded / 330 + slotIndex * 1.7) * HOVER.bob * ramp;
-  return { position: new THREE.Vector3(slot.x, HOVER.y + bob, slot.z + HOVER.z), quaternion: tableQuat(0, HOVER.tilt), squash: 0 };
+  const ramp = clamp01(sinceLanded / 450);
+  const wave = Math.sin((sinceLanded / HOVER.periodMs) * Math.PI * 2 + slotIndex * 2.1) * ramp;
+  // Bob mostly along the table (up/down on screen), a little toward the camera.
+  const position = new THREE.Vector3(slot.x * HOVER.pullIn, HOVER.y + wave * HOVER.bob * 0.4, slot.z + HOVER.z - wave * HOVER.bob);
+  const sway = Math.sin((sinceLanded / HOVER.periodMs) * Math.PI * 2 + slotIndex * 2.1 + 1.2) * 0.035 * ramp;
+  return { position, quaternion: tableQuat(0, HOVER.tilt + sway), squash: 0 };
 }
 
-const bezier = (p0: THREE.Vector3, p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, t: number) => {
-  const u = 1 - t;
-  return p0.clone().multiplyScalar(u * u * u).addScaledVector(p1, 3 * u * u * t).addScaledVector(p2, 3 * u * t * t).addScaledVector(p3, t * t * t);
-};
-
-/** Deal: slide straight out of the mouth, drop low over the felt (below the cards still in the
- * shoe), glide to the bay, then rise into the hover. */
-export function dealPose(start: Pose, pull: THREE.Vector3, forward: THREE.Vector3, end: Pose, t: number, spinSign: number): Pose {
-  const u = clamp01(t / DEAL_MS);
-  const PULL = 0.3;
-  if (u < PULL) {
-    const p = ease.inOutCubic(u / PULL);
-    return { position: start.position.clone().addScaledVector(pull, p), quaternion: start.quaternion.clone(), squash: 0 };
-  }
-  const v = ease.inOutCubic((u - PULL) / (1 - PULL));
-  const p0 = start.position.clone().add(pull);
-  const low = 0.16;
-  const p1 = p0.clone().addScaledVector(forward, 0.9); p1.y = low;
-  const p2 = new THREE.Vector3(end.position.x, low, end.position.z + 0.3);
-  const position = bezier(p0, p1, p2, end.position, v);
-  // Rotation: flatten while gliding, then tilt into the hover pose; a slight yaw in flight.
-  const spin = Math.sin(v * Math.PI) * 0.12 * spinSign;
-  const quaternion = start.quaternion.clone().slerp(end.quaternion, ease.inOutCubic((v - 0.15) / 0.85)).premultiply(qAxis(Y, spin));
+/** Deal path: straight out of the mouth, down below the cards still in the shoe, then one smooth
+ * sweep up into the hover. Centripetal Catmull-Rom, sampled by arc length (constant speed feel). */
+export type DealPath = { curve: THREE.CatmullRomCurve3; duration: number };
+export const DEAL_STAGGER_MS = 150;
+export function buildDealPath(start: Pose, pull: THREE.Vector3, forward: THREE.Vector3, end: Pose): DealPath {
+  const p0 = start.position.clone();
+  const exit = p0.clone().add(pull);
+  const low = exit.clone().addScaledVector(forward, 0.75); low.y = 0.2;
+  const mid = new THREE.Vector3((low.x + end.position.x) / 2, 0.55, (low.z + end.position.z) / 2 + 0.6);
+  const curve = new THREE.CatmullRomCurve3([p0, p0.clone().addScaledVector(pull, 0.55), exit, low, mid, end.position.clone()], false, "centripetal");
+  return { curve, duration: 380 + curve.getLength() * 52 };
+}
+const smooth = (t: number) => { const x = clamp01(t); return x * x * x * (x * (x * 6 - 15) + 10); };
+export function dealPose(path: DealPath, startQ: THREE.Quaternion, end: Pose, t: number, spinSign: number): Pose {
+  const u = smooth(t / path.duration);
+  const position = path.curve.getPointAt(u);
+  // Stay flat while leaving the mouth, then turn smoothly into the hover pose with a slight bank.
+  const turn = smooth((u - 0.22) / 0.78);
+  const bank = Math.sin(Math.PI * clamp01((u - 0.2) / 0.8)) * 0.14 * spinSign;
+  const quaternion = startQ.clone().slerp(end.quaternion, turn).premultiply(qAxis(Y, bank));
   return { position, quaternion, squash: 0 };
 }
 

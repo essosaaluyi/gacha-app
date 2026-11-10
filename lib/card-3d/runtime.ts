@@ -13,8 +13,8 @@ import { getCardDisplayCrop } from "@/components/gacha/pack-reveal/cardDisplayCr
 import { playSfx, type SfxName } from "@/lib/audio/sfxStore";
 import { CABINET_EJECT3D_DISTANCE, CABINET_EJECT3D_STAGE, createCabinetEject3DPlan, type CabinetEject3DGeometry } from "@/lib/battle-pixi/presentation/cabinetEject3DGeometry";
 import {
-  CARD, REST_Y, EJECT_MS, EJECT_STAGGER_MS, DEAL_MS, DEAL_STAGGER_MS, REVEAL, OUTLET, OUTLET_CARD_TILT,
-  outletLocal, outletExitDistance, dealSlotFor, dealPose, hoverPose, revealPose, revealFlash, tableQuat, type Pose, type SlotXZ,
+  CARD, REST_Y, EJECT_MS, EJECT_STAGGER_MS, DEAL_STAGGER_MS, REVEAL, OUTLET, OUTLET_CARD_TILT,
+  outletLocal, outletExitDistance, dealSlotFor, buildDealPath, dealPose, hoverPose, type DealPath, revealPose, revealFlash, tableQuat, type Pose, type SlotXZ,
 } from "./motion";
 import { bayTexture, cardHaloTexture, feltTexture, pillarTexture, radialGlowTexture, ringTexture, sparkTexture } from "./textures";
 
@@ -69,6 +69,23 @@ function cardsOverlap(a: THREE.Object3D, b: THREE.Object3D) {
   return tests.every((n) => Math.abs(d.dot(n)) <= radius(A, ea, n) + radius(B, eb, n));
 }
 
+/** Small Nelder–Mead minimiser (used once at start-up to fit landing poses). */
+function minimise(f: (x: number[]) => number, x0: number[], step: number[], iterations = 900) {
+  const n = x0.length;
+  let pts = [x0, ...x0.map((_, i) => x0.map((v, j) => (i === j ? v + step[i] : v)))].map((x) => ({ x, v: f(x) }));
+  for (let k = 0; k < iterations; k++) {
+    pts.sort((a, b) => a.v - b.v);
+    const c = Array.from({ length: n }, (_, j) => pts.slice(0, n).reduce((s, p) => s + p.x[j], 0) / n);
+    const at = (t: number) => c.map((v, j) => v + t * (pts[n].x[j] - v));
+    const r = at(-1), fr = f(r);
+    if (fr < pts[0].v) { const e = at(-2), fe = f(e); pts[n] = fe < fr ? { x: e, v: fe } : { x: r, v: fr }; }
+    else if (fr < pts[n - 1].v) pts[n] = { x: r, v: fr };
+    else { const ct = at(0.5), fc = f(ct); if (fc < pts[n].v) pts[n] = { x: ct, v: fc }; else pts = pts.map((p, i) => (i === 0 ? p : { x: p.x.map((v, j) => pts[0].x[j] + 0.5 * (v - pts[0].x[j])), v: 0 })).map((p, i) => (i === 0 ? p : { x: p.x, v: f(p.x) })); }
+  }
+  pts.sort((a, b) => a.v - b.v);
+  return pts[0];
+}
+
 export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onStats?: (s: Card3DStats) => void, layout: Card3DLayout = { mode: "lab" }): Card3DLab {
   const game = layout.mode === "game";
   const disposables: { dispose(): void }[] = [];
@@ -108,20 +125,37 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
     root.scale.setScalar(unit);
     root.position.addScaledVector(new THREE.Vector3(0, 1, 0).applyQuaternion(root.quaternion), -REST_Y * unit);
     root.updateMatrixWorld(true);
-    // Each bay centre / the outlet mouth: cast the screen point onto the table plane.
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0).applyQuaternion(root.quaternion), root.position);
-    const onTable = (x: number, y: number) => {
-      const ndc = new THREE.Vector2(x / 960 - 1, 1 - y / 540), r = new THREE.Raycaster();
-      r.setFromCamera(ndc, camera);
+    const onPlane = (x: number, y: number) => {
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0).applyQuaternion(root.quaternion), root.position);
+      const r = new THREE.Raycaster(); r.setFromCamera(new THREE.Vector2(x / 960 - 1, 1 - y / 540), camera);
       const hit = r.ray.intersectPlane(plane, new THREE.Vector3());
       return hit ? root.worldToLocal(hit) : new THREE.Vector3();
     };
-    slots = layout.geometry.bays.map((q) => { const p = onTable((q[0] + q[2] + q[4] + q[6]) / 4, (q[1] + q[3] + q[5] + q[7]) / 4); return { x: p.x, z: p.z }; });
+    const guess = layout.geometry.bays.map((q) => onPlane((q[0] + q[2] + q[4] + q[6]) / 4, (q[1] + q[3] + q[5] + q[7]) / 4));
+    // Fit ONE table plane to the three drawn slots: shared tilt/yaw/height, free bay centres.
+    // Cards then lie flat on that plane and their projected corners sit on the drawn frames.
+    const baseQ = root.quaternion.clone(), basePos = root.position.clone(), up = new THREE.Vector3(0, 1, 0).applyQuaternion(baseQ);
+    const applyRoot = (p: number[]) => {
+      root.quaternion.copy(baseQ).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(p[0], p[1], p[2])));
+      root.position.copy(basePos).addScaledVector(up, p[3] * unit); root.updateMatrixWorld(true);
+    };
+    const hw = CARD.width / 2, hh = CARD.height / 2, face = CARD.thickness / 2, flat = tableQuat(1);
+    const corners = [[-hw, hh], [hw, hh], [hw, -hh], [-hw, -hh]].map(([x, y]) => new THREE.Vector3(x, y, face).applyQuaternion(flat));
+    const bayError = (q: readonly number[], x: number, z: number) => corners.reduce((sum, c, k) => {
+      const w = root.localToWorld(c.clone().add(new THREE.Vector3(x, REST_Y, z))).project(camera);
+      return sum + ((w.x + 1) * 960 - q[k * 2]) ** 2 + ((1 - w.y) * 540 - q[k * 2 + 1]) ** 2;
+    }, 0);
+    const err = (p: number[]) => { applyRoot(p); return layout.geometry.bays.reduce((sum, q, i) => sum + bayError(q, p[4 + i * 2], p[5 + i * 2]), 0); };
+    const x0 = [0, 0, 0, 0, ...guess.flatMap((g) => [g.x, g.z])];
+    const before = Math.sqrt(err(x0) / 12);
+    const best = minimise(err, x0, [0.05, 0.03, 0.03, 0.3, ...guess.flatMap(() => [0.15, 0.15])], 4000);
+    applyRoot(best.x);
+    slots = [0, 1, 2].map((i) => ({ x: best.x[4 + i * 2], z: best.x[5 + i * 2] }));
+    host.dataset.tableFit = `corner error ${before.toFixed(1)}px -> ${Math.sqrt(best.v / 12).toFixed(2)}px (tilt ${(best.x[0] * 180 / Math.PI).toFixed(1)} deg)`;
     // The mouth is the lower edge of the cabinet outlet frame under PLAYER CARD; cards point straight at the player.
-    const m = layout.geometry.mouth, mouth = onTable(m.x, m.y - m.height * 0.17);
-    const yaw = 0;
-    outlet.rotation.set(0, yaw, 0);
-    outlet.position.set(mouth.x - Math.sin(yaw) * OUTLET.depth / 2, 0, mouth.z - Math.cos(yaw) * OUTLET.depth / 2);
+    const m = layout.geometry.mouth, mouth = onPlane(m.x, m.y - m.height * 0.17);
+    outlet.rotation.set(0, 0, 0);
+    outlet.position.set(mouth.x, 0, mouth.z - OUTLET.depth / 2);
   } else {
     outlet.position.set(-5.9, 0, 0.15); outlet.rotation.set(0, 0.62, 0);
   }
@@ -131,6 +165,9 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
   const toCam = camLocal.clone().sub(tableCentre).normalize();
   /** Tilt that turns a lifted card's face toward the camera. */
   const tiltToCamera = Math.atan2(toCam.z, toCam.y);
+
+  // Cards land flat on the (fitted) table plane, one per bay.
+  const landings = slots.map((s) => ({ position: new THREE.Vector3(s.x, REST_Y, s.z), quaternion: tableQuat(1) }));
 
   // Image-based lighting from a tiny studio (softbox + rim strips) so metal and gloss read as 3D.
   const pmrem = own(new THREE.PMREMGenerator(renderer));
@@ -253,7 +290,7 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
 
   type CardState = {
     group: THREE.Group; front: THREE.MeshPhysicalMaterial; phase: Card3DPhase; t0: number; slot: number;
-    outletPose?: Pose; pull?: THREE.Vector3; forward?: THREE.Vector3; revealFrom?: THREE.Vector3;
+    outletPose?: Pose; path?: DealPath; revealFrom?: THREE.Vector3;
     color: THREE.Color; halo: THREE.Mesh; glow: THREE.Sprite; ring: THREE.Mesh; pillar: THREE.Mesh; pillarCore: THREE.Mesh;
     sparks: THREE.Points; sparkVel: Float32Array; sparkBase: Float32Array; impactAt: number; landAt: number; queued: boolean;
   };
@@ -296,7 +333,7 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
     return { group, front, phase: "hidden" as Card3DPhase, t0: 0, slot, color, halo, glow, ring, pillar, pillarCore, sparks, sparkVel, sparkBase, impactAt: -1, landAt: -1, queued: false };
   });
 
-  const restOf = (c: CardState) => new THREE.Vector3(slots[c.slot].x, REST_Y, slots[c.slot].z);
+  const restOf = (c: CardState) => landings[c.slot].position.clone();
   // Where a card hangs during the reveal: 42% of the way to the camera, so it reads ~1.7× bigger.
   const liftedPoint = (c: CardState) => restOf(c).lerp(camLocal, 0.42);
 
@@ -319,11 +356,12 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
   const draw2 = () => {
     if (!cards.every((c) => c.phase === "outlet")) return;
     sfx("drawCard");
-    // Bottom card first; each follows only after the previous one has left the mouth.
+    // Bottom card first; the others follow right behind it like a chain.
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(outlet.quaternion);
     cards.forEach((c, i) => {
-      c.outletPose = outletPose(i, 1); c.phase = "deal"; c.t0 = simNow + i * DEAL_STAGGER_MS; c.landAt = c.t0 + DEAL_MS;
-      c.forward = new THREE.Vector3(0, 0, 1).applyQuaternion(outlet.quaternion);
-      c.pull = c.forward.clone().multiplyScalar(outletExitDistance(i));
+      c.outletPose = outletPose(i, 1); c.phase = "deal"; c.t0 = simNow + i * DEAL_STAGGER_MS;
+      c.path = buildDealPath(c.outletPose, forward.clone().multiplyScalar(outletExitDistance(i)), forward, hoverPose(slots[c.slot], c.slot, 0));
+      c.landAt = c.t0 + c.path.duration;
     });
   };
   // One card in the air at a time: a reveal waits until the previous card has landed.
@@ -364,7 +402,11 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
       c.group.updateMatrix();
       for (const x of [-hw, 0, hw]) for (const y of [-hh, 0, hh]) for (const z of [-ht, ht]) {
         const w = new THREE.Vector3(x, y, z).applyMatrix4(c.group.matrix);       // table-local
-        if (w.y < -0.002) bad.push(`card${i} ${c.phase} below table y=${w.y.toFixed(3)}`);
+        // Over a bay, the floor is that bay's own (fitted) surface; elsewhere the table plane.
+        const bay = landings.findIndex((L, k) => Math.abs(w.x - slots[k].x) < CARD.width / 2 + 0.2 && Math.abs(w.z - slots[k].z) < CARD.height / 2 + 0.2);
+        let floor = w.y;
+        if (bay >= 0) { const L = landings[bay], n = new THREE.Vector3(0, 0, 1).applyQuaternion(L.quaternion); floor = n.dot(w.clone().sub(L.position)) + CARD.thickness / 2; }
+        if (floor < -0.002) bad.push(`card${i} ${c.phase} below ${bay >= 0 ? "bay" + bay : "table"} by ${(-floor).toFixed(3)}`);
         const o = w.clone().applyMatrix4(toOutlet);
         const inside = Math.abs(o.x) < OUTLET.width / 2 + 0.04 && o.y > 0 && o.y < OUTLET.height + 0.5 * (OUTLET.depth / 2 - o.z) / OUTLET.depth + 0.04 && Math.abs(o.z) < OUTLET.depth / 2 + 0.04;
         const inMouth = Math.abs(o.x) < OUTLET.mouthHalfWidth && o.y > OUTLET.mouthY[0] && o.y < OUTLET.mouthY[1];
@@ -399,12 +441,15 @@ export function mountCard3DLab(host: HTMLElement, fronts: readonly string[], onS
         if (t >= EJECT_MS) c.phase = "outlet";
       } else if (c.phase === "outlet") apply(c, outletPose(i, 1));
       else if (c.phase === "deal") {
-        apply(c, t < 0 ? c.outletPose! : dealPose(c.outletPose!, c.pull!, c.forward!, hoverPose(s, c.slot, 0), t, c.slot - 1 || 0.7));
-        if (t >= DEAL_MS) c.phase = "table";
+        apply(c, t < 0 ? c.outletPose! : dealPose(c.path!, c.outletPose!.quaternion, hoverPose(s, c.slot, 0), t, c.slot - 1 || 0.7));
+        if (t >= c.path!.duration) c.phase = "table";
       } else if (c.phase === "table") apply(c, hoverPose(s, c.slot, simNow - c.landAt));
       else if (c.phase === "reveal" || c.phase === "faceup") {
         const rt = c.phase === "faceup" ? REVEAL.done : t;
-        apply(c, revealPose(restOf(c), c.revealFrom!, rt, liftedPoint(c), tiltToCamera, c.slot === 2 ? -1 : 1));
+        const pose = revealPose(restOf(c), c.revealFrom!, rt, liftedPoint(c), tiltToCamera, c.slot === 2 ? -1 : 1);
+        const fit = tableQuat(1).invert().multiply(landings[c.slot].quaternion);
+        pose.quaternion.multiply(new THREE.Quaternion().slerp(fit, Math.min(1, Math.max(0, (rt - REVEAL.holdEnd) / (REVEAL.impact - REVEAL.holdEnd)))));
+        apply(c, pose);
         flash = revealFlash(rt);
         if (c.phase === "reveal" && t >= REVEAL.done) c.phase = "faceup";
       }
