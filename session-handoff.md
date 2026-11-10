@@ -9,8 +9,8 @@
 - 未完了・既知の問題：
 - 次の担当への依頼：
 
-### 2026-11-10 ／ 担当：Claude（Sora＝リーダー、Haku・Kura・Hayate） ／ ブランチ：main
-- やったこと：ファイル整理の第1〜第3段階。Sora が準備（main の同期、作業ツリーが clean であることの確認、標準の `git gc`、.next の削除）と移動リストの作成を行い、3エージェントが並列で作業した。
+### 2026-11-10 ／ 担当：Claude（Tsukasa＝リーダー、Haku・Kura・Hayate） ／ ブランチ：main
+- やったこと：ファイル整理の第1〜第3段階。Tsukasa が準備（main の同期、作業ツリーが clean であることの確認、標準の `git gc`、.next の削除）と移動リストの作成を行い、3エージェントが並列で作業した。
   - Haku：使われていない素材を `D:\archive\gacha-app\` へ移動（ファイル794件＋フォルダ7件、1,794,552,439 バイト）。
   - Kura：WebP 版が使われている PNG/JPG 原本839件を `D:\asset-sources\gacha-app\` へ移動（1,885,314,365 バイト）。`tools/optimize-png-assets.py` を、新しい原本の場所から読むよう更新。
   - Hayate：ラグ要因の調査（読み取りのみ）。
@@ -39,14 +39,14 @@
 - 次の担当への依頼：
   - 原本は `D:\asset-sources\gacha-app\`、使われていない素材は `D:\archive\gacha-app\` にあり、どちらも Git 管理外。WebP を作り直すときは `GACHA_ASSET_SOURCE_ROOT` の設定を確認すること。
   - Hayate のラグ対策案は未着手で、オーナーの判断待ち。上位の案は、敵1/2/4/6/7 の idle PNG 連番を webm にする、fatalmode の先読みを後ろにずらす、Pixi テクスチャを並列で読み込む、Cache-Control に immutable を付ける、ガチャ動画の先読みを結果の1本だけにする。
-  - 役割名の注意：リーダーの Sora は、AGENTS.md にある animation_director の Sora／ソラとは別の役割。
+  - 役割名の注意：リーダーは当初 Sora と呼んでいたが、animation_director の Sora／ソラと区別するため Tsukasa に改名した。
 
 ### 2026-11-10 ／ 担当：Claude ／ ブランチ：main
 - やったこと：外付けSSD「SSD-PUTA」（D:、NTFS、容量465.76GB、作業前の空き357.93GB）へプロジェクトをバックアップ。robocopy で `C:UsersessosDesktopgacha-app` を `D:ackupgacha-app_2026-11-10` へコピー（.git・.env.local・未追跡／Git管理外ファイル・PSD を含む。再生成できる node_modules と .next は除外）。続けてファイル整理の調査を実施（調査のみ）。
 - 変更したファイル：session-handoff.md（この記録のみ）。プロジェクトのファイルはコピー元として読んだだけで、変更・移動・削除なし。
 - 動作確認：コピー元（node_modules・.next 除外）とバックアップで、ファイル数35,909／合計18,937,078,316バイト（17.64GB）が一致。robocopy の失敗0件（終了コード1＝コピー成功）。バックアップ内に .git・.env.local・PSD 1件があり、node_modules・.next がないことを確認。バックアップはコミットではなく作業ツリーの実ファイルのスナップショット。復元テストは未実施。
-- 未完了・既知の問題：整理調査の主な結果 — .git に未pack のオブジェクト7.97GBと中断した書き込みの残骸（tmp_obj／tmp_pack）870MB、public に WebP 版が使われている PNG/JPG 原本1.85GBとデザイン参考類（references・character-sheet・proposals など）1.12GB、コード参照なしの public/images/characters 303MB。outputs と .claude/worktrees は Claude の権限設定で中身を確認できず未判定。D:archivegacha-app への移動はオーナー承認待ちで未実施。`git gc` も未実施（別判断）。
-- 次の担当への依頼：整理はオーナーが承認したものだけを、削除ではなく D:archivegacha-app へ移動する。public の候補は Git 管理下なので、移動すると git 上は削除として表示される（コミットするかは別途判断）。
+- 未完了・既知の問題：整理調査の主な結果 — .git に未pack のオブジェクト7.97GBと中断した書き込みの残骸（tmp_obj／tmp_pack）870MB、public に WebP 版が使われている PNG/JPG 原本1.85GBとデザイン参考類（references・character-sheet・proposals など）1.12GB、コード参照なしの public/images/characters 303MB。outputs と .claude/worktrees は Claude の権限設定で中身を確認できず未判定。D:\archive\gacha-app への移動はオーナー承認待ちで未実施。`git gc` も未実施（別判断）。
+- 次の担当への依頼：整理はオーナーが承認したものだけを、削除ではなく D:\archive\gacha-app へ移動する。public の候補は Git 管理下なので、移動すると git 上は削除として表示される（コミットするかは別途判断）。
 
 ### 2026-11-10 ／ 担当：Codex ／ ブランチ：main
 - やったこと：Codex と Claude の共通ルールを AGENTS.md に集約し、Claude.md から参照する方針を追加。`docs/project-readme` は README のみの変更（1コミット）で、origin/main と競合しないことを確認。ブランチのマージ・push は未確認。
