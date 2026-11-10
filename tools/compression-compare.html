@@ -5,90 +5,140 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Compression Compare</title>
 <style>
-  /* Open this file directly (file://) from tools/. It reads originals from ../public
-     and samples from ../outputs/compression-samples. Nothing is uploaded. */
-  :root { --bg: #15171c; --panel: #20232b; --text: #e8e8ea; --muted: #9aa0ab; --line: #323744; }
+  /* Serve with: node tools/serve-compression-compare.mjs  → http://127.0.0.1:3108/tools/compression-compare.html
+     Originals come from ../public, samples from ../outputs/compression-samples. Nothing is uploaded. */
+  :root { --bg: #15171c; --panel: #20232b; --text: #e8e8ea; --muted: #9aa0ab; --line: #323744; --ok: #7fd18b; }
   body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; }
   h1 { font-size: 18px; margin: 0 0 4px; }
   p { color: var(--muted); margin: 0 0 16px; }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
   select, button, label { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
-  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  button { cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-width: 0; }
   figcaption { color: var(--muted); font-size: 12px; margin-bottom: 6px; word-break: break-all; }
+  figcaption b { color: var(--text); font-weight: 600; }
   .stage { aspect-ratio: var(--ar, 1); display: grid; place-items: center; border-radius: 4px; overflow: hidden;
            background: repeating-conic-gradient(#3a3d46 0 25%, #2a2c33 0 50%) 0 0 / 24px 24px; }
   .stage.dark { background: #000; }
-  .stage > * { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; }
+  .stage { min-width: 0; }
+  .stage > * { width: 100%; height: 100%; min-width: 0; max-width: 100%; object-fit: contain; }
   .zoom .stage > * { transform: scale(2.5); transform-origin: var(--zx, 50%) var(--zy, 50%); }
+  .load { margin-top: 6px; font-size: 12px; color: var(--ok); min-height: 1.5em; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
 <h1>圧縮サンプル比較</h1>
-<p>左が本番の元素材、右が試作サンプル。同じフレームで止めて、拡大と背景切り替えで見比べる。</p>
+<p>左が本番の元素材、右がサンプル。同じフレームで止めて、拡大と背景切り替えで見比べる。「読み込み時間」はキャッシュなしで全フレームを取得してデコードするまでの時間（このPC内の通信なので、実際の回線では容量の差がもっと効く）。</p>
 <div class="bar">
   <select id="pick"></select>
   <button id="play">再生 / 停止</button>
   <label>フレーム <input id="frame" type="range" min="0" max="179" value="0"></label>
   <label><input id="zoom" type="checkbox"> 2.5倍</label>
   <label><input id="dark" type="checkbox"> 黒背景</label>
+  <button id="measure">読み込み時間を測る</button>
 </div>
 <div class="grid" id="grid"></div>
 <script>
 const S = "../outputs/compression-samples/";
 const pad = (n, w) => String(n).padStart(w, "0");
 const seq = (base, prefix, w, ext) => (f) => `${base}/${prefix}${pad(f, w)}.${ext}`;
-const enemies = ["one", "two", "four", "six", "seven"];
+const sheet = (name) => ({ kind: "sheet", dir: `${S}sheets/${name}/` });
+const enemies = { one: 121, two: 120, four: 122, six: 122, seven: 119 };   // idle frame counts
 const sets = [
-  ...enemies.map((e) => ({ label: `敵 ${e} idle（PNG連番 → WebM）`, ar: 1, frames: 120, fps: 25,
+  ...Object.entries(enemies).map(([e, frames]) => ({ label: `敵 ${e} idle（PNG連番 / WebM / WebPシート）`, ar: 1, frames, fps: 25,
     a: { kind: "seq", src: seq(`../public/images/battle-characters/enemy-${e}/idle`, "", 4, "png") },
-    b: { kind: "video", src: `${S}enemy-${e}-idle.crf30.webm` } })),
-  ...["battle-opening", "standard", "standard2", "SSR", "gacha-reveal-UR1", "gacha-reveal-UR2"].map((v) => ({
-    label: `${v}（CRF 23 / 26）`, ar: 16 / 9, video: true,
-    a: { kind: "video", src: `../public/videos/${v === "battle-opening" ? "openings/" : ""}${v}.mp4` },
-    b: { kind: "video", src: `${S}${v}.crf23.mp4` }, c: { kind: "video", src: `${S}${v}.crf26.mp4` } })),
-  { label: "chance-reveal UR3（PNG連番 → MP4）", ar: 1250 / 618, frames: 180, fps: 30,
+    b: { kind: "video", src: `${S}enemy-${e}-idle.crf30.webm`, title: "WebM（Safari 不可）" },
+    c: { ...sheet(`enemy-${e}`), title: "WebP スプライトシート q85" } })),
+  { label: "chance-reveal UR3（PNG連番 / MP4 / WebPシート）", ar: 1250 / 618, frames: 180, fps: 30,
     a: { kind: "seq", src: seq("../public/videos/chance-reveal/UR3", "crv-bg-ur3", 3, "png") },
-    b: { kind: "video", src: `${S}chance-UR3.crf23.mp4` } },
-  { label: "chance-reveal card-blue（PNG → WebP q85 / q75）", ar: 1250 / 618, frames: 180, fps: 30,
-    a: { kind: "seq", src: seq("../public/videos/chance-reveal/card-blue", "card-blue", 3, "png") },
-    b: { kind: "seq", src: seq(`${S}chance-card-blue-webp-q85`, "card-blue", 3, "webp") },
-    c: { kind: "seq", src: seq(`${S}chance-card-blue-webp-q75`, "card-blue", 3, "webp") } },
-  { label: "points-gain 20p（PNG → WebP q85 / q75）", ar: 1250 / 618, frames: 180, fps: 30,
-    a: { kind: "seq", src: seq("../public/videos/points-gain/20p", "20p", 3, "png") },
-    b: { kind: "seq", src: seq(`${S}points-gain-20p-webp-q85`, "20p", 3, "webp") },
-    c: { kind: "seq", src: seq(`${S}points-gain-20p-webp-q75`, "20p", 3, "webp") } },
+    b: { kind: "video", src: `${S}chance-UR3.crf23.mp4`, title: "MP4（半透明のフェードが消える）" },
+    c: { ...sheet("chance-UR3"), title: "WebP スプライトシート q85" } },
+  ...["battle-opening", "standard", "standard2", "SSR", "gacha-reveal-UR1", "gacha-reveal-UR2"].map((v) => ({
+    label: `${v}（元 / CRF 23 本番採用 / CRF 26）`, ar: 16 / 9, video: true,
+    a: { kind: "video", src: `${S}../../public/videos/${v === "battle-opening" ? "openings/" : ""}${v}.v2.mp4`, title: "本番（v2 = CRF 23）" },
+    c: { kind: "video", src: `${S}${v}.crf26.mp4`, title: "CRF 26" } })),
 ];
 const pick = document.getElementById("pick"), grid = document.getElementById("grid"), frame = document.getElementById("frame");
 sets.forEach((s, i) => pick.add(new Option(s.label, i)));
 let current, timer = 0, panes = [];
-function build() {
+
+async function loadSheet(p) {
+  const manifest = await (await fetch(p.dir + "manifest.json")).json();
+  const images = await Promise.all(manifest.sheets.map((f) => new Promise((resolve) => {
+    const img = new Image(); img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = p.dir + f;
+  })));
+  return { manifest, images };
+}
+function drawSheet(pane, f) {
+  const { manifest: m, images } = pane.sheet;
+  const i = Math.min(f, m.frames - 1), s = Math.floor(i / m.grid.perSheet), k = i % m.grid.perSheet;
+  const ctx = pane.el.getContext("2d");
+  ctx.clearRect(0, 0, pane.el.width, pane.el.height);
+  if (images[s]) ctx.drawImage(images[s], (k % m.grid.cols) * m.crop.w, Math.floor(k / m.grid.cols) * m.crop.h,
+    m.crop.w, m.crop.h, m.crop.x, m.crop.y, m.crop.w, m.crop.h);
+}
+async function build() {
   clearInterval(timer); timer = 0;
   current = sets[pick.value];
   grid.innerHTML = ""; panes = [];
   frame.max = (current.frames || 300) - 1; frame.value = 0;
-  const names = { a: "元（本番）", b: "サンプル", c: "サンプル（強め）" };
+  const names = { a: "元（本番）", b: "サンプル", c: "サンプル" };
   for (const key of ["a", "b", "c"]) {
     const p = current[key]; if (!p) continue;
     const fig = document.createElement("figure");
     const cap = document.createElement("figcaption");
     const stage = document.createElement("div"); stage.className = "stage"; stage.style.setProperty("--ar", current.ar);
-    const el = document.createElement(p.kind === "video" ? "video" : "img");
+    const el = document.createElement(p.kind === "video" ? "video" : p.kind === "sheet" ? "canvas" : "img");
+    const pane = { key, p, el, load: document.createElement("div") };
+    pane.load.className = "load";
     if (p.kind === "video") { el.src = p.src; el.muted = true; el.playsInline = true; el.preload = "auto"; }
-    cap.textContent = `${names[key]} — ${p.kind === "video" ? p.src : p.src(0)}`;
-    stage.append(el); fig.append(cap, stage); grid.append(fig);
-    panes.push({ p, el });
+    const where = p.kind === "video" ? p.src : p.kind === "sheet" ? p.dir : p.src(0);
+    cap.innerHTML = `<b>${p.title || names[key]}</b> — ${where}`;
+    stage.append(el); fig.append(cap, stage, pane.load); grid.append(fig);
+    panes.push(pane);
+    if (p.kind === "sheet") {
+      pane.sheet = await loadSheet(p);
+      const m = pane.sheet.manifest;
+      el.width = m.sourceSize.w; el.height = m.sourceSize.h;
+      pane.load.textContent = `${m.sheets.length}枚 ${m.sheetSize.w}×${m.sheetSize.h} / SSIM ${m.ssimColour} / α誤差 最大 ${m.alphaMaxError}`;
+    }
   }
   show(0);
 }
 function show(f) {
-  for (const { p, el } of panes) {
+  for (const pane of panes) {
+    const { p, el } = pane;
     if (p.kind === "video") { const fps = current.fps || 30; el.currentTime = current.video ? (f / (frame.max || 1)) * (el.duration || 0) : f / fps; }
+    else if (p.kind === "sheet") { if (pane.sheet) drawSheet(pane, f); }
     else el.src = p.src(f);
+  }
+}
+// Fetch every file (no cache) and decode it, the way the game would before playing.
+async function measure() {
+  for (const pane of panes) {
+    const { p } = pane;
+    pane.load.textContent = "測定中…";
+    let urls;
+    if (p.kind === "seq") urls = Array.from({ length: current.frames }, (_, f) => p.src(f));
+    else if (p.kind === "sheet") urls = pane.sheet.manifest.sheets.map((f) => p.dir + f);
+    else urls = [p.src];
+    const t0 = performance.now();
+    let total = 0, missing = 0;
+    await Promise.all(urls.map(async (u) => {
+      const r = await fetch(u, { cache: "no-store" });
+      if (!r.ok) { missing++; return; }
+      const blob = await r.blob(); total += blob.size;
+      if (p.kind !== "video") { const bmp = await createImageBitmap(blob); bmp.close(); }
+    }));
+    const ms = performance.now() - t0;
+    const at20 = (total * 8) / 20e6;
+    pane.load.textContent = `読み込み+デコード ${Math.round(ms)} ms / ${(total / 1048576).toFixed(1)} MB（${urls.length - missing}ファイル）/ 20Mbps 回線なら転送だけで約 ${at20.toFixed(1)} 秒`;
   }
 }
 frame.oninput = () => show(+frame.value);
 pick.onchange = build;
+document.getElementById("measure").onclick = measure;
 document.getElementById("play").onclick = () => {
   if (timer) { clearInterval(timer); timer = 0; return; }
   timer = setInterval(() => { frame.value = (+frame.value + 1) % (+frame.max + 1); show(+frame.value); }, 1000 / (current.fps || 30));

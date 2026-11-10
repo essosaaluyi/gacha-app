@@ -9,7 +9,9 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const allowed = ["tools/", "public/", "outputs/compression-samples/"];
 const types = { ".html": "text/html; charset=utf-8", ".png": "image/png", ".webp": "image/webp",
-  ".webm": "video/webm", ".mp4": "video/mp4", ".js": "text/javascript", ".css": "text/css" };
+  ".webm": "video/webm", ".mp4": "video/mp4", ".js": "text/javascript", ".css": "text/css",
+  ".json": "application/json; charset=utf-8" };
+// Never cache, so the load-time button measures real transfers every time.
 const port = Number(process.env.PORT || 3108);
 
 http.createServer((req, res) => {
@@ -25,10 +27,10 @@ http.createServer((req, res) => {
   if (range) {
     const start = range[1] ? Number(range[1]) : 0;
     const end = range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
-    res.writeHead(206, { "Content-Type": type, "Content-Range": `bytes ${start}-${end}/${size}`, "Accept-Ranges": "bytes", "Content-Length": end - start + 1 });
+    res.writeHead(206, { "Cache-Control": "no-store", "Content-Type": type, "Content-Range": `bytes ${start}-${end}/${size}`, "Accept-Ranges": "bytes", "Content-Length": end - start + 1 });
     fs.createReadStream(file, { start, end }).pipe(res);
     return;
   }
-  res.writeHead(200, { "Content-Type": type, "Content-Length": size, "Accept-Ranges": "bytes" });
+  res.writeHead(200, { "Cache-Control": "no-store", "Content-Type": type, "Content-Length": size, "Accept-Ranges": "bytes" });
   fs.createReadStream(file).pipe(res);
 }).listen(port, "127.0.0.1", () => console.log(`http://127.0.0.1:${port}/tools/compression-compare.html`));
