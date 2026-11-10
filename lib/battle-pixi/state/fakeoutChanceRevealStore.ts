@@ -51,13 +51,20 @@ export function chanceRevealCharacterBuilders(character: string) {
   );
 }
 
+// Card colours whose frames ship as versioned WebP (q85 with alpha, about 1/9
+// of the PNG size). Colours delivered later as PNG keep working unchanged.
+const CARD_FRAME_SUFFIX: Partial<Record<ChanceRevealCardColor, string>> = {
+  blue: ".v2.webp",
+};
+
 export function chanceRevealCardBuilders(color: ChanceRevealCardColor) {
   const folder = `card-${color}`;
+  const suffix = CARD_FRAME_SUFFIX[color] ?? ".png";
   return prefixCandidates(folder).map(
     (prefix) => (frame: number) =>
       `/videos/chance-reveal/${folder}/${prefix}${frame
         .toString()
-        .padStart(3, "0")}.png`
+        .padStart(3, "0")}${suffix}`
   );
 }
 

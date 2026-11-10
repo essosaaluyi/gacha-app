@@ -24,11 +24,13 @@ import { patchConfig } from "@/lib/game-config/patchConfig";
 // ---------------------------------------------------------------------------
 
 // Frames are the folder name followed by a 3-digit index starting at 000,
-// e.g. points-gain/20p/20p000.png and points-gain/UR3/ur3000.png.
+// e.g. points-gain/20p/20p000.v2.webp. The frames are lossy WebP with alpha
+// (q85, about 1/6 of the PNG size); the PNG originals are in
+// D:asset-sourcesgacha-app. ".v2" keeps the URL new under the immutable cache.
 function framePath(folder: string, prefix: string, frame: number) {
   return `/videos/points-gain/${folder}/${prefix}${frame
     .toString()
-    .padStart(3, "0")}.png`;
+    .padStart(3, "0")}.v2.webp`;
 }
 
 /** Lowest frame number on disk. */
