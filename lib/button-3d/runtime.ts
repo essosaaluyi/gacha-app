@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { playSfx, type SfxName } from "@/lib/audio/sfxStore";
 
 /**
@@ -23,7 +25,8 @@ export type DrawButton3D = {
   dispose(): void;
 };
 /** onPress may return the sound to play for this press. */
-export type DrawButton3DOptions = { label?: string; onPress?: () => SfxName | null | void };
+export type LightingPreset = "studio" | "room" | "hall" | "window";
+export type DrawButton3DOptions = { label?: string; lighting?: LightingPreset; onPress?: () => SfxName | null | void };
 
 const LAMP: Record<LampState, { color: string; power: number }> = {
   gray: { color: "#cfd6df", power: 0.5 },
@@ -184,6 +187,80 @@ function capGeometry(baseRadius: number, height: number) {
   return geo;
 }
 
+/** Deterministic RNG so a preset looks the same on every load. */
+function rng(seed: number) {
+  return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/**
+ * Fills `env` (rendered once into the reflection map) and adds direct lights to `scene`.
+ * - studio: even hard strip lights + DirectionalLight (r6 look: tidy, uniform highlights).
+ * - room:   three.js RoomEnvironment (boxy room, several ceiling lights) + HemisphereLight + SpotLight.
+ * - hall:   pachinko-hall ceiling: many small scattered lamps and neon tubes of varied colour/size →
+ *           broken, irregular glints like real glass; SpotLight from above + coloured PointLights.
+ * - window: one bright mullioned window with blinds and dark objects in front → one big but broken
+ *           reflection; RectAreaLight (window) + DirectionalLight (sun).
+ */
+function buildLighting(preset: LightingPreset, env: THREE.Scene, scene: THREE.Scene) {
+  const box = (color: string) => env.add(new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30), new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })));
+  const soft = radialTexture([[0, "rgba(255,255,255,1)"], [0.45, "rgba(255,255,255,0.85)"], [1, "rgba(255,255,255,0)"]]);
+  const panel = (color: string, scale: number, w: number, h: number, p: [number, number, number], blurred = false, roll = 0) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: blurred ? soft : null, transparent: blurred, depthWrite: false, color: new THREE.Color(color).multiplyScalar(scale), side: THREE.DoubleSide }));
+    m.position.set(...p); m.lookAt(0, 0, 0); m.rotateZ(roll); env.add(m); return m;
+  };
+  if (preset === "studio" || preset === "room") {
+    if (preset === "studio") {
+      box("#0b1019");
+      panel("#ffffff", 1, 16, 10, [-2, 6, -13], true); // dim overhead softbox
+      panel("#ffffff", 7, 12, 0.5, [0, 7, -11]);          // overhead strip
+      panel("#ffffff", 6, 0.5, 12, [-9, 6, -1]);          // left vertical strip
+      panel("#bfe6ff", 6, 0.5, 12, [9, 6, -1]);           // right vertical strip (cool)
+      panel("#ffd6ee", 3, 0.4, 10, [-6, 5, 8]);           // front-left pink strip
+      panel("#ffffff", 3, 18, 0.45, [0, 2.4, 12]);        // low front bar
+      panel("#d9e6ff", 4, 16, 0.5, [0, 5, -12]);          // back rim bar
+      const key = new THREE.DirectionalLight("#fff4ea", 1.4); key.position.set(-5, 8, -2); scene.add(key);
+    } else {
+      scene.add(new THREE.HemisphereLight("#dfe8ff", "#20242c", 0.6));
+      const spot = new THREE.SpotLight("#fff1e0", 30, 20, 0.5, 0.6, 2); spot.position.set(-3, 7, 2); scene.add(spot);
+    }
+  } else if (preset === "hall") {
+    box("#07080d");
+    const r = rng(7);
+    const colors = ["#ffffff", "#fff3d6", "#ffd27a", "#ff7ab8", "#7ae0ff", "#b98cff", "#ffffff", "#ffe9c4"];
+    for (let i = 0; i < 90; i++) { // ceiling lamps: random spots, sizes and brightness
+      const az = r() * Math.PI * 2, el = 0.15 + r() * 1.25, d = 9 + r() * 6;
+      const p: [number, number, number] = [Math.cos(az) * Math.cos(el) * d, Math.sin(el) * d, Math.sin(az) * Math.cos(el) * d];
+      const s = 0.15 + r() ** 2 * 1.1;
+      panel(colors[(r() * colors.length) | 0], 2 + r() * 9, s, s * (0.6 + r()), p, r() < 0.5, r() * Math.PI);
+    }
+    for (let i = 0; i < 9; i++) { // neon tubes at odd angles
+      const az = r() * Math.PI * 2, el = 0.2 + r() * 0.9, d = 11;
+      panel(colors[(r() * colors.length) | 0], 5 + r() * 4, 3 + r() * 6, 0.12 + r() * 0.15, [Math.cos(az) * Math.cos(el) * d, Math.sin(el) * d, Math.sin(az) * Math.cos(el) * d], false, r() * Math.PI);
+    }
+    const spot = new THREE.SpotLight("#fff4e6", 40, 20, 0.45, 0.7, 2); spot.position.set(-1.5, 7, 1); scene.add(spot);
+    const pink = new THREE.PointLight("#ff6fb0", 6, 10, 2); pink.position.set(4, 3, -2); scene.add(pink);
+    const cyan = new THREE.PointLight("#5fd8ff", 5, 10, 2); cyan.position.set(-4, 2.5, 3); scene.add(cyan);
+  } else {
+    box("#0a0d13");
+    // Window up-left behind: 3×2 panes with mullions, horizontal blind slats and a plant/shelf silhouette.
+    const base = new THREE.Vector3(-7, 7, -8), right = new THREE.Vector3(1, 0, -0.6).normalize(), up = new THREE.Vector3(0, 1, 0.25).normalize();
+    for (let cx = 0; cx < 3; cx++) for (let cy = 0; cy < 2; cy++) {
+      for (let slat = 0; slat < 5; slat++) {
+        const c = base.clone().addScaledVector(right, (cx - 1) * 2.3).addScaledVector(up, (cy - 0.5) * 2.6 + (slat - 2) * 0.48);
+        panel(slat % 2 ? "#f4f8ff" : "#dfeaff", 8 + cx * 1.5, 2.05, 0.34, [c.x, c.y, c.z]);
+      }
+    }
+    const dark = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 3.2), new THREE.MeshBasicMaterial({ color: "#000000", side: THREE.DoubleSide }));
+    dark.position.copy(base.clone().multiplyScalar(0.8).addScaledVector(right, 1.2)); dark.lookAt(0, 0, 0); env.add(dark); // object in front of the window
+    panel("#ffd9b0", 1.5, 6, 4, [8, 3, 6], true);   // warm lamp across the room
+    panel("#ffffff", 0.6, 20, 8, [0, -6, 6], true); // floor bounce
+    RectAreaLightUniformsLib.init();
+    const win = new THREE.RectAreaLight("#eef4ff", 6, 7, 5); win.position.copy(base).multiplyScalar(0.7); win.lookAt(0, 0, 0); scene.add(win);
+    const sun = new THREE.DirectionalLight("#fff0dc", 1.1); sun.position.set(-6, 9, -6); scene.add(sun);
+  }
+  soft.dispose();
+}
+
 export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOptions = {}): DrawButton3D {
   const disposables: { dispose(): void }[] = [];
   const own = <T extends { dispose(): void }>(x: T) => { disposables.push(x); return x; };
@@ -204,28 +281,16 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   camera.position.set(0, Math.sin(elevation) * distance, Math.cos(elevation) * distance);
   camera.lookAt(0, 0.25, 0);
 
-  // ── Image-based lighting: hard-edged strip lights give tight, metallic highlights (crisp lines,
-  // not soft blobs); one dim softbox keeps a gentle gradient on the shells.
+  // ── Lighting. Reflections on glossy plastic/glass come from the environment map (what the surface
+  // "sees"); direct lights only add highlights and shading. Four presets for comparison.
   const pmrem = own(new THREE.PMREMGenerator(renderer));
   const studio = new THREE.Scene();
-  studio.add(new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30), new THREE.MeshBasicMaterial({ color: "#0b1019", side: THREE.BackSide })));
-  const soft = radialTexture([[0, "rgba(255,255,255,1)"], [0.45, "rgba(255,255,255,0.85)"], [1, "rgba(255,255,255,0)"]]);
-  const panel = (color: string, scale: number, w: number, h: number, p: [number, number, number], blurred = false) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: blurred ? soft : null, transparent: blurred, depthWrite: false, color: new THREE.Color(color).multiplyScalar(scale), side: THREE.DoubleSide }));
-    m.position.set(...p); m.lookAt(0, 0, 0); studio.add(m);
-  };
-  panel("#ffffff", 1, 16, 10, [-2, 6, -13], true); // dim overhead softbox
-  panel("#ffffff", 7, 12, 0.5, [0, 7, -11]);          // overhead strip → sharp line across the dome top
-  panel("#ffffff", 6, 0.5, 12, [-9, 6, -1]);          // left vertical strip
-  panel("#bfe6ff", 6, 0.5, 12, [9, 6, -1]);           // right vertical strip (cool)
-  panel("#ffd6ee", 3, 0.4, 10, [-6, 5, 8]);           // front-left pink strip
-  panel("#ffffff", 3, 18, 0.45, [0, 2.4, 12]);        // low front bar → highlight line along the bezel bevel
-  panel("#d9e6ff", 4, 16, 0.5, [0, 5, -12]);          // back rim bar
-  const envRT = own(pmrem.fromScene(studio, 0.005));
+  const lighting: LightingPreset = options.lighting ?? "studio";
+  buildLighting(lighting, studio, scene);
+  const envRT = own(lighting === "room" ? pmrem.fromScene(new RoomEnvironment(), 0.02) : pmrem.fromScene(studio, 0.005));
   scene.environment = envRT.texture;
-  studio.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); (m.material as THREE.Material | undefined)?.dispose(); });
-  soft.dispose();
-  const key = new THREE.DirectionalLight("#fff4ea", 1.4); key.position.set(-5, 8, -2); scene.add(key);
+  if (lighting === "room") scene.environmentIntensity = 0.55;
+  studio.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); const mat = m.material as THREE.MeshBasicMaterial | undefined; mat?.map?.dispose(); mat?.dispose(); });
 
   // ── Soft contact shadow and the fixed housing; only the cap moves (press and vibrate()).
   const shadowTex = own(radialTexture([[0, "rgba(0,0,0,0.85)"], [0.55, "rgba(0,0,0,0.5)"], [1, "rgba(0,0,0,0)"]]));
