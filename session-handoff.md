@@ -10,7 +10,40 @@
 - 次の担当への依頼：
 
 
-### 【完了：筐体へのはめ込み試験（開発環境のみ）・本番採用はオーナー確認待ち】2026-11-11（18回目） ／ 担当：Claude（Tsukasa） ／ ブランチ：main
+
+### 【完了：右上パネルの 3D くぼみ（参考画像なし版・開発環境のみ）・オーナー確認待ち】2026-11-11（19回目） ／ 担当：Claude（Tsukasa） ／ ブランチ：main
+- オーナー指示：右上パネルを、中がくぼんだ 3D の空間にする。DATA COUNTER ボタンも 3D 化する（DRAW と同じデザインの横長の長方形）。
+  - 配置（手前から奥へ）：
+    1. 床の手前に彫り込んだ DESTINY WARS（金色）
+    2. AUTO の ON/OFF レバー
+    3. DRAW ボタン
+    4. 少し高い天井と、手前に張り出したひさし。ひさしの正面に DATA COUNTER ボタン
+  - 床は奥に向かって 34° 上がっている。カメラの 12° の見下ろしと合わせて、ボタンを見る角度が以前の 48° と同じになる。
+- 変更したファイル：
+  - 新規 `lib/button-3d/cabinetNiche.ts`（`mountCabinetNiche`）：
+    - くぼみの壁・床・天井・ひさし、金の縁取り
+    - 天井の照明（光る線と面光源）
+    - 彫り込み文字、AUTO レバー、長方形の DATA COUNTER（LED の列と乳白のカバー）
+    - 窓ライトの映り込み
+    - `onLayout` で各部品の画面上の位置を返す。
+  - `runtime.ts`：
+    - ボタン本体を `buildDrawButton` に切り出した（レンダラーなしで別のシーンに置ける）。`mountDrawButton3D` はその包み。
+    - `buildLighting` と `LAMP` を export した。
+  - 新規 `components/battle/cabinet/CabinetNiche3D.tsx`：
+    - パネルの DOM ボタン（DRAW / AUTO / DATA COUNTER）を透明な当たり判定にし、3D 部品の位置へ移動させる。
+    - 後から出る DATA COUNTER には MutationObserver で対応した。
+  - `BattleScreen.tsx`：開発環境だけ、パネルに `bcab-niche-3d` を付けて CabinetNiche3D を置いた。前回の `DrawButton3DMount` は使わなくなった（ファイルは残してある）。
+  - `globals.css`：`.bcab-niche-3d` のルールを追加した。
+- 確認：
+  - /battle で、グレー・スカイと AUTO の OFF/ON を撮影した（フック `window.__cabinetNiche` で切り替え）。
+  - 当たり判定の位置を style で確認した。
+  - 試作ページも表示できることを確認した。
+  - 型チェックのエラー 0、触ったファイルの lint エラー 0。
+- 未確認：
+  - 実際のプレイの流れ、クリックでの操作感、DATA COUNTER を開いたときの表示、FPS。
+- オーナーが言っていた「添付画像」は、この依頼のメッセージには付いていなかった。届き次第、その要素を混ぜた 4 パターンの比較を作る。
+
+### 【完了・19回目で置き換え：筐体へのはめ込み試験（開発環境のみ）・本番採用はオーナー確認待ち】2026-11-11（18回目） ／ 担当：Claude（Tsukasa） ／ ブランチ：main
 - オーナーは窓ライト（D）を選んだ。その丸型 3D ボタンを、今の筐体の DRAW ボタン（DOM の `.bcab-draw-btn`）の中に描くようにした。
   - 新規 `components/battle/cabinet/DrawButton3DMount.tsx`：見た目だけを担当する。押下・ロック判定は既存の `<button>` のまま。
   - ランプ：`cabinetDrawLocked` なら消灯、`dealPhase === "set"` ならスカイ、それ以外はグレー。

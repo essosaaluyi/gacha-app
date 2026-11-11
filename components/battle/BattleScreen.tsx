@@ -34,7 +34,7 @@ import BarChanceOverlay from "@/components/battle/BarChanceOverlay";
 import CollectionPhaseOverlay from "@/components/battle/CollectionPhaseOverlay";
 import CollectionPointsHandoff from "@/components/battle/CollectionPointsHandoff";
 import DefenseShieldOverlay from "@/components/battle/DefenseShieldOverlay";
-import DrawButton3DMount from "@/components/battle/cabinet/DrawButton3DMount";
+import CabinetNiche3D from "@/components/battle/cabinet/CabinetNiche3D";
 import {
   dismissCollectionResult,
   getCollectionState,
@@ -142,7 +142,7 @@ import {
 // Battle opening. The clip runs ~18s; the backstop is deliberately well past
 // that so a slow start never truncates it, and only catches a clip that never
 // fires `ended` at all.
-/** Trial fit of the three.js DRAW button in the cabinet: development only until the owner approves it. */
+/** Trial: the upper-right panel as a three.js niche (DRAW, AUTO lever, DATA COUNTER); development only until the owner approves it. */
 const DRAW_BUTTON_3D = process.env.NODE_ENV !== "production";
 const BATTLE_OPENING_MAX_MS = 30_000;
 const BATTLE_OPENING_FADE_MS = 700;
@@ -975,7 +975,11 @@ export default function BattleScreen() {
             </div>
           </section>
 
-          <div className="bcab-led-panel">
+          <div className={`bcab-led-panel${DRAW_BUTTON_3D ? " bcab-niche-3d" : ""}`}>
+            {DRAW_BUTTON_3D && (
+              // gray = ready, sky = cards set (next press deals), off = locked / dealing.
+              <CabinetNiche3D drawLamp={cabinetDrawLocked ? "off" : dealPhase === "set" ? "sky" : "gray"} drawPressTick={drawPressTick} autoOn={autoEnabled} />
+            )}
             <div className="bcab-logo">
               DESTINY<span>WARS</span>
             </div>
@@ -1005,12 +1009,7 @@ export default function BattleScreen() {
               aria-disabled={cabinetDrawLocked}
               disabled={cabinetDrawLocked}
               onClick={handleDrawPress}
-            >
-              {DRAW_BUTTON_3D && (
-                // gray = ready, sky = cards set (next press deals), off = locked / dealing.
-                <DrawButton3DMount lamp={cabinetDrawLocked ? "off" : dealPhase === "set" ? "sky" : "gray"} pressTick={drawPressTick} />
-              )}
-            </button>
+            />
             <button
               type="button"
               className={`bcab-auto ${autoEnabled ? "bcab-auto-on" : ""}`}

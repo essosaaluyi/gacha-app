@@ -33,7 +33,7 @@ export type DrawButton3DOptions = {
   onPress?: () => SfxName | null | void;
 };
 
-const LAMP: Record<LampState, { color: string; power: number }> = {
+export const LAMP: Record<LampState, { color: string; power: number }> = {
   gray: { color: "#cfd6df", power: 0.5 },
   sky: { color: "#4cc8ff", power: 1.55 },
   off: { color: "#000000", power: 0 },
@@ -206,7 +206,7 @@ function rng(seed: number) {
  * - window: one bright mullioned window with blinds and dark objects in front → one big but broken
  *           reflection; RectAreaLight (window) + DirectionalLight (sun).
  */
-function buildLighting(preset: LightingPreset, env: THREE.Scene, scene: THREE.Scene) {
+export function buildLighting(preset: LightingPreset, env: THREE.Scene, scene: THREE.Scene) {
   const box = (color: string) => env.add(new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30), new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })));
   const soft = radialTexture([[0, "rgba(255,255,255,1)"], [0.45, "rgba(255,255,255,0.85)"], [1, "rgba(255,255,255,0)"]]);
   const panel = (color: string, scale: number, w: number, h: number, p: [number, number, number], blurred = false, roll = 0) => {
@@ -266,42 +266,25 @@ function buildLighting(preset: LightingPreset, env: THREE.Scene, scene: THREE.Sc
   soft.dispose();
 }
 
-export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOptions = {}): DrawButton3D {
-  const disposables: { dispose(): void }[] = [];
-  const own = <T extends { dispose(): void }>(x: T) => { disposables.push(x); return x; };
-  let sound = true, disposed = false, raf = 0, last = performance.now();
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
-  renderer.setClearColor(0x000000, 0);
-  renderer.transmissionResolutionScale = 1; // full-res refraction so the inner dome stays sharp
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  renderer.domElement.style.cssText = "display:block;width:100%;height:100%;touch-action:manipulation";
-  host.appendChild(renderer.domElement);
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 60);
-  const elevation = THREE.MathUtils.degToRad(48), distance = options.distance ?? 7.8;
-  camera.position.set(0, Math.sin(elevation) * distance, Math.cos(elevation) * distance);
-  camera.lookAt(0, 0.25, 0);
-
-  // ── Lighting. Reflections on glossy plastic/glass come from the environment map (what the surface
-  // "sees"); direct lights only add highlights and shading. Four presets for comparison.
-  const pmrem = own(new THREE.PMREMGenerator(renderer));
-  const studio = new THREE.Scene();
-  const lighting: LightingPreset = options.lighting ?? "studio";
-  buildLighting(lighting, studio, scene);
-  const envRT = own(lighting === "room" ? pmrem.fromScene(new RoomEnvironment(), 0.02) : pmrem.fromScene(studio, 0.005));
-  scene.environment = envRT.texture;
-  if (lighting === "room") scene.environmentIntensity = 0.55;
-  studio.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); const mat = m.material as THREE.MeshBasicMaterial | undefined; mat?.map?.dispose(); mat?.dispose(); });
-
+export type Own = <T extends { dispose(): void }>(x: T) => T;
+/** The button itself (housing + moving cap + lamp/press/vibration state), without renderer, camera or lights,
+ *  so it can sit in a larger scene (e.g. the cabinet niche). Base at y = 0, radius ≈ 1.48. */
+export type DrawButtonModel = {
+  root: THREE.Group;
+  hitTargets: THREE.Object3D[];
+  setHover(on: boolean): void;
+  setLamp(state: LampState): void;
+  press(): void;
+  vibrate(durationMs?: number): void;
+  update(dt: number): void;
+};
+export function buildDrawButton(own: Own, options: { label?: string } = {}): DrawButtonModel {
+  const root = new THREE.Group();
   // ── Soft contact shadow and the fixed housing; only the cap moves (press and vibrate()).
   const shadowTex = own(radialTexture([[0, "rgba(0,0,0,0.85)"], [0.55, "rgba(0,0,0,0.5)"], [1, "rgba(0,0,0,0)"]]));
   const shadow = new THREE.Mesh(own(new THREE.PlaneGeometry(3.5, 3.5)), own(new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })));
-  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.003; scene.add(shadow);
-  const rig = new THREE.Group(); scene.add(rig);
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.003; root.add(shadow);
+  const rig = new THREE.Group(); root.add(rig);
 
   // ── Bezel: dark polished metal ring with a rounded lip and a broad bevel sloping outward (hard edges
   // only where faces meet: inner wall | bevel | outer wall).
@@ -428,17 +411,104 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
     inner.color.copy(lampColor); inner.intensity = p * 1.1;
   }
 
+  let clock = 0;
+  /** Advance lamp easing, press travel and vibration by dt ms. */
+  function update(dt: number) {
+  clock += dt;
+  const k = 1 - Math.exp(-dt / 110);
+  if (target !== "off") lampColor.lerp(tmp.set(LAMP[target].color), k); // "off" just fades the power out
+  lampPower += (LAMP[target].power - lampPower) * k;
+  flash *= Math.exp(-dt / 160);
+  hover += ((hovering ? 1 : 0) - hover) * (1 - Math.exp(-dt / 90));
+  // Press travel: quick down, short hold, springy return.
+  let travel = 0;
+  if (pressAt >= 0) {
+    const t = clock - pressAt;
+    if (t < PRESS.downMs) travel = 1 - (1 - t / PRESS.downMs) ** 2;
+    else if (t < PRESS.downMs + PRESS.holdMs) travel = 1;
+    else if (t < PRESS.downMs + PRESS.holdMs + PRESS.upMs) {
+      const u = (t - PRESS.downMs - PRESS.holdMs) / PRESS.upMs;
+      travel = Math.cos(u * Math.PI * 1.25) * (1 - u) ** 1.5; // springs back with a small overshoot
+    } else pressAt = -1;
+  }
+  cap.position.y = 0.06 - travel * PRESS.depth;
+  // Win vibration: motor-like buzz (two incommensurate frequencies per axis) under a sharp attack,
+  // pulsing in bursts like a pachinko lever, then a damped tail.
+  cap.position.x = 0; cap.position.z = 0; cap.rotation.set(0, 0, 0); vibPulse = 0;
+  if (vibAt >= 0) {
+    const t = clock - vibAt, u = t / vibMs;
+    if (u >= 1) vibAt = -1;
+    else {
+      const s = t / 1000, attack = Math.min(1, t / 40), tail = u > 0.75 ? ((1 - u) / 0.25) ** 1.5 : 1;
+      const burst = 0.55 + 0.45 * Math.max(0, Math.sin(2 * Math.PI * 7 * s)); // ~7 bursts per second
+      // Only the cap rattles inside the fixed bezel; 0.016 keeps it clear of the 0.04 gap.
+      const a = 0.016 * attack * tail * burst;
+      cap.position.x = a * (Math.sin(2 * Math.PI * 41 * s) + 0.6 * Math.sin(2 * Math.PI * 67 * s + 1.3));
+      cap.position.z = a * 0.8 * (Math.sin(2 * Math.PI * 37 * s + 2.1) + 0.5 * Math.sin(2 * Math.PI * 59 * s));
+      cap.position.y += a * 0.5 * Math.sin(2 * Math.PI * 53 * s + 0.7);
+      cap.rotation.z = a * 1.2 * Math.sin(2 * Math.PI * 43 * s + 0.4);
+      cap.rotation.x = a * 1.0 * Math.sin(2 * Math.PI * 47 * s + 1.9);
+      vibPulse = 0.6 * attack * tail * burst;
+    }
+  }
+    applyLamp();
+  }
+  applyLamp();
+  return {
+    root, hitTargets: [dome, collar],
+    setHover(on) { hovering = on; },
+    setLamp(state) { target = state; },
+    press() { pressAt = clock; flash = 1; },
+    vibrate(durationMs = 1600) { vibAt = clock; vibMs = Math.max(200, durationMs); },
+    update,
+  };
+}
+
+export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOptions = {}): DrawButton3D {
+  const disposables: { dispose(): void }[] = [];
+  const own = <T extends { dispose(): void }>(x: T) => { disposables.push(x); return x; };
+  let sound = true, disposed = false, raf = 0, last = performance.now();
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+  renderer.setClearColor(0x000000, 0);
+  renderer.transmissionResolutionScale = 1; // full-res refraction so the inner dome stays sharp
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.domElement.style.cssText = "display:block;width:100%;height:100%;touch-action:manipulation";
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 60);
+  const elevation = THREE.MathUtils.degToRad(48), distance = options.distance ?? 7.8;
+  camera.position.set(0, Math.sin(elevation) * distance, Math.cos(elevation) * distance);
+  camera.lookAt(0, 0.25, 0);
+
+  // ── Lighting. Reflections on glossy plastic/glass come from the environment map (what the surface
+  // "sees"); direct lights only add highlights and shading. Four presets for comparison.
+  const pmrem = own(new THREE.PMREMGenerator(renderer));
+  const studio = new THREE.Scene();
+  const lighting: LightingPreset = options.lighting ?? "studio";
+  buildLighting(lighting, studio, scene);
+  const envRT = own(lighting === "room" ? pmrem.fromScene(new RoomEnvironment(), 0.02) : pmrem.fromScene(studio, 0.005));
+  scene.environment = envRT.texture;
+  if (lighting === "room") scene.environmentIntensity = 0.55;
+  studio.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); const mat = m.material as THREE.MeshBasicMaterial | undefined; mat?.map?.dispose(); mat?.dispose(); });
+
+  const button = buildDrawButton(own, options);
+  scene.add(button.root);
+
   // ── Interaction ─────────────────────────────────────────────────────
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const hit = (e: PointerEvent) => {
     const r = renderer.domElement.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    return ray.intersectObjects([dome, collar], false).length > 0;
+    return ray.intersectObjects(button.hitTargets, false).length > 0;
   };
-  const onMove = (e: PointerEvent) => { hovering = hit(e); renderer.domElement.style.cursor = hovering ? "pointer" : "default"; };
+  const onMove = (e: PointerEvent) => { const h = hit(e); button.setHover(h); renderer.domElement.style.cursor = h ? "pointer" : "default"; };
   const onDown = (e: PointerEvent) => { if (e.button === 0 && hit(e)) api.press(); };
-  const onLeave = () => { hovering = false; };
+  const onLeave = () => { button.setHover(false); };
   renderer.domElement.addEventListener("pointermove", onMove);
   renderer.domElement.addEventListener("pointerdown", onDown);
   renderer.domElement.addEventListener("pointerleave", onLeave);
@@ -449,7 +519,7 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   };
   const ro = new ResizeObserver(resize); ro.observe(host); resize();
 
-  let clock = 0, paused = false;
+  let paused = false;
   const frame = (now: number) => {
     if (disposed) return;
     const dt = Math.min(50, now - last); last = now;
@@ -457,57 +527,17 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
     raf = requestAnimationFrame(frame);
   };
   /** Advance the simulation by dt ms and render (deterministic; used by frame-by-frame QA capture). */
-  function step(dt: number) {
-    clock += dt;
-    const k = 1 - Math.exp(-dt / 110);
-    if (target !== "off") lampColor.lerp(tmp.set(LAMP[target].color), k); // "off" just fades the power out
-    lampPower += (LAMP[target].power - lampPower) * k;
-    flash *= Math.exp(-dt / 160);
-    hover += ((hovering ? 1 : 0) - hover) * (1 - Math.exp(-dt / 90));
-    // Press travel: quick down, short hold, springy return.
-    let travel = 0;
-    if (pressAt >= 0) {
-      const t = clock - pressAt;
-      if (t < PRESS.downMs) travel = 1 - (1 - t / PRESS.downMs) ** 2;
-      else if (t < PRESS.downMs + PRESS.holdMs) travel = 1;
-      else if (t < PRESS.downMs + PRESS.holdMs + PRESS.upMs) {
-        const u = (t - PRESS.downMs - PRESS.holdMs) / PRESS.upMs;
-        travel = Math.cos(u * Math.PI * 1.25) * (1 - u) ** 1.5; // springs back with a small overshoot
-      } else pressAt = -1;
-    }
-    cap.position.y = 0.06 - travel * PRESS.depth;
-    // Win vibration: motor-like buzz (two incommensurate frequencies per axis) under a sharp attack,
-    // pulsing in bursts like a pachinko lever, then a damped tail.
-    cap.position.x = 0; cap.position.z = 0; cap.rotation.set(0, 0, 0); vibPulse = 0;
-    if (vibAt >= 0) {
-      const t = clock - vibAt, u = t / vibMs;
-      if (u >= 1) vibAt = -1;
-      else {
-        const s = t / 1000, attack = Math.min(1, t / 40), tail = u > 0.75 ? ((1 - u) / 0.25) ** 1.5 : 1;
-        const burst = 0.55 + 0.45 * Math.max(0, Math.sin(2 * Math.PI * 7 * s)); // ~7 bursts per second
-        // Only the cap rattles inside the fixed bezel; 0.016 keeps it clear of the 0.04 gap.
-        const a = 0.016 * attack * tail * burst;
-        cap.position.x = a * (Math.sin(2 * Math.PI * 41 * s) + 0.6 * Math.sin(2 * Math.PI * 67 * s + 1.3));
-        cap.position.z = a * 0.8 * (Math.sin(2 * Math.PI * 37 * s + 2.1) + 0.5 * Math.sin(2 * Math.PI * 59 * s));
-        cap.position.y += a * 0.5 * Math.sin(2 * Math.PI * 53 * s + 0.7);
-        cap.rotation.z = a * 1.2 * Math.sin(2 * Math.PI * 43 * s + 0.4);
-        cap.rotation.x = a * 1.0 * Math.sin(2 * Math.PI * 47 * s + 1.9);
-        vibPulse = 0.6 * attack * tail * burst;
-      }
-    }
-    applyLamp();
-    renderer.render(scene, camera);
-  }
+  function step(dt: number) { button.update(dt); renderer.render(scene, camera); }
 
   const api: DrawButton3D = {
-    setLamp(state) { target = state; },
+    setLamp(state) { button.setLamp(state); },
     press() {
-      pressAt = clock; flash = 1;
+      button.press();
       const s = options.onPress?.();
       if (sound && s) playSfx(s, { volume: 0.8 });
     },
     vibrate(durationMs = 1600) {
-      vibAt = clock; vibMs = Math.max(200, durationMs);
+      button.vibrate(durationMs);
       if (sound) playSfx("vibration");
     },
     setSound(on) { sound = on; },
@@ -522,7 +552,6 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
       renderer.dispose(); renderer.domElement.remove();
     },
   };
-  applyLamp();
   raf = requestAnimationFrame(frame);
   return api;
 }

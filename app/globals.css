@@ -9461,3 +9461,19 @@ body.page-video-active .trust-page {
   inset: -14px;
   pointer-events: none;
 }
+
+/* --- three.js control niche (development only; see CabinetNiche3D). The DOM controls become invisible
+   hit areas that CabinetNiche3D moves onto the 3D parts. --- */
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d { overflow: hidden; }
+.bcab-niche-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-data-btn,
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-data-btn:hover,
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-data-btn:active,
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-auto {
+  z-index: 3; padding: 0; border-color: transparent; background: transparent; box-shadow: none; color: transparent; transform: none;
+}
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-auto > * { visibility: hidden; }
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-logo { display: none; }
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-draw-btn { z-index: 3; }
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-ticker,
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-mascot { z-index: 3; }
