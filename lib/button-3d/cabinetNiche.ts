@@ -25,6 +25,17 @@ export type CabinetNiche3D = {
   advance(ms: number): void;
   dispose(): void;
 };
+/** Elements borrowed from the owner reference (slot-machine side panel, 2026-11-11). */
+export type NicheVariant = {
+  /** DATA COUNTER as a lit sign box (cream face, red italic letters, amber frame) instead of the clear push button. */
+  sign?: boolean;
+  /** DESTINY WARS: engraved in the floor lip (default), raised chrome letters on the back wall, or engraved in the back wall. */
+  logo?: "floor" | "wallRaised" | "wallEngraved";
+  /** A chrome scoop tray across the front of the floor. */
+  tray?: boolean;
+  /** Metallic blue side walls. */
+  blueSides?: boolean;
+};
 type Own = <T extends { dispose(): void }>(x: T) => T;
 
 const FLOOR_TILT = THREE.MathUtils.degToRad(34); // floor rises toward the back
@@ -101,7 +112,54 @@ function clearPlastic(own: Own, normal: THREE.Texture) {
   }));
 }
 
-export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: NicheLayout) => void } = {}): CabinetNiche3D {
+/** Normal map from a height canvas (white = high), for raised/embossed details. */
+function normalsFrom(c: HTMLCanvasElement, strength: number) {
+  const W = c.width, H = c.height, src = c.getContext("2d")!.getImageData(0, 0, W, H).data, out = canvas(W, H), img = out.g.createImageData(W, H);
+  const h = (x: number, y: number) => src[(Math.min(H - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))) * 4] / 255;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const nx = -(h(x + 1, y) - h(x - 1, y)) * strength, ny = (h(x, y + 1) - h(x, y - 1)) * strength, l = Math.hypot(nx, ny, 1);
+    const p = (y * W + x) * 4; img.data[p] = (nx / l * 0.5 + 0.5) * 255; img.data[p + 1] = (ny / l * 0.5 + 0.5) * 255; img.data[p + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[p + 3] = 255;
+  }
+  out.g.putImageData(img, 0, 0); return tex(out.c, false);
+}
+
+/** Raised chrome letters (reference: the embossed maker name): letter-shaped layers stacked into real depth,
+ *  a darker metal side and a chrome face with rounded edges. Faces +z. */
+function raisedText(own: Own, text: string, w: number, h: number, depth = 0.07) {
+  const Wp = 1024, Hp = Math.round((Wp * h) / w), m = canvas(Wp, Hp);
+  m.g.fillStyle = "#000"; m.g.fillRect(0, 0, Wp, Hp); m.g.textAlign = "center"; m.g.textBaseline = "middle";
+  let size = Math.round(Hp * 0.8); const font = (z: number) => `900 ${z}px "Cinzel", "Trajan Pro", Georgia, serif`; m.g.font = font(size);
+  while (m.g.measureText(text).width > Wp * 0.95 && size > 10) { size -= 2; m.g.font = font(size); }
+  m.g.fillStyle = "#fff"; m.g.fillText(text, Wp / 2, Hp * 0.54);
+  const alpha = own(tex(m.c, false));
+  const blur = canvas(Wp, Hp); blur.g.filter = "blur(3px)"; blur.g.drawImage(m.c, 0, 0);
+  const g = new THREE.Group(), geo = own(new THREE.PlaneGeometry(w, h));
+  const side = own(new THREE.MeshStandardMaterial({ color: "#4a505a", metalness: 0.9, roughness: 0.35, alphaMap: alpha, alphaTest: 0.5 }));
+  const top = own(new THREE.MeshPhysicalMaterial({ color: "#eef2f7", metalness: 1, roughness: 0.07, clearcoat: 1, alphaMap: alpha, alphaTest: 0.5, normalMap: own(normalsFrom(blur.c, 5)), normalScale: new THREE.Vector2(1.4, 1.4) }));
+  const layers = 12;
+  for (let i = 0; i <= layers; i++) { const p = new THREE.Mesh(geo, i === layers ? top : side); p.position.z = (depth * i) / layers; g.add(p); }
+  return g;
+}
+
+/** Lit sign face: warm cream light box, red italic letters with a dark outline (reference: CHANCE lamp). */
+function signTexture(text: string) {
+  const W = 1024, H = 394, { c, g } = canvas(W, H);
+  const bg = g.createRadialGradient(W / 2, H * 0.45, 20, W / 2, H / 2, W * 0.6);
+  bg.addColorStop(0, "#fffaf0"); bg.addColorStop(0.55, "#fbe9c6"); bg.addColorStop(1, "#d9a868");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.strokeStyle = "rgba(120,60,20,0.55)"; g.lineWidth = 6; g.strokeRect(18, 18, W - 36, H - 36);
+  let size = 200; const font = (z: number) => `italic 900 ${z}px "Arial Black", "Segoe UI", Arial, sans-serif`; g.font = font(size);
+  while (g.measureText(text).width > W * 0.84 && size > 20) { size -= 4; g.font = font(size); }
+  g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
+  g.strokeStyle = "#3a0806"; g.lineWidth = 14; g.strokeText(text, W / 2, H * 0.53);
+  const red = g.createLinearGradient(0, H * 0.3, 0, H * 0.75); red.addColorStop(0, "#ff3b2f"); red.addColorStop(1, "#b30c10");
+  g.fillStyle = red; g.fillText(text, W / 2, H * 0.53);
+  return tex(c);
+}
+
+export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: NicheLayout) => void; variant?: NicheVariant } = {}): CabinetNiche3D {
+  const variant = opts.variant ?? {};
+  const logoMode = variant.logo ?? "floor";
   const disposables: { dispose(): void }[] = [];
   const own: Own = (x) => { disposables.push(x); return x; };
   let disposed = false, raf = 0, last = performance.now(), paused = false;
@@ -129,14 +187,17 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   const grain = own(plasticNormalTexture()); grain.wrapS = grain.wrapT = THREE.RepeatWrapping; grain.repeat.set(4, 4);
   const wallMat = own(new THREE.MeshPhysicalMaterial({ color: "#232a35", metalness: 0.55, roughness: 0.4, normalMap: grain, normalScale: new THREE.Vector2(0.25, 0.25), clearcoat: 0.4, clearcoatRoughness: 0.2, side: THREE.DoubleSide }));
   const floorMat = own(new THREE.MeshPhysicalMaterial({ color: "#1a2029", metalness: 0.7, roughness: 0.3, normalMap: grain, normalScale: new THREE.Vector2(0.2, 0.2), clearcoat: 0.6, clearcoatRoughness: 0.1 }));
+  const sideMat = variant.blueSides
+    ? own(new THREE.MeshPhysicalMaterial({ color: "#3a6cf0", emissive: "#0b1e5c", metalness: 0.8, roughness: 0.24, normalMap: grain, normalScale: new THREE.Vector2(0.35, 0.35), clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide }))
+    : wallMat;
   const goldMat = own(new THREE.MeshPhysicalMaterial({ color: GOLD, metalness: 1, roughness: 0.22, clearcoat: 0.6 }));
   const { halfW, floorFront, floorBack, ceilingY, overhangFront, overhangTop, apronBottom } = NICHE;
   const W = halfW * 2;
 
   const floorG = new THREE.Group(); floorG.rotation.x = FLOOR_TILT; scene.add(floorG);
-  const floorLen = floorFront - floorBack;
-  const floor = new THREE.Mesh(own(new THREE.PlaneGeometry(W, floorLen)), floorMat);
-  floor.rotation.x = -Math.PI / 2; floor.position.z = (floorFront + floorBack) / 2; floorG.add(floor);
+  const TRAY = 1.05, floorEnd = variant.tray ? floorFront - TRAY : floorFront;
+  const floor = new THREE.Mesh(own(new THREE.PlaneGeometry(W, floorEnd - floorBack)), floorMat);
+  floor.rotation.x = -Math.PI / 2; floor.position.z = (floorEnd + floorBack) / 2; floorG.add(floor);
   const back = new THREE.Vector3(0, 0, floorBack).applyEuler(floorG.rotation);   // world back edge
   const front = new THREE.Vector3(0, 0, floorFront).applyEuler(floorG.rotation); // world front edge
 
@@ -150,7 +211,7 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
     const g = new THREE.BufferGeometry();
     const P = [[back.z, back.y], [front.z, front.y], [front.z, ceilingY], [back.z, ceilingY]].map(([z, y]) => [sx * halfW, y, z]);
     g.setAttribute("position", new THREE.Float32BufferAttribute([...P[0], ...P[1], ...P[2], ...P[0], ...P[2], ...P[3]], 3)); g.computeVertexNormals();
-    scene.add(new THREE.Mesh(own(g), wallMat));
+    scene.add(new THREE.Mesh(own(g), sideMat));
   }
   plane(W, front.y - apronBottom, wallMat, [0, (front.y + apronBottom) / 2, front.z]);                          // front apron (log ticker sits here)
   // Overhang block jutting forward over the niche.
@@ -170,7 +231,29 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   const logo = engraveMaps("DESTINY WARS", 2.9 / 0.62, { base: "#12161d", fill: GOLD, font: `700 SIZEpx "Cinzel", "Trajan Pro", Georgia, serif`, widthFrac: 0.9, lines: true });
   const logoMat = own(new THREE.MeshPhysicalMaterial({ map: own(logo.map), normalMap: own(logo.normalMap), normalScale: new THREE.Vector2(1.2, 1.2), metalness: 0.8, roughness: 0.28, clearcoat: 0.5, emissive: "#3a2a10", emissiveMap: own(logo.map) }));
   const logoMesh = new THREE.Mesh(own(new THREE.PlaneGeometry(2.9, 0.62)), logoMat);
-  logoMesh.rotation.x = -Math.PI / 2; logoMesh.position.set(0, 0.004, floorFront - 0.45); floorG.add(logoMesh);
+  const wallLogoY = back.y + 0.62; // low enough to clear the overhang edge from the camera, above the DRAW dome
+  if (logoMode === "floor") { logoMesh.rotation.x = -Math.PI / 2; logoMesh.position.set(0, 0.004, floorEnd - 0.45); floorG.add(logoMesh); }
+  else if (logoMode === "wallEngraved") { logoMesh.position.set(0, wallLogoY, back.z + 0.005); logoMesh.scale.setScalar(0.85); scene.add(logoMesh); }
+  else { const raised = raisedText(own, "DESTINY WARS", 2.8, 0.5); raised.position.set(0, wallLogoY, back.z + 0.005); scene.add(raised); }
+
+  // Chrome scoop tray across the front (like a slot machine coin tray): a bowl-shaped sheet that dips
+  // and rolls over a rounded lip; its ends curl up so it reads as one pressed piece.
+  if (variant.tray) {
+    const prof = new THREE.CurvePath<THREE.Vector2>();
+    const V = (z: number, y: number) => new THREE.Vector2(z, y);
+    prof.add(new THREE.CubicBezierCurve(V(floorEnd, 0), V(floorEnd + 0.22, -0.5), V(floorFront - 0.38, -0.5), V(floorFront - 0.12, -0.02)));
+    prof.add(new THREE.CubicBezierCurve(V(floorFront - 0.12, -0.02), V(floorFront - 0.06, 0.12), V(floorFront + 0.06, 0.12), V(floorFront + 0.06, -0.02)));
+    prof.add(new THREE.LineCurve(V(floorFront + 0.06, -0.02), V(floorFront + 0.06, -0.7)));
+    const pts = prof.getPoints(18), NX = 40, a = halfW - 0.05, pos: number[] = [], idx: number[] = [];
+    for (let i = 0; i <= NX; i++) {
+      const x = -a + (2 * a * i) / NX, curl = 1 - (Math.abs(x) / a) ** 10; // ends rise back to the floor
+      for (const p of pts) pos.push(x, p.y < 0 && p.x < floorFront ? p.y * curl : p.y, p.x);
+    }
+    const n = pts.length;
+    for (let i = 0; i < NX; i++) for (let j = 0; j < n - 1; j++) { const A = i * n + j, B = A + n; idx.push(A, B, A + 1, A + 1, B, B + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    floorG.add(new THREE.Mesh(own(g), own(new THREE.MeshPhysicalMaterial({ color: "#e6ebf2", metalness: 1, roughness: 0.05, clearcoat: 1, side: THREE.DoubleSide }))));
+  }
 
   // ── AUTO toggle lever.
   const autoG = new THREE.Group(); autoG.position.set(-0.42, 0, floorFront - 1.45); floorG.add(autoG);
@@ -217,6 +300,23 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   const dCoverMat = clearPlastic(own, grain);
   const dCover = new THREE.Mesh(own(extruded(roundedRect(2.12, 0.86, 0.3), 0.05, 0.2, 0.2, 6)), dCoverMat); dCover.position.z = 0.02; dCover.renderOrder = 3; dCap.add(dCover);
 
+  // Lit sign box variant (reference: the slot machine CHANCE lamp): replaces the push button visuals.
+  let pressTarget: THREE.Object3D = dCap, dataHit: THREE.Object3D = dCover;
+  let signMat: THREE.MeshStandardMaterial | null = null, signLight: THREE.PointLight | null = null;
+  if (variant.sign) {
+    for (const c of dataG.children) c.visible = false;
+    const housing = new THREE.Mesh(own(extruded(roundedRect(3.0, 1.5, 0.2), 0.22, 0.07, 0.06, 5)), own(new THREE.MeshPhysicalMaterial({ color: "#0b0e13", metalness: 0.2, roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.03 })));
+    dataG.add(housing);
+    const sCap = new THREE.Group(); sCap.position.z = 0.36; dataG.add(sCap);
+    sCap.add(new THREE.Mesh(own(extruded(Object.assign(roundedRect(2.8, 1.3, 0.14), { holes: [roundedRect(2.44, 0.94, 0.06)] }), 0.04, 0.05, 0.04, 4)), own(new THREE.MeshPhysicalMaterial({ color: "#d4893a", metalness: 1, roughness: 0.22, clearcoat: 0.8 }))));
+    const face = own(signTexture("DATA COUNTER"));
+    signMat = own(new THREE.MeshStandardMaterial({ map: face, emissiveMap: face, emissive: "#000000", roughness: 0.5 }));
+    const signFace = new THREE.Mesh(own(flatRect(2.44, 0.94, 0.06)), signMat); signFace.position.z = 0.04; sCap.add(signFace);
+    const glass = new THREE.Mesh(own(flatRect(2.44, 0.94, 0.06)), clearPlastic(own, grain)); glass.position.z = 0.09; glass.renderOrder = 3; sCap.add(glass);
+    signLight = new THREE.PointLight("#ffe2b8", 0, 3.5, 2); signLight.position.set(0, -0.4, 0.8); sCap.add(signLight);
+    pressTarget = sCap; dataHit = housing;
+  }
+
   // ── State & loop.
   let clock = 0, autoOn = false, autoT = 0, dataPressAt = -1, dataFlash = 0;
   const lit = new THREE.Color(), tmp = new THREE.Color(), WHITE = new THREE.Color("#ffffff"), dark = new THREE.Color("#1a2433");
@@ -237,7 +337,8 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
     dataFlash *= Math.exp(-dt / 160);
     let travel = 0;
     if (dataPressAt >= 0) { const t = clock - dataPressAt; travel = pressCurve(t); if (t > 355) dataPressAt = -1; }
-    dCap.position.z = -travel * 0.07;
+    pressTarget.position.z = (pressTarget === dCap ? 0 : 0.36) - travel * 0.07;
+    if (signMat && signLight) { const g = 1.05 + dataFlash * 0.9; signMat.emissive.setRGB(g, g * 0.96, g * 0.9); signLight.intensity = 2.2 * g; }
     const p = dataPower + dataFlash * 0.8;
     lit.copy(dataLamp).multiplyScalar(p);
     dCoreMat.emissive.copy(lit).multiplyScalar(0.35);
@@ -266,7 +367,7 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
     const needV = THREE.MathUtils.radToDeg(2 * Math.atan((halfW + 0.12) / dist / camera.aspect));
     camera.fov = Math.max(28, needV); camera.updateProjectionMatrix();
     scene.updateMatrixWorld(true);
-    opts.onLayout?.({ draw: rectOf(draw.root.children[1], w, h), auto: rectOf(plate, w, h), data: rectOf(dCover, w, h) });
+    opts.onLayout?.({ draw: rectOf(draw.root.children[1], w, h), auto: rectOf(plate, w, h), data: rectOf(dataHit, w, h) });
   };
   const ro = new ResizeObserver(resize); ro.observe(host); resize();
   const frame = (now: number) => {
