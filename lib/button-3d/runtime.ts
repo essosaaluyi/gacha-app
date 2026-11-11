@@ -47,6 +47,31 @@ function tex(c: HTMLCanvasElement, srgb = true) {
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8; return t;
 }
+/** Grayscale (opaque) radial gradient for emissive maps: offset → brightness 0..1. */
+function glowTexture(stops: [number, number][]) {
+  const S = 256, { c, g } = canvas(S, S);
+  g.fillStyle = "#000"; g.fillRect(0, 0, S, S);
+  const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  for (const [o, v] of stops) { const k = Math.round(v * 255); grad.addColorStop(o, `rgb(${k},${k},${k})`); }
+  g.fillStyle = grad; g.fillRect(0, 0, S, S);
+  return tex(c, false);
+}
+
+/** Floor of the lamp chamber (top-down UVs, radius R): a light pool under each LED, nothing between. */
+function ledPoolTexture(count: number, ledRadius: number, R: number) {
+  const S = 512, { c, g } = canvas(S, S);
+  g.fillStyle = "#000"; g.fillRect(0, 0, S, S);
+  g.globalCompositeOperation = "lighter";
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    const x = (1 + (Math.cos(a) * ledRadius) / R) / 2 * S, y = (1 + (Math.sin(a) * ledRadius) / R) / 2 * S;
+    const grad = g.createRadialGradient(x, y, 0, x, y, S * 0.085);
+    grad.addColorStop(0, "rgb(255,255,255)"); grad.addColorStop(0.25, "rgb(140,140,140)"); grad.addColorStop(1, "rgb(0,0,0)");
+    g.fillStyle = grad; g.fillRect(0, 0, S, S);
+  }
+  return tex(c, false);
+}
+
 function radialTexture(stops: [number, string][]) {
   const S = 256, { c, g } = canvas(S, S);
   const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
@@ -192,14 +217,17 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   const bezelMat = own(new THREE.MeshPhysicalMaterial({ color: "#3b4252", metalness: 1, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02 }));
   // LatheGeometry normals are (dy, -dx): list points outer-bottom → over the top → inner, so faces point up/out.
   const lathe = (pts: number[][]) => rig.add(new THREE.Mesh(own(new THREE.LatheGeometry([...pts].reverse().map(([x, y]) => new THREE.Vector2(x, y)), 220)), bezelMat));
-  lathe([[1.03, 0.04], [1.03, 0.2]]);
-  const bevel: number[][] = [];
-  for (let i = 0; i <= 8; i++) { const a = Math.PI - (i / 8) * Math.PI * 0.55; bevel.push([1.085 + 0.055 * Math.cos(a), 0.215 + 0.06 * Math.sin(a)]); } // rounded lip
-  bevel.push([1.2, 0.262], [1.3, 0.232], [1.37, 0.2]);
-  for (let i = 1; i <= 6; i++) { const a = Math.PI / 2 - (i / 6) * Math.PI / 2; bevel.push([1.37 + 0.06 * Math.cos(a), 0.14 + 0.06 * Math.sin(a)]); } // rounded outer shoulder
-  lathe(bevel);
-  lathe([[1.43, 0.14], [1.43, 0.05]]);
-  lathe([[1.43, 0.05], [1.4, 0.035], [1.4, 0]]);
+  // One continuous profile (tangent-continuous Béziers, so the normals stay smooth): inner wall →
+  // wide rounded lip → broad crown → deep rounded outer shoulder → foot.
+  const B = (a: number[], b: number[], c: number[], d: number[]) =>
+    new THREE.CubicBezierCurve(new THREE.Vector2(a[0], a[1]), new THREE.Vector2(b[0], b[1]), new THREE.Vector2(c[0], c[1]), new THREE.Vector2(d[0], d[1]));
+  const profile = new THREE.CurvePath<THREE.Vector2>();
+  profile.add(new THREE.LineCurve(new THREE.Vector2(1.03, 0.04), new THREE.Vector2(1.03, 0.15)));
+  profile.add(B([1.03, 0.15], [1.03, 0.27], [1.08, 0.315], [1.18, 0.315]));   // rounded inner lip
+  profile.add(B([1.18, 0.315], [1.29, 0.315], [1.41, 0.285], [1.45, 0.19]));  // crown rolling over
+  profile.add(B([1.45, 0.19], [1.48, 0.13], [1.48, 0.06], [1.455, 0.025]));  // outer shoulder
+  profile.add(B([1.455, 0.025], [1.445, 0.01], [1.43, 0.0], [1.41, 0.0]));    // tucked foot
+  lathe(profile.getPoints(28).map((v) => [v.x, v.y]));
   const well = new THREE.Mesh(own(new THREE.CircleGeometry(1.04, 96)), own(new THREE.MeshStandardMaterial({ color: "#05080f", roughness: 0.8 })));
   well.rotation.x = -Math.PI / 2; well.position.y = 0.04; rig.add(well);
 
@@ -218,18 +246,29 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   collar.position.y = OUTER.seat / 2; cap.add(collar);
 
   // Floor of the outer dome: dark mirror with the side lamps' light pooled in a band.
-  const poolTex = own(radialTexture([[0, "rgba(255,255,255,0)"], [0.62, "rgba(255,255,255,0.05)"], [0.86, "rgba(255,255,255,0.9)"], [0.97, "rgba(255,255,255,0.2)"], [1, "rgba(255,255,255,0)"]]));
+  const poolTex = own(ledPoolTexture(LEDS.count, LEDS.radius, OUTER.base - 0.005));
   const floorMat = own(new THREE.MeshStandardMaterial({ color: "#070b16", metalness: 0.85, roughness: 0.22, emissive: "#000000", emissiveMap: poolTex }));
   const floor = new THREE.Mesh(own(new THREE.CircleGeometry(OUTER.base - 0.005, 128)), floorMat);
   floor.rotation.x = -Math.PI / 2; floor.position.y = OUTER.seat; cap.add(floor);
 
-  // Side lamps: a ring of small LED capsules standing around the inner dome.
-  const ledMat = own(new THREE.MeshStandardMaterial({ color: "#20293a", roughness: 0.2, emissive: "#000000", emissiveIntensity: 1 }));
-  const ledGeo = own(new THREE.CapsuleGeometry(0.026, 0.07, 6, 12));
+  // Side lamps: real light sources inside the button. Each LED is a small lens with a white-hot centre
+  // (unlit, not tone-mapped) and a soft additive halo; a ring of point lights carries their light onto
+  // the floor, the core's chrome chamfer and the shells, so the glow falls off from each LED.
+  const ledY = OUTER.seat + 0.05;
+  const ledMat = own(new THREE.MeshBasicMaterial({ color: "#000000", toneMapped: false }));
+  const ledGeo = own(new THREE.SphereGeometry(0.03, 16, 12));
+  const haloTex = own(radialTexture([[0, "rgba(255,255,255,1)"], [0.12, "rgba(255,255,255,0.6)"], [0.4, "rgba(255,255,255,0.14)"], [1, "rgba(255,255,255,0)"]]));
+  const haloMat = own(new THREE.SpriteMaterial({ map: haloTex, color: "#000000", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
   for (let i = 0; i < LEDS.count; i++) {
-    const a = (i / LEDS.count) * Math.PI * 2;
-    const led = new THREE.Mesh(ledGeo, ledMat);
-    led.position.set(Math.cos(a) * LEDS.radius, OUTER.seat + 0.06, Math.sin(a) * LEDS.radius); cap.add(led);
+    const a = (i / LEDS.count) * Math.PI * 2, x = Math.cos(a) * LEDS.radius, z = Math.sin(a) * LEDS.radius;
+    const led = new THREE.Mesh(ledGeo, ledMat); led.scale.y = 0.7; led.position.set(x, ledY, z); cap.add(led);
+    const halo = new THREE.Sprite(haloMat); halo.scale.setScalar(0.3); halo.position.set(x, ledY + 0.01, z); halo.renderOrder = 1; cap.add(halo);
+  }
+  const ledLights: THREE.PointLight[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = ((i + 0.5) / 6) * Math.PI * 2;
+    const l = new THREE.PointLight("#ffffff", 0, 1.1, 2); l.position.set(Math.cos(a) * LEDS.radius, ledY + 0.03, Math.sin(a) * LEDS.radius);
+    cap.add(l); ledLights.push(l);
   }
 
   // Innermost core: a flat-topped puck with a polished metal chamfer; the label is engraved flat
@@ -254,11 +293,13 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   // Two clear shells over the core (middle + outer), like the stacked plastics of a pachinko button.
   // They are drawn as additive reflection layers (black base, sharp clearcoat/Fresnel highlights, a faint
   // lamp-coloured haze), so every layer stays visible through the one in front of it.
+  // Their haze is light scattered from the LEDs below, so it is strongest at the base and fades to clear on top.
+  const hazeTex = own(glowTexture([[0, 0], [0.55, 0.04], [0.82, 0.3], [0.95, 1], [1, 1]]));
   const shellMat = (haze: number) => own(new THREE.MeshPhysicalMaterial({
     color: "#000000", metalness: 0, roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0.01, specularIntensity: 1, envMapIntensity: 1.5,
-    emissive: "#000000", emissiveIntensity: haze, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    emissive: "#000000", emissiveMap: hazeTex, emissiveIntensity: haze, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   }));
-  const middleMat = shellMat(0.1), domeMat = shellMat(0.06);
+  const middleMat = shellMat(0.32), domeMat = shellMat(0.2);
   const middle = new THREE.Mesh(own(capGeometry(MIDDLE.base, MIDDLE.height)), middleMat);
   middle.position.y = OUTER.seat; middle.renderOrder = 2; cap.add(middle);
   const middleRim = new THREE.Mesh(own(new THREE.TorusGeometry(MIDDLE.base, 0.008, 10, 200)), rimMat);
@@ -271,7 +312,7 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   let target: LampState = "gray";
   const lampColor = new THREE.Color(LAMP.gray.color); let lampPower = LAMP.gray.power;
   let flash = 0, hover = 0, hovering = false, pressAt = -1, vibAt = -1, vibMs = 0, vibPulse = 0;
-  const lit = new THREE.Color(), tmp = new THREE.Color(), dark = new THREE.Color("#1a2433");
+  const lit = new THREE.Color(), tmp = new THREE.Color(), dark = new THREE.Color("#1a2433"), WHITE = new THREE.Color("#ffffff");
 
   function applyLamp() {
     const p = lampPower * (1 + 0.18 * hover + vibPulse) + flash * (lampPower > 0.05 ? 0.9 : 0);
@@ -279,12 +320,15 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
     ringMat.emissive.copy(lit); ringMat.color.copy(dark).lerp(tmp.copy(lampColor), Math.min(1, lampPower));
     gapMat.color.copy(lit).multiplyScalar(0.6);
     collarMat.emissive.copy(lit).multiplyScalar(0.14);
-    ledMat.emissive.copy(lit).multiplyScalar(1.6); ledMat.color.copy(dark).lerp(tmp.copy(lampColor), Math.min(1, lampPower));
-    floorMat.emissive.copy(lit).multiplyScalar(0.55);
-    innerMat.emissive.copy(lit).multiplyScalar(0.38);
+    // LED lens: dark glass when off, white-hot core tinted by the lamp colour when lit.
+    ledMat.color.copy(dark).multiplyScalar(0.6).lerp(tmp.copy(lampColor).lerp(WHITE, 0.55), Math.min(1, p)).multiplyScalar(Math.max(1, p * 1.6));
+    haloMat.color.copy(lit).multiplyScalar(0.55);
+    for (const l of ledLights) { l.color.copy(lampColor); l.intensity = p * 1.4; }
+    floorMat.emissive.copy(lit).multiplyScalar(0.7);
+    innerMat.emissive.copy(lit).multiplyScalar(0.2);
     rimMat.emissive.copy(lit).multiplyScalar(0.9);
     middleMat.emissive.copy(lit); domeMat.emissive.copy(lit);
-    inner.color.copy(lampColor); inner.intensity = p * 2;
+    inner.color.copy(lampColor); inner.intensity = p * 1.1;
   }
 
   // ── Interaction ─────────────────────────────────────────────────────
