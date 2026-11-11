@@ -7,7 +7,7 @@ import { playSfx, type SfxName } from "@/lib/audio/sfxStore";
  *   a ring of side lamps → a smaller inner plastic dome with "DRAW" engraved in black →
  *   a clear outer acrylic dome (refraction) over everything.
  * Lamp: gray (ready) → sky (card set, waiting for the next press) → off (dealing) → gray after the last card lands.
- * vibrate(): stored "win confirmed" rattle (slot push button / pachinko lever style); not wired into the game yet.
+ * vibrate(): stored "win confirmed" rattle of the button cap only (slot push button / pachinko lever style); not wired into the game yet.
  */
 export type LampState = "gray" | "sky" | "off";
 export type DrawButton3D = {
@@ -33,8 +33,9 @@ const LAMP: Record<LampState, { color: string; power: number }> = {
 
 // Units: outer dome base radius ≈ 1.
 const OUTER = { base: 0.99, height: 0.56, seat: 0.42 };
-const INNER = { base: 0.62, height: 0.24 };
-const LEDS = { count: 18, radius: 0.8 };
+const MIDDLE = { base: 0.84, height: 0.4 };
+const INNER = { base: 0.6, height: 0.17, chamfer: 0.05 };
+const LEDS = { count: 18, radius: 0.72 };
 const PRESS = { depth: 0.085, downMs: 70, holdMs: 45, upMs: 240 };
 
 function canvas(w: number, h: number) {
@@ -157,35 +158,38 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   camera.position.set(0, Math.sin(elevation) * distance, Math.cos(elevation) * distance);
   camera.lookAt(0, 0.25, 0);
 
-  // ── Image-based lighting: soft-edged lights so reflections read as glows, not CG rectangles.
+  // ── Image-based lighting: hard-edged strip lights give tight, metallic highlights (crisp lines,
+  // not soft blobs); one dim softbox keeps a gentle gradient on the shells.
   const pmrem = own(new THREE.PMREMGenerator(renderer));
   const studio = new THREE.Scene();
-  studio.add(new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30), new THREE.MeshBasicMaterial({ color: "#0f1522", side: THREE.BackSide })));
+  studio.add(new THREE.Mesh(new THREE.BoxGeometry(30, 30, 30), new THREE.MeshBasicMaterial({ color: "#0b1019", side: THREE.BackSide })));
   const soft = radialTexture([[0, "rgba(255,255,255,1)"], [0.45, "rgba(255,255,255,0.85)"], [1, "rgba(255,255,255,0)"]]);
-  const panel = (color: string, scale: number, w: number, h: number, p: [number, number, number]) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: soft, transparent: true, depthWrite: false, color: new THREE.Color(color).multiplyScalar(scale), side: THREE.DoubleSide }));
+  const panel = (color: string, scale: number, w: number, h: number, p: [number, number, number], blurred = false) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: blurred ? soft : null, transparent: blurred, depthWrite: false, color: new THREE.Color(color).multiplyScalar(scale), side: THREE.DoubleSide }));
     m.position.set(...p); m.lookAt(0, 0, 0); studio.add(m);
   };
-  panel("#fff2f8", 5, 16, 10, [-2, 9, -10]);    // overhead softbox → wide sheen across the back of the dome
-  panel("#ffb8e2", 2.6, 7, 14, [-11, 5, 2]);    // pink side
-  panel("#86dcff", 2.8, 7, 14, [11, 5, 1]);     // cyan side
-  panel("#ffffff", 1, 22, 5, [0, 3, 13]);       // low front fill → highlight line along the bezel bevel
-  panel("#d9e6ff", 2, 18, 5, [0, 6, -12]);      // back rim
-  const envRT = own(pmrem.fromScene(studio, 0.03));
+  panel("#ffffff", 1, 16, 10, [-2, 6, -13], true); // dim overhead softbox
+  panel("#ffffff", 7, 12, 0.5, [0, 7, -11]);          // overhead strip → sharp line across the dome top
+  panel("#ffffff", 6, 0.5, 12, [-9, 6, -1]);          // left vertical strip
+  panel("#bfe6ff", 6, 0.5, 12, [9, 6, -1]);           // right vertical strip (cool)
+  panel("#ffd6ee", 3, 0.4, 10, [-6, 5, 8]);           // front-left pink strip
+  panel("#ffffff", 3, 18, 0.45, [0, 2.4, 12]);        // low front bar → highlight line along the bezel bevel
+  panel("#d9e6ff", 4, 16, 0.5, [0, 5, -12]);          // back rim bar
+  const envRT = own(pmrem.fromScene(studio, 0.005));
   scene.environment = envRT.texture;
   studio.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); (m.material as THREE.Material | undefined)?.dispose(); });
   soft.dispose();
   const key = new THREE.DirectionalLight("#fff4ea", 1.4); key.position.set(-5, 8, -2); scene.add(key);
 
-  // ── Soft contact shadow stays put; everything else is on the rig (so vibrate() rattles it).
+  // ── Soft contact shadow and the fixed housing; only the cap moves (press and vibrate()).
   const shadowTex = own(radialTexture([[0, "rgba(0,0,0,0.85)"], [0.55, "rgba(0,0,0,0.5)"], [1, "rgba(0,0,0,0)"]]));
   const shadow = new THREE.Mesh(own(new THREE.PlaneGeometry(3.5, 3.5)), own(new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.003; scene.add(shadow);
   const rig = new THREE.Group(); scene.add(rig);
 
-  // ── Bezel: glossy black ring with a rounded lip and a broad bevel sloping outward (hard edges only
-  // where faces meet: inner wall | bevel | outer wall).
-  const bezelMat = own(new THREE.MeshPhysicalMaterial({ color: "#11151f", metalness: 0.2, roughness: 0.16, clearcoat: 1, clearcoatRoughness: 0.025, envMapIntensity: 0.55 }));
+  // ── Bezel: dark polished metal ring with a rounded lip and a broad bevel sloping outward (hard edges
+  // only where faces meet: inner wall | bevel | outer wall).
+  const bezelMat = own(new THREE.MeshPhysicalMaterial({ color: "#3b4252", metalness: 1, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02 }));
   // LatheGeometry normals are (dy, -dx): list points outer-bottom → over the top → inner, so faces point up/out.
   const lathe = (pts: number[][]) => rig.add(new THREE.Mesh(own(new THREE.LatheGeometry([...pts].reverse().map(([x, y]) => new THREE.Vector2(x, y)), 220)), bezelMat));
   lathe([[1.03, 0.04], [1.03, 0.2]]);
@@ -209,7 +213,7 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
 
   // ── Moving cap.
   const cap = new THREE.Group(); cap.position.y = 0.06; rig.add(cap);
-  const collarMat = own(new THREE.MeshPhysicalMaterial({ map: own(collarTexture(false)), emissiveMap: own(collarTexture(true)), emissive: "#000000", emissiveIntensity: 1.6, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.05 }));
+  const collarMat = own(new THREE.MeshPhysicalMaterial({ map: own(collarTexture(false)), emissiveMap: own(collarTexture(true)), emissive: "#000000", emissiveIntensity: 1.6, metalness: 0.85, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.02 }));
   const collar = new THREE.Mesh(own(new THREE.CylinderGeometry(OUTER.base, OUTER.base, OUTER.seat, 160, 1, true)), collarMat);
   collar.position.y = OUTER.seat / 2; cap.add(collar);
 
@@ -228,48 +232,58 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
     led.position.set(Math.cos(a) * LEDS.radius, OUTER.seat + 0.06, Math.sin(a) * LEDS.radius); cap.add(led);
   }
 
-  // Inner plastic dome (smaller, lit from the side lamps) with the black engraved label.
-  const innerMaps = innerDomeMaps(options.label ?? "DRAW");
+  // Innermost core: a flat-topped puck with a polished metal chamfer; the label is engraved flat
+  // into its lit top and filled with black.
+  const coreTop = OUTER.seat + INNER.height;
+  const faceMaps = innerDomeMaps(options.label ?? "DRAW");
   const innerMat = own(new THREE.MeshPhysicalMaterial({
-    map: own(innerMaps.map), emissiveMap: own(innerMaps.emissiveMap), normalMap: own(innerMaps.normalMap), normalScale: new THREE.Vector2(1.3, 1.3),
-    emissive: "#000000", emissiveIntensity: 1, roughness: 0.35, clearcoat: 0.35, clearcoatRoughness: 0.12, metalness: 0, envMapIntensity: 0.6,
+    map: own(faceMaps.map), emissiveMap: own(faceMaps.emissiveMap), normalMap: own(faceMaps.normalMap), normalScale: new THREE.Vector2(1.3, 1.3),
+    emissive: "#000000", emissiveIntensity: 1, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.04, metalness: 0, envMapIntensity: 0.7,
   }));
-  const innerDome = new THREE.Mesh(own(capGeometry(INNER.base, INNER.height)), innerMat);
-  innerDome.position.y = OUTER.seat + 0.02; cap.add(innerDome);
-  const innerSkirt = new THREE.Mesh(own(new THREE.CylinderGeometry(INNER.base, INNER.base + 0.01, 0.03, 160, 1, true)), innerMat);
-  innerSkirt.position.y = OUTER.seat + 0.005; cap.add(innerSkirt);
-  // Polished edge of the inner plastic catches the side lamps: a bright layered rim.
-  const rimMat = own(new THREE.MeshStandardMaterial({ color: "#dfe8f6", roughness: 0.1, metalness: 0.3, emissive: "#000000" }));
-  const rim = new THREE.Mesh(own(new THREE.TorusGeometry(INNER.base + 0.004, 0.011, 12, 200)), rimMat);
-  rim.rotation.x = Math.PI / 2; rim.position.y = OUTER.seat + 0.022; cap.add(rim);
+  const face = new THREE.Mesh(own(new THREE.CircleGeometry(INNER.base - INNER.chamfer, 128)), innerMat);
+  face.rotation.x = -Math.PI / 2; face.position.y = coreTop; cap.add(face);
+  const chromeMat = own(new THREE.MeshPhysicalMaterial({ color: "#c9d2e2", metalness: 1, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.02 }));
+  const coreSide = [[INNER.base, OUTER.seat], [INNER.base, coreTop - INNER.chamfer], [INNER.base - INNER.chamfer, coreTop]]
+    .reverse().map(([x, y]) => new THREE.Vector2(x, y));
+  cap.add(new THREE.Mesh(own(new THREE.LatheGeometry(coreSide, 200)), chromeMat));
+  // The chamfer edge catches the side lamps: a thin lit rim.
+  const rimMat = own(new THREE.MeshStandardMaterial({ color: "#dfe8f6", roughness: 0.08, metalness: 0.6, emissive: "#000000" }));
+  const rim = new THREE.Mesh(own(new THREE.TorusGeometry(INNER.base - INNER.chamfer, 0.007, 10, 200)), rimMat);
+  rim.rotation.x = Math.PI / 2; rim.position.y = coreTop; cap.add(rim);
 
-  // Clear outer acrylic dome; its thick edge is tinted by the lamp (attenuation) so it glows volumetrically.
-  const domeMat = own(new THREE.MeshPhysicalMaterial({
-    color: "#ffffff", metalness: 0, roughness: 0.03, transmission: 1, thickness: 0.07, ior: 1.5,
-    attenuationColor: new THREE.Color("#ffffff"), attenuationDistance: 1.4, clearcoat: 1, clearcoatRoughness: 0.02,
-    specularIntensity: 1, envMapIntensity: 1.3,
+  // Two clear shells over the core (middle + outer), like the stacked plastics of a pachinko button.
+  // They are drawn as additive reflection layers (black base, sharp clearcoat/Fresnel highlights, a faint
+  // lamp-coloured haze), so every layer stays visible through the one in front of it.
+  const shellMat = (haze: number) => own(new THREE.MeshPhysicalMaterial({
+    color: "#000000", metalness: 0, roughness: 0.02, clearcoat: 1, clearcoatRoughness: 0.01, specularIntensity: 1, envMapIntensity: 1.5,
+    emissive: "#000000", emissiveIntensity: haze, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   }));
+  const middleMat = shellMat(0.1), domeMat = shellMat(0.06);
+  const middle = new THREE.Mesh(own(capGeometry(MIDDLE.base, MIDDLE.height)), middleMat);
+  middle.position.y = OUTER.seat; middle.renderOrder = 2; cap.add(middle);
+  const middleRim = new THREE.Mesh(own(new THREE.TorusGeometry(MIDDLE.base, 0.008, 10, 200)), rimMat);
+  middleRim.rotation.x = Math.PI / 2; middleRim.position.y = OUTER.seat + 0.004; cap.add(middleRim);
   const dome = new THREE.Mesh(own(capGeometry(OUTER.base, OUTER.height)), domeMat);
-  dome.position.y = OUTER.seat; cap.add(dome);
-  const inner = new THREE.PointLight("#ffffff", 0, 2.6, 1.6); inner.position.y = OUTER.seat + 0.12; cap.add(inner);
+  dome.position.y = OUTER.seat; dome.renderOrder = 3; cap.add(dome);
+  const inner = new THREE.PointLight("#ffffff", 0, 2.6, 1.6); inner.position.y = OUTER.seat + INNER.height + 0.12; cap.add(inner);
 
   // ── Lamp state (eased) ──────────────────────────────────────────────
   let target: LampState = "gray";
   const lampColor = new THREE.Color(LAMP.gray.color); let lampPower = LAMP.gray.power;
   let flash = 0, hover = 0, hovering = false, pressAt = -1, vibAt = -1, vibMs = 0, vibPulse = 0;
-  const lit = new THREE.Color(), tmp = new THREE.Color(), dark = new THREE.Color("#1a2433"), white = new THREE.Color("#ffffff");
+  const lit = new THREE.Color(), tmp = new THREE.Color(), dark = new THREE.Color("#1a2433");
 
   function applyLamp() {
     const p = lampPower * (1 + 0.18 * hover + vibPulse) + flash * (lampPower > 0.05 ? 0.9 : 0);
     lit.copy(lampColor).multiplyScalar(p);
     ringMat.emissive.copy(lit); ringMat.color.copy(dark).lerp(tmp.copy(lampColor), Math.min(1, lampPower));
     gapMat.color.copy(lit).multiplyScalar(0.6);
-    collarMat.emissive.copy(lit).multiplyScalar(0.3);
+    collarMat.emissive.copy(lit).multiplyScalar(0.14);
     ledMat.emissive.copy(lit).multiplyScalar(1.6); ledMat.color.copy(dark).lerp(tmp.copy(lampColor), Math.min(1, lampPower));
     floorMat.emissive.copy(lit).multiplyScalar(0.55);
-    innerMat.emissive.copy(lit).multiplyScalar(0.6);
+    innerMat.emissive.copy(lit).multiplyScalar(0.38);
     rimMat.emissive.copy(lit).multiplyScalar(0.9);
-    domeMat.attenuationColor.copy(white).lerp(lampColor, Math.min(0.8, lampPower * 0.6));
+    middleMat.emissive.copy(lit); domeMat.emissive.copy(lit);
     inner.color.copy(lampColor); inner.intensity = p * 2;
   }
 
@@ -323,19 +337,20 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
     cap.position.y = 0.06 - travel * PRESS.depth;
     // Win vibration: motor-like buzz (two incommensurate frequencies per axis) under a sharp attack,
     // pulsing in bursts like a pachinko lever, then a damped tail.
-    rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0); vibPulse = 0;
+    cap.position.x = 0; cap.position.z = 0; cap.rotation.set(0, 0, 0); vibPulse = 0;
     if (vibAt >= 0) {
       const t = clock - vibAt, u = t / vibMs;
       if (u >= 1) vibAt = -1;
       else {
         const s = t / 1000, attack = Math.min(1, t / 40), tail = u > 0.75 ? ((1 - u) / 0.25) ** 1.5 : 1;
         const burst = 0.55 + 0.45 * Math.max(0, Math.sin(2 * Math.PI * 7 * s)); // ~7 bursts per second
-        const a = 0.028 * attack * tail * burst;
-        rig.position.x = a * (Math.sin(2 * Math.PI * 41 * s) + 0.6 * Math.sin(2 * Math.PI * 67 * s + 1.3));
-        rig.position.z = a * 0.8 * (Math.sin(2 * Math.PI * 37 * s + 2.1) + 0.5 * Math.sin(2 * Math.PI * 59 * s));
-        rig.position.y = a * 0.35 * Math.sin(2 * Math.PI * 53 * s + 0.7);
-        rig.rotation.z = a * 0.5 * Math.sin(2 * Math.PI * 43 * s + 0.4);
-        rig.rotation.x = a * 0.4 * Math.sin(2 * Math.PI * 47 * s + 1.9);
+        // Only the cap rattles inside the fixed bezel; 0.016 keeps it clear of the 0.04 gap.
+        const a = 0.016 * attack * tail * burst;
+        cap.position.x = a * (Math.sin(2 * Math.PI * 41 * s) + 0.6 * Math.sin(2 * Math.PI * 67 * s + 1.3));
+        cap.position.z = a * 0.8 * (Math.sin(2 * Math.PI * 37 * s + 2.1) + 0.5 * Math.sin(2 * Math.PI * 59 * s));
+        cap.position.y += a * 0.5 * Math.sin(2 * Math.PI * 53 * s + 0.7);
+        cap.rotation.z = a * 1.2 * Math.sin(2 * Math.PI * 43 * s + 0.4);
+        cap.rotation.x = a * 1.0 * Math.sin(2 * Math.PI * 47 * s + 1.9);
         vibPulse = 0.6 * attack * tail * burst;
       }
     }
