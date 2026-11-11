@@ -219,36 +219,26 @@ body:has(.game-topbar-shell) > .global-bgm-player {
   transform-origin: center top;
 }
 
-/* Frame the player in the foreground and keep the distant enemy fully visible. */
+/* Cabinet actors fill the scene. Position each sprite on that shared canvas. */
 .battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-character-slot {
-  left: -43%;
-  top: 8%;
-  width: 182%;
-  height: 153%;
+  left: -21%;
+  top: 22%;
+  width: 86%;
+  height: 126%;
 }
 
 .battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-character-slot {
-  left: -10%;
-  top: 19%;
-  width: 90%;
-  height: 57%;
+  left: 52%;
+  top: 25%;
+  width: 44%;
+  height: 55%;
 }
 
 .battle-cabinet-screen .battle-spawn-actor .battle-spawn-character-slot .battle-spawn-character {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  object-position: center bottom;
-}
-
-.battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-character-slot .battle-spawn-character {
-  transform: translate(-24%, 4%) scale(1.45);
-  transform-origin: center 9%;
-}
-
-.battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-character-slot .battle-spawn-character {
-  transform: scale(0.74);
-  transform-origin: center bottom;
+  object-position: center top;
 }
 
 .battle-cabinet-screen .battle-spawn-actor .battle-spawn-character-shadow {
