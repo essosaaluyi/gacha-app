@@ -106,7 +106,7 @@ export const patchConfig = {
   //   hit again and finish the enemy off.
   fatalMode: {
     enemyWindowTurns: 3,
-    playerWindowGames: 2,
+    playerWindowGames: 4,
   },
 
   // Feature 2: the attack fakeout cycle.
