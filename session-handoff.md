@@ -10,6 +10,23 @@
 - 次の担当への依頼：
 
 
+### 【完了：筐体へのはめ込み試験（開発環境のみ）・本番採用はオーナー確認待ち】2026-11-11（18回目） ／ 担当：Claude（Tsukasa） ／ ブランチ：main
+- オーナーは窓ライト（D）を選んだ。その丸型 3D ボタンを、今の筐体の DRAW ボタン（DOM の `.bcab-draw-btn`）の中に描くようにした。
+  - 新規 `components/battle/cabinet/DrawButton3DMount.tsx`：見た目だけを担当する。押下・ロック判定は既存の `<button>` のまま。
+  - ランプ：`cabinetDrawLocked` なら消灯、`dealPhase === "set"` ならスカイ、それ以外はグレー。
+  - 押した動き：`onPointerDown` と Enter / Space キーで動かす。効果音はゲーム側の buttonPush のみ。
+  - `BattleScreen.tsx` の `DRAW_BUTTON_3D = NODE_ENV !== "production"`：開発環境だけで表示し、本番の見た目は変えない。
+  - CSS：`.bcab-draw-btn-3d` で既存の CSS の見た目（枠・背景・::before / ::after）を消し、`.bcab-draw-3d` のキャンバスを置いた（クリックはボタンが受ける）。
+  - `runtime.ts` にカメラ距離のオプション `distance` を追加した（筐体では 6.1）。
+  - 撮影用のフック `window.__drawButton3d` を置いた（開発環境のみ）。
+- 確認：
+  - /battle で、筐体の中にグレー・スカイ・消灯の 3 状態を撮影した（フックで切り替え）。
+  - 型チェックのエラー 0、触ったファイルの lint エラー 0。
+- 未確認：
+  - 実際のプレイの流れ（グレー → 押す → スカイ → 押す → 消灯 → 最後のカードでグレー）。ヘッドレスでは手札のドラッグ召喚ができず、ロック解除まで進めなかった。
+  - 押した動きの見え方、実機 FPS。
+- Codex への連絡：`BattleScreen.tsx` の DRAW ボタン部分と `.bcab-draw-btn-3d` は Claude が触った。本番採用はオーナーの確認待ち。
+
 ### 【完了：ライト比較 4 パターン・オーナーの選択待ち】2026-11-11（17回目） ／ 担当：Claude（Tsukasa） ／ ブランチ：main
 - オーナー判断：形は丸型（r6）がよい。盾型（r7）は試作ページの「形」ボタンで切り替えられるように残した。
 - 「光が全体に均等に反射している。ガラスのような不規則な反射にしたい」に対応して、丸型にライトの種類を 4 パターン追加した（`DrawButton3DOptions.lighting`）。試作ページは 4 つを 2×2 で並べて比較できる。

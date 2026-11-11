@@ -9443,3 +9443,21 @@ body.page-video-active .trust-page {
   35% { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
+
+/* --- three.js DRAW button trial fit (development only; see DrawButton3DMount) --- */
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn.bcab-draw-btn-3d,
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn.bcab-draw-btn-3d:disabled,
+.bcab-air-cabinet .bcab-led-panel .bcab-draw-btn.bcab-draw-btn-3d[data-led-state] {
+  border: none;
+  background: none;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+.bcab-air-cabinet .bcab-draw-btn.bcab-draw-btn-3d::before,
+.bcab-air-cabinet .bcab-draw-btn.bcab-draw-btn-3d::after { content: none; display: none; }
+.bcab-draw-3d {
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+}

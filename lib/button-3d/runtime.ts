@@ -26,7 +26,12 @@ export type DrawButton3D = {
 };
 /** onPress may return the sound to play for this press. */
 export type LightingPreset = "studio" | "room" | "hall" | "window";
-export type DrawButton3DOptions = { label?: string; lighting?: LightingPreset; onPress?: () => SfxName | null | void };
+export type DrawButton3DOptions = {
+  label?: string; lighting?: LightingPreset;
+  /** Camera distance: 7.8 leaves room around the button (lab); ~6 fills the canvas (cabinet slot). */
+  distance?: number;
+  onPress?: () => SfxName | null | void;
+};
 
 const LAMP: Record<LampState, { color: string; power: number }> = {
   gray: { color: "#cfd6df", power: 0.5 },
@@ -277,7 +282,7 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 60);
-  const elevation = THREE.MathUtils.degToRad(48), distance = 7.8;
+  const elevation = THREE.MathUtils.degToRad(48), distance = options.distance ?? 7.8;
   camera.position.set(0, Math.sin(elevation) * distance, Math.cos(elevation) * distance);
   camera.lookAt(0, 0.25, 0);
 

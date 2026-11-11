@@ -34,6 +34,7 @@ import BarChanceOverlay from "@/components/battle/BarChanceOverlay";
 import CollectionPhaseOverlay from "@/components/battle/CollectionPhaseOverlay";
 import CollectionPointsHandoff from "@/components/battle/CollectionPointsHandoff";
 import DefenseShieldOverlay from "@/components/battle/DefenseShieldOverlay";
+import DrawButton3DMount from "@/components/battle/cabinet/DrawButton3DMount";
 import {
   dismissCollectionResult,
   getCollectionState,
@@ -141,6 +142,8 @@ import {
 // Battle opening. The clip runs ~18s; the backstop is deliberately well past
 // that so a slow start never truncates it, and only catches a clip that never
 // fires `ended` at all.
+/** Trial fit of the three.js DRAW button in the cabinet: development only until the owner approves it. */
+const DRAW_BUTTON_3D = process.env.NODE_ENV !== "production";
 const BATTLE_OPENING_MAX_MS = 30_000;
 const BATTLE_OPENING_FADE_MS = 700;
 
@@ -226,6 +229,7 @@ export default function BattleScreen() {
   const [bgmMuted, setBgmMutedState] = useState(false);
   const [autoEnabled, setAutoEnabled] = useState(false);
   const [drawPressed, setDrawPressed] = useState(false);
+  const [drawPressTick, setDrawPressTick] = useState(0);
   const [dealPhase, setDealPhase] = useState("idle");
   const [mixStartedAt, setMixStartedAt] = useState(0);
   const [ejectStartedAt, setEjectStartedAt] = useState(0);
@@ -982,7 +986,7 @@ export default function BattleScreen() {
               type="button"
               className={`bcab-draw-btn ${
                 cabinetDrawLocked ? "bcab-draw-locked" : ""
-              }`}
+              }${DRAW_BUTTON_3D ? " bcab-draw-btn-3d" : ""}`}
               aria-label={
                 collectionResultReady
                   ? "Continue to next round"
@@ -992,16 +996,21 @@ export default function BattleScreen() {
               }
               data-pressed={drawPressed ? "true" : "false"}
               data-led-state={drawPressed || cabinetDrawLocked ? "off" : "on"}
-              onPointerDown={() => setDrawPressed(true)}
+              onPointerDown={() => { setDrawPressed(true); setDrawPressTick((n) => n + 1); }}
               onPointerUp={() => setDrawPressed(false)}
               onPointerCancel={() => setDrawPressed(false)}
               onBlur={() => setDrawPressed(false)}
-              onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") setDrawPressed(true); }}
+              onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { setDrawPressed(true); setDrawPressTick((n) => n + 1); } }}
               onKeyUp={() => setDrawPressed(false)}
               aria-disabled={cabinetDrawLocked}
               disabled={cabinetDrawLocked}
               onClick={handleDrawPress}
-            />
+            >
+              {DRAW_BUTTON_3D && (
+                // gray = ready, sky = cards set (next press deals), off = locked / dealing.
+                <DrawButton3DMount lamp={cabinetDrawLocked ? "off" : dealPhase === "set" ? "sky" : "gray"} pressTick={drawPressTick} />
+              )}
+            </button>
             <button
               type="button"
               className={`bcab-auto ${autoEnabled ? "bcab-auto-on" : ""}`}
