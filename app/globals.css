@@ -228,7 +228,7 @@ body:has(.game-topbar-shell) > .global-bgm-player {
 }
 
 .battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-character-slot {
-  left: 52%;
+  left: 44%;
   top: 25%;
   width: 44%;
   height: 55%;
