@@ -141,14 +141,15 @@ function raisedText(own: Own, text: string, w: number, h: number, depth = 0.07) 
   return g;
 }
 
-/** Lit sign face: warm cream light box, red italic letters with a dark outline (reference: CHANCE lamp). */
-function signTexture(text: string) {
-  const W = 1024, H = 394, { c, g } = canvas(W, H);
+/** Lit sign face: warm cream light box, red italic letters with a dark outline (reference: CHANCE lamp).
+ *  `aspect` is the face's on-screen width/height, so the lettering never stretches. */
+function signTexture(text: string, aspect = 1024 / 394) {
+  const W = 1024, H = Math.max(80, Math.round(W / aspect)), { c, g } = canvas(W, H);
   const bg = g.createRadialGradient(W / 2, H * 0.45, 20, W / 2, H / 2, W * 0.6);
   bg.addColorStop(0, "#fffaf0"); bg.addColorStop(0.55, "#fbe9c6"); bg.addColorStop(1, "#d9a868");
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   g.strokeStyle = "rgba(120,60,20,0.55)"; g.lineWidth = 6; g.strokeRect(18, 18, W - 36, H - 36);
-  let size = 200; const font = (z: number) => `italic 900 ${z}px "Arial Black", "Segoe UI", Arial, sans-serif`; g.font = font(size);
+  let size = Math.min(200, Math.round(H * 0.52)); const font = (z: number) => `italic 900 ${z}px "Arial Black", "Segoe UI", Arial, sans-serif`; g.font = font(size);
   while (g.measureText(text).width > W * 0.84 && size > 20) { size -= 4; g.font = font(size); }
   g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
   g.strokeStyle = "#3a0806"; g.lineWidth = 14; g.strokeText(text, W / 2, H * 0.53);
@@ -255,17 +256,30 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
     floorG.add(new THREE.Mesh(own(g), own(new THREE.MeshPhysicalMaterial({ color: "#e6ebf2", metalness: 1, roughness: 0.05, clearcoat: 1, side: THREE.DoubleSide }))));
   }
 
-  // ── AUTO toggle lever.
-  const autoG = new THREE.Group(); autoG.position.set(-0.42, 0, floorFront - 1.45); floorG.add(autoG);
+  // ── Control layout (owner reference, 2026-11-12). Read bottom to top the three controls are
+  //    DRAW → AUTO → DATA COUNTER: the round button alone on the recess floor, and the two
+  //    plates stacked on the overhang's forward face, AUTO under the sign.
+  const FACE_Z = overhangFront + 0.02, FACE_TILT = -THREE.MathUtils.degToRad(8);
+  const AUTO_PLATE = { w: 2.92, h: 0.82, y: ceilingY + 0.53 };   // 3.05 → 3.17‥3.99
+  const DATA_PLATE = { w: 2.92, h: 1.0, y: overhangTop - 0.65 }; // 5.35 → 4.20‥5.20
+
+  // ── AUTO toggle lever, on the overhang face below the sign.
+  const autoG = new THREE.Group(); autoG.position.set(0, AUTO_PLATE.y, FACE_Z); autoG.rotation.x = FACE_TILT; scene.add(autoG);
   const bezelMat = own(new THREE.MeshPhysicalMaterial({ color: "#3b4252", metalness: 1, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.02 }));
-  const plate = new THREE.Mesh(own(extruded(roundedRect(2.0, 0.7, 0.2), 0.04, 0.05, 0.04, 4)), bezelMat);
-  plate.rotation.x = -Math.PI / 2; autoG.add(plate);
-  const autoText = engraveMaps([{ t: "AUTO", x: 0.2 }, { t: "OFF", x: 0.5 }, { t: "ON", x: 0.93 }], 1.8 / 0.5, { base: "#1a2029", fill: "#cfd6df", font: `800 SIZEpx "Segoe UI", Arial, sans-serif`, widthFrac: 0.94 });
-  const autoFace = new THREE.Mesh(own(flatRect(1.8, 0.5, 0.12)), own(new THREE.MeshPhysicalMaterial({ map: own(autoText.map), normalMap: own(autoText.normalMap), metalness: 0.6, roughness: 0.35, clearcoat: 0.6 })));
-  autoFace.rotation.x = -Math.PI / 2; autoFace.position.y = 0.141; autoG.add(autoFace);
-  const slot = new THREE.Mesh(own(flatRect(0.5, 0.1, 0.05)), own(new THREE.MeshStandardMaterial({ color: "#020305", roughness: 0.9 })));
-  slot.rotation.x = -Math.PI / 2; slot.position.set(0.38, 0.143, 0); autoG.add(slot);
-  const lever = new THREE.Group(); lever.position.set(0.38, 0.14, 0); autoG.add(lever);
+  // Extruded toward +z, so the plate already faces the player: its front surface lands at z = 0.14.
+  const plate = new THREE.Mesh(own(extruded(roundedRect(AUTO_PLATE.w, AUTO_PLATE.h, 0.18), 0.04, 0.05, 0.04, 4)), bezelMat);
+  autoG.add(plate);
+  const AUTO_FACE = { w: 2.68, h: 0.56 };
+  const autoText = engraveMaps([{ t: "AUTO", x: 0.2 }, { t: "OFF", x: 0.5 }, { t: "ON", x: 0.93 }], AUTO_FACE.w / AUTO_FACE.h, { base: "#1a2029", fill: "#cfd6df", font: `800 SIZEpx "Segoe UI", Arial, sans-serif`, widthFrac: 0.94 });
+  const autoFace = new THREE.Mesh(own(flatRect(AUTO_FACE.w, AUTO_FACE.h, 0.12)), own(new THREE.MeshPhysicalMaterial({ map: own(autoText.map), normalMap: own(autoText.normalMap), metalness: 0.6, roughness: 0.35, clearcoat: 0.6 })));
+  autoFace.position.z = 0.141; autoG.add(autoFace);
+  const LEVER_X = AUTO_FACE.w * 0.215;  // midway between the OFF and ON legends
+  const slot = new THREE.Mesh(own(flatRect(0.72, 0.13, 0.06)), own(new THREE.MeshStandardMaterial({ color: "#020305", roughness: 0.9 })));
+  slot.position.set(LEVER_X, 0, 0.143); autoG.add(slot);
+  // The lever stands out of the plate toward the player. Turning its holder a quarter turn maps the
+  // lever's own +y onto +z, so the throw below stays a plain z-rotation: left = OFF, right = ON.
+  const leverHolder = new THREE.Group(); leverHolder.position.set(LEVER_X, 0, 0.14); leverHolder.rotation.x = Math.PI / 2; autoG.add(leverHolder);
+  const lever = new THREE.Group(); leverHolder.add(lever);
   const chrome = own(new THREE.MeshPhysicalMaterial({ color: "#d9dfe8", metalness: 1, roughness: 0.06, clearcoat: 1 }));
   const stick = new THREE.Mesh(own(new THREE.CylinderGeometry(0.028, 0.04, 0.5, 20)), chrome); stick.position.y = 0.25; lever.add(stick);
   const knobCoreMat = own(new THREE.MeshStandardMaterial({ color: "#11161e", roughness: 0.3, emissive: "#000000" }));
@@ -274,16 +288,19 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   const knob = new THREE.Mesh(own(new THREE.SphereGeometry(0.16, 40, 28)), knobMat); knob.position.y = 0.55; knob.renderOrder = 3; lever.add(knob);
   const knobLight = new THREE.PointLight("#ffffff", 0, 1.2, 2); knobLight.position.y = 0.55; lever.add(knobLight);
 
-  // ── DRAW button on the floor (shared model with the lab button).
+  // ── DRAW button alone at the front of the recess floor (shared model with the lab button).
   const draw = buildDrawButton(own);
-  draw.root.position.set(0, 0, floorBack + 1.85); floorG.add(draw.root);
+  draw.root.position.set(0, 0, floorEnd - 1.55); floorG.add(draw.root);
 
-  // ── DATA COUNTER: rectangular version of the DRAW button on the overhang's front face.
-  const dataG = new THREE.Group(); dataG.position.set(0, (overhangTop + ceilingY) / 2 + 0.05, overhangFront + 0.02); dataG.rotation.x = -THREE.MathUtils.degToRad(8); scene.add(dataG);
-  dataG.add(new THREE.Mesh(own(extruded(Object.assign(roundedRect(3.0, 1.62, 0.32), { holes: [roundedRect(2.62, 1.26, 0.2)] }), 0.08, 0.08, 0.06, 6)), bezelMat));
-  const dWell = new THREE.Mesh(own(flatRect(2.66, 1.3, 0.2)), own(new THREE.MeshStandardMaterial({ color: "#05080f", roughness: 0.8 }))); dWell.position.z = 0.02; dataG.add(dWell);
-  const dCap = new THREE.Group(); dataG.add(dCap);
-  const dataFace = engraveMaps("DATA COUNTER", 2.1 / 0.82, { base: "#606b7d", fill: "#0b0d10", font: `900 SIZEpx "Arial Black", "Segoe UI", Arial, sans-serif`, widthFrac: 0.86, emissive: true, lines: true });
+  // ── DATA COUNTER at the top of the overhang's front face.
+  //    Built at its original size inside dataS, which fits it to DATA_PLATE.
+  const dataG = new THREE.Group(); dataG.position.set(0, DATA_PLATE.y, FACE_Z); dataG.rotation.x = FACE_TILT; scene.add(dataG);
+  const DS = { x: DATA_PLATE.w / 3.0, y: DATA_PLATE.h / 1.5 };
+  const dataS = new THREE.Group(); dataS.scale.set(DS.x, DS.y, 1); dataG.add(dataS);
+  dataS.add(new THREE.Mesh(own(extruded(Object.assign(roundedRect(3.0, 1.62, 0.32), { holes: [roundedRect(2.62, 1.26, 0.2)] }), 0.08, 0.08, 0.06, 6)), bezelMat));
+  const dWell = new THREE.Mesh(own(flatRect(2.66, 1.3, 0.2)), own(new THREE.MeshStandardMaterial({ color: "#05080f", roughness: 0.8 }))); dWell.position.z = 0.02; dataS.add(dWell);
+  const dCap = new THREE.Group(); dataS.add(dCap);
+  const dataFace = engraveMaps("DATA COUNTER", (2.1 * DS.x) / (0.82 * DS.y), { base: "#606b7d", fill: "#0b0d10", font: `900 SIZEpx "Arial Black", "Segoe UI", Arial, sans-serif`, widthFrac: 0.86, emissive: true, lines: true });
   const dCoreMat = own(new THREE.MeshPhysicalMaterial({ map: own(dataFace.map), emissiveMap: own(dataFace.emissiveMap!), normalMap: own(dataFace.normalMap), normalScale: new THREE.Vector2(1.3, 1.3), emissive: "#000000", roughness: 0.3, clearcoat: 0.5, envMapIntensity: 0.7 }));
   const dCore = new THREE.Mesh(own(flatRect(2.1, 0.82, 0.12)), dCoreMat); dCore.position.z = 0.2; dCap.add(dCore);
   const dRim = new THREE.Mesh(own(extruded(Object.assign(roundedRect(2.22, 0.94, 0.16), { holes: [roundedRect(2.1, 0.82, 0.12)] }), 0.12, 0.02, 0.02, 2)), chrome); dRim.position.z = 0.06; dCap.add(dRim);
@@ -304,12 +321,12 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   let pressTarget: THREE.Object3D = dCap, dataHit: THREE.Object3D = dCover;
   let signMat: THREE.MeshStandardMaterial | null = null, signLight: THREE.PointLight | null = null;
   if (variant.sign) {
-    for (const c of dataG.children) c.visible = false;
+    for (const c of dataS.children) c.visible = false;
     const housing = new THREE.Mesh(own(extruded(roundedRect(3.0, 1.5, 0.2), 0.22, 0.07, 0.06, 5)), own(new THREE.MeshPhysicalMaterial({ color: "#0b0e13", metalness: 0.2, roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.03 })));
-    dataG.add(housing);
-    const sCap = new THREE.Group(); sCap.position.z = 0.36; dataG.add(sCap);
+    dataS.add(housing);
+    const sCap = new THREE.Group(); sCap.position.z = 0.36; dataS.add(sCap);
     sCap.add(new THREE.Mesh(own(extruded(Object.assign(roundedRect(2.8, 1.3, 0.14), { holes: [roundedRect(2.44, 0.94, 0.06)] }), 0.04, 0.05, 0.04, 4)), own(new THREE.MeshPhysicalMaterial({ color: "#d4893a", metalness: 1, roughness: 0.22, clearcoat: 0.8 }))));
-    const face = own(signTexture("DATA COUNTER"));
+    const face = own(signTexture("DATA COUNTER", (2.44 * DS.x) / (0.94 * DS.y)));
     signMat = own(new THREE.MeshStandardMaterial({ map: face, emissiveMap: face, emissive: "#000000", roughness: 0.5 }));
     const signFace = new THREE.Mesh(own(flatRect(2.44, 0.94, 0.06)), signMat); signFace.position.z = 0.04; sCap.add(signFace);
     const glass = new THREE.Mesh(own(flatRect(2.44, 0.94, 0.06)), clearPlastic(own, grain)); glass.position.z = 0.09; glass.renderOrder = 3; sCap.add(glass);
