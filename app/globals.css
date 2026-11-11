@@ -202,7 +202,7 @@ body:has(.game-topbar-shell) > .global-bgm-player {
   content: "";
   position: absolute;
   inset: 0;
-  background: #637c76 url("/images/battle-assets/stage-day-field-cabinet.v1.webp") center / cover no-repeat;
+  background: #637c76 url("/images/battle-assets/stage-day-field-cabinet.v2.webp") center / cover no-repeat;
 }
 
 .battle-cabinet-screen .battle-spawn-scene::after {
