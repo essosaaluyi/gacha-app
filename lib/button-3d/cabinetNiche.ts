@@ -29,8 +29,8 @@ export type CabinetNiche3D = {
 export type NicheVariant = {
   /** DATA COUNTER as a lit sign box (cream face, red italic letters, amber frame) instead of the clear push button. */
   sign?: boolean;
-  /** DESTINY WARS: engraved in the floor lip (default), raised chrome letters on the back wall, or engraved in the back wall. */
-  logo?: "floor" | "wallRaised" | "wallEngraved";
+  /** DESTINY WARS: engraved in the floor lip (default), raised chrome letters on the back wall, engraved in the back wall, or left off. */
+  logo?: "floor" | "wallRaised" | "wallEngraved" | "none";
   /** A chrome scoop tray across the front of the floor. */
   tray?: boolean;
   /** Metallic blue side walls. */
@@ -38,7 +38,10 @@ export type NicheVariant = {
 };
 type Own = <T extends { dispose(): void }>(x: T) => T;
 
-const FLOOR_TILT = THREE.MathUtils.degToRad(34); // floor rises toward the back
+// The floor rises toward the back and the camera looks down; together they decide how square-on the
+// DRAW button is seen. 40° + 18° puts the view ~32° off the floor's normal, so the button reads as
+// seated on a visible surface instead of floating in the dark (owner note, 2026-11-12).
+const FLOOR_TILT = THREE.MathUtils.degToRad(40);
 const NICHE = { halfW: 1.62, floorFront: 2.45, floorBack: -3.05, ceilingY: 3.05, overhangFront: 1.15, overhangTop: 5.35, apronBottom: -3.1 };
 const GOLD = "#b8955a";
 
@@ -175,7 +178,7 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(26, 1, 0.5, 80);
-  const look = new THREE.Vector3(0, 1.1, 0), tiltDown = THREE.MathUtils.degToRad(12), dist = 17.5;
+  const look = new THREE.Vector3(0, 1.1, 0), tiltDown = THREE.MathUtils.degToRad(18), dist = 17.5;
   camera.position.set(0, look.y + Math.sin(tiltDown) * dist, Math.cos(tiltDown) * dist); camera.lookAt(look);
 
   const pmrem = own(new THREE.PMREMGenerator(renderer));
@@ -187,7 +190,9 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   // ── Niche shell: dark satin walls, gold trim along the opening.
   const grain = own(plasticNormalTexture()); grain.wrapS = grain.wrapT = THREE.RepeatWrapping; grain.repeat.set(4, 4);
   const wallMat = own(new THREE.MeshPhysicalMaterial({ color: "#232a35", metalness: 0.55, roughness: 0.4, normalMap: grain, normalScale: new THREE.Vector2(0.25, 0.25), clearcoat: 0.4, clearcoatRoughness: 0.2, side: THREE.DoubleSide }));
-  const floorMat = own(new THREE.MeshPhysicalMaterial({ color: "#1a2029", metalness: 0.7, roughness: 0.3, normalMap: grain, normalScale: new THREE.Vector2(0.2, 0.2), clearcoat: 0.6, clearcoatRoughness: 0.1 }));
+  // Less mirror, more surface: at 0.7 metal the floor had almost no diffuse term and read as a black
+  // void under the button, which hid its contact shadow.
+  const floorMat = own(new THREE.MeshPhysicalMaterial({ color: "#232b36", metalness: 0.45, roughness: 0.38, normalMap: grain, normalScale: new THREE.Vector2(0.22, 0.22), clearcoat: 0.6, clearcoatRoughness: 0.12 }));
   const sideMat = variant.blueSides
     ? own(new THREE.MeshPhysicalMaterial({ color: "#3a6cf0", emissive: "#0b1e5c", metalness: 0.8, roughness: 0.24, normalMap: grain, normalScale: new THREE.Vector2(0.35, 0.35), clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide }))
     : wallMat;
@@ -228,14 +233,21 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   const down = new THREE.RectAreaLight("#fff0da", 9, W - 0.3, 0.3); down.position.set(0, ceilingY - 0.06, overhangFront - 0.25); down.lookAt(0, 0, 0.3); scene.add(down);
 
   const fill = new THREE.PointLight("#ffe6c4", 5, 7, 2); fill.position.set(0, 2.4, 2.2); scene.add(fill); // spill from the strip toward the front lip
-  // ── Front lip: DESTINY WARS cut into the floor and filled with gold.
-  const logo = engraveMaps("DESTINY WARS", 2.9 / 0.62, { base: "#12161d", fill: GOLD, font: `700 SIZEpx "Cinzel", "Trajan Pro", Georgia, serif`, widthFrac: 0.9, lines: true });
-  const logoMat = own(new THREE.MeshPhysicalMaterial({ map: own(logo.map), normalMap: own(logo.normalMap), normalScale: new THREE.Vector2(1.2, 1.2), metalness: 0.8, roughness: 0.28, clearcoat: 0.5, emissive: "#3a2a10", emissiveMap: own(logo.map) }));
-  const logoMesh = new THREE.Mesh(own(new THREE.PlaneGeometry(2.9, 0.62)), logoMat);
+  // Pool of light on the floor where the DRAW button stands, so its contact shadow has something to
+  // fall on. Kept low and close so it grazes the floor without washing out the tray.
+  const seat = new THREE.PointLight("#ffe9cc", 3.4, 5.2, 2); seat.position.set(0, 1.25, 2.1); scene.add(seat);
+
+  // ── DESTINY WARS, placed by `logo`; "none" leaves it off entirely.
   const wallLogoY = back.y + 0.62; // low enough to clear the overhang edge from the camera, above the DRAW dome
-  if (logoMode === "floor") { logoMesh.rotation.x = -Math.PI / 2; logoMesh.position.set(0, 0.004, floorEnd - 0.45); floorG.add(logoMesh); }
-  else if (logoMode === "wallEngraved") { logoMesh.position.set(0, wallLogoY, back.z + 0.005); logoMesh.scale.setScalar(0.85); scene.add(logoMesh); }
-  else { const raised = raisedText(own, "DESTINY WARS", 2.8, 0.5); raised.position.set(0, wallLogoY, back.z + 0.005); scene.add(raised); }
+  if (logoMode === "floor" || logoMode === "wallEngraved") {
+    const logo = engraveMaps("DESTINY WARS", 2.9 / 0.62, { base: "#12161d", fill: GOLD, font: `700 SIZEpx "Cinzel", "Trajan Pro", Georgia, serif`, widthFrac: 0.9, lines: true });
+    const logoMat = own(new THREE.MeshPhysicalMaterial({ map: own(logo.map), normalMap: own(logo.normalMap), normalScale: new THREE.Vector2(1.2, 1.2), metalness: 0.8, roughness: 0.28, clearcoat: 0.5, emissive: "#3a2a10", emissiveMap: own(logo.map) }));
+    const logoMesh = new THREE.Mesh(own(new THREE.PlaneGeometry(2.9, 0.62)), logoMat);
+    if (logoMode === "floor") { logoMesh.rotation.x = -Math.PI / 2; logoMesh.position.set(0, 0.004, floorEnd - 0.45); floorG.add(logoMesh); }
+    else { logoMesh.position.set(0, wallLogoY, back.z + 0.005); logoMesh.scale.setScalar(0.85); scene.add(logoMesh); }
+  } else if (logoMode === "wallRaised") {
+    const raised = raisedText(own, "DESTINY WARS", 2.8, 0.5); raised.position.set(0, wallLogoY, back.z + 0.005); scene.add(raised);
+  }
 
   // Chrome scoop tray across the front (like a slot machine coin tray): a bowl-shaped sheet that dips
   // and rolls over a rounded lip; its ends curl up so it reads as one pressed piece.

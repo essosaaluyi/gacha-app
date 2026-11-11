@@ -24,8 +24,9 @@ export default function CabinetNiche3D({ drawLamp, drawPressTick, autoOn }: { dr
     };
     let layout: NicheLayout | null = null;
     const apply = () => { if (!layout) return; place(".bcab-draw-btn", layout.draw); place(".bcab-auto", layout.auto); place(".bcab-data-btn", layout.data); };
-    // Owner pick (2026-11-11): variant D — lit sign, raised chrome logo, chrome tray, blue sides.
-    const n = mountCabinetNiche(el, { variant: { sign: true, logo: "wallRaised", tray: true, blueSides: true }, onLayout: (l) => { layout = l; apply(); } });
+    // Owner pick (2026-11-11): variant D — lit sign, chrome tray, blue sides. The back-wall DESTINY
+    // WARS was dropped on 2026-11-12: it collided with the AUTO plate above it.
+    const n = mountCabinetNiche(el, { variant: { sign: true, logo: "none", tray: true, blueSides: true }, onLayout: (l) => { layout = l; apply(); } });
     // Panel controls mount after this (DATA COUNTER renders once its store is ready): re-place on change.
     const mo = new MutationObserver(apply); mo.observe(panel, { childList: true, subtree: true });
     const onDown = (e: PointerEvent) => { if ((e.target as Element | null)?.closest(".bcab-data-btn")) n.pressData(); };
