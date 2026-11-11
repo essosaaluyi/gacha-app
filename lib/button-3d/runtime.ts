@@ -38,17 +38,17 @@ const INNER = { base: 0.6, height: 0.17, chamfer: 0.05 };
 const LEDS = { count: 18, radius: 0.72 };
 const PRESS = { depth: 0.085, downMs: 70, holdMs: 45, upMs: 240 };
 
-function canvas(w: number, h: number) {
+export function canvas(w: number, h: number) {
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   return { c, g: c.getContext("2d")! };
 }
-function tex(c: HTMLCanvasElement, srgb = true) {
+export function tex(c: HTMLCanvasElement, srgb = true) {
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8; return t;
 }
 /** Grayscale (opaque) radial gradient for emissive maps: offset → brightness 0..1. */
-function glowTexture(stops: [number, number][]) {
+export function glowTexture(stops: [number, number][]) {
   const S = 256, { c, g } = canvas(S, S);
   g.fillStyle = "#000"; g.fillRect(0, 0, S, S);
   const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
@@ -58,7 +58,7 @@ function glowTexture(stops: [number, number][]) {
 }
 
 /** Moulded-plastic micro surface: fine soft "orange peel" ripples (normal map). */
-function plasticNormalTexture() {
+export function plasticNormalTexture() {
   const S = 512, src = canvas(S, S);
   const img = src.g.createImageData(S, S);
   for (let i = 0; i < S * S; i++) { const v = Math.random() * 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
@@ -93,7 +93,7 @@ function ledPoolTexture(count: number, ledRadius: number, R: number) {
   return tex(c, false);
 }
 
-function radialTexture(stops: [number, string][]) {
+export function radialTexture(stops: [number, string][]) {
   const S = 256, { c, g } = canvas(S, S);
   const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
   for (const [o, col] of stops) grad.addColorStop(o, col);
