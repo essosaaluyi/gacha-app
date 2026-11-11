@@ -198,26 +198,11 @@ body:has(.game-topbar-shell) > .global-bgm-player {
   display: none;
 }
 
-.battle-cabinet-screen .battle-background-layer::before,
-.battle-cabinet-screen .battle-background-layer::after {
+.battle-cabinet-screen .battle-background-layer::before {
   content: "";
   position: absolute;
   inset: 0;
-}
-
-.battle-cabinet-screen .battle-background-layer::before {
-  background: linear-gradient(#526879 0%, #b1c2c8 34%, #637c76 35%, #253d3b 100%);
-}
-
-.battle-cabinet-screen .battle-background-layer::after {
-  left: -80%;
-  top: 35%;
-  width: 260%;
-  height: 140%;
-  background-image: linear-gradient(#b8d5cb22 1px, transparent 1px), linear-gradient(90deg, #b8d5cb22 1px, transparent 1px);
-  background-size: 9% 15%;
-  transform: perspective(400px) rotateX(55deg);
-  transform-origin: center top;
+  background: #637c76 url("/images/battle-assets/stage-day-field-cabinet.v1.webp") center / cover no-repeat;
 }
 
 .battle-cabinet-screen .battle-spawn-scene::after {
