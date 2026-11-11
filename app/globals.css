@@ -219,16 +219,19 @@ body:has(.game-topbar-shell) > .global-bgm-player {
   transform-origin: center top;
 }
 
+/* Frame the player in the foreground and keep the distant enemy fully visible. */
 .battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-character-slot {
-  left: 0;
-  top: 14%;
+  left: -43%;
+  top: 8%;
+  width: 182%;
+  height: 153%;
 }
 
 .battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-character-slot {
-  left: 52%;
-  top: 8%;
-  width: 46%;
-  height: 69%;
+  left: -10%;
+  top: 19%;
+  width: 90%;
+  height: 57%;
 }
 
 .battle-cabinet-screen .battle-spawn-actor .battle-spawn-character-slot .battle-spawn-character {
@@ -236,6 +239,16 @@ body:has(.game-topbar-shell) > .global-bgm-player {
   height: 100%;
   object-fit: contain;
   object-position: center bottom;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-player .battle-spawn-character-slot .battle-spawn-character {
+  transform: translate(-24%, 4%) scale(1.45);
+  transform-origin: center 9%;
+}
+
+.battle-cabinet-screen .battle-spawn-actor-enemy .battle-spawn-character-slot .battle-spawn-character {
+  transform: scale(0.74);
+  transform-origin: center bottom;
 }
 
 .battle-cabinet-screen .battle-spawn-actor .battle-spawn-character-shadow {
