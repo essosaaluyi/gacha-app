@@ -57,6 +57,27 @@ function glowTexture(stops: [number, number][]) {
   return tex(c, false);
 }
 
+/** Moulded-plastic micro surface: fine soft "orange peel" ripples (normal map). */
+function plasticNormalTexture() {
+  const S = 512, src = canvas(S, S);
+  const img = src.g.createImageData(S, S);
+  for (let i = 0; i < S * S; i++) { const v = Math.random() * 255; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+  src.g.putImageData(img, 0, 0);
+  const blur = canvas(S, S); blur.g.filter = "blur(3px)"; blur.g.drawImage(src.c, 0, 0);
+  const h = blur.g.getImageData(0, 0, S, S).data, out = blur.g.createImageData(S, S);
+  const H = (x: number, y: number) => {
+    const xx = (x + S) % S, yy = (y + S) % S;
+    return h[(yy * S + xx) * 4] / 255;
+  };
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    let nx = -(H(x + 1, y) - H(x - 1, y)) * 2.2, ny = (H(x, y + 1) - H(x, y - 1)) * 2.2, nz = 1;
+    const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l; const p = (y * S + x) * 4;
+    out.data[p] = (nx * 0.5 + 0.5) * 255; out.data[p + 1] = (ny * 0.5 + 0.5) * 255; out.data[p + 2] = (nz * 0.5 + 0.5) * 255; out.data[p + 3] = 255;
+  }
+  blur.g.putImageData(out, 0, 0);
+  return tex(blur.c, false);
+}
+
 /** Floor of the lamp chamber (top-down UVs, radius R): a light pool under each LED, nothing between. */
 function ledPoolTexture(count: number, ledRadius: number, R: number) {
   const S = 512, { c, g } = canvas(S, S);
@@ -300,6 +321,12 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
     emissive: "#000000", emissiveMap: hazeTex, emissiveIntensity: haze, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   }));
   const middleMat = shellMat(0.32), domeMat = shellMat(0.2);
+  // Outer cover reads as moulded plastic, not glass: a faint milky body that catches the room light,
+  // slightly softer base reflections with a sharp clearcoat on top, and a fine orange-peel surface.
+  domeMat.color.set("#1c2029"); domeMat.roughness = 0.16; domeMat.clearcoatRoughness = 0.05;
+  domeMat.sheen = 0.6; domeMat.sheenRoughness = 0.35; domeMat.sheenColor.set("#9aa6bb");
+  domeMat.normalMap = own(plasticNormalTexture()); domeMat.normalScale.set(0.35, 0.35);
+  domeMat.clearcoatNormalMap = domeMat.normalMap; domeMat.clearcoatNormalScale.set(0.12, 0.12);
   const middle = new THREE.Mesh(own(capGeometry(MIDDLE.base, MIDDLE.height)), middleMat);
   middle.position.y = OUTER.seat; middle.renderOrder = 2; cap.add(middle);
   const middleRim = new THREE.Mesh(own(new THREE.TorusGeometry(MIDDLE.base, 0.008, 10, 200)), rimMat);
