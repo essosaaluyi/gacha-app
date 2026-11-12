@@ -35,6 +35,12 @@ export type NicheVariant = {
   tray?: boolean;
   /** Metallic blue side walls. */
   blueSides?: boolean;
+  /**
+   * Cohesion pass (owner pick 2026-11-12): the recess is a bright cream control shelf — the lightest
+   * thing in the cabinet's lower half, as on a real machine — instead of a dark pocket the controls
+   * float in. Overrides blueSides, which only existed to break up the dark walls.
+   */
+  shelf?: boolean;
 };
 type Own = <T extends { dispose(): void }>(x: T) => T;
 
@@ -164,6 +170,7 @@ function signTexture(text: string, aspect = 1024 / 394) {
 export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: NicheLayout) => void; variant?: NicheVariant } = {}): CabinetNiche3D {
   const variant = opts.variant ?? {};
   const logoMode = variant.logo ?? "floor";
+  const shelfMode = variant.shelf === true;
   const disposables: { dispose(): void }[] = [];
   const own: Own = (x) => { disposables.push(x); return x; };
   let disposed = false, raf = 0, last = performance.now(), paused = false;
@@ -189,14 +196,24 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
 
   // ── Niche shell: dark satin walls, gold trim along the opening.
   const grain = own(plasticNormalTexture()); grain.wrapS = grain.wrapT = THREE.RepeatWrapping; grain.repeat.set(4, 4);
-  const wallMat = own(new THREE.MeshPhysicalMaterial({ color: "#232a35", metalness: 0.55, roughness: 0.4, normalMap: grain, normalScale: new THREE.Vector2(0.25, 0.25), clearcoat: 0.4, clearcoatRoughness: 0.2, side: THREE.DoubleSide }));
+  const wallMat = own(shelfMode
+    // Painted cream panel: diffuse, barely metallic, with a thin lacquer coat. Keeps the shelf the
+    // brightest surface down here so the controls read as sitting ON something.
+    ? new THREE.MeshPhysicalMaterial({ color: "#ded6c4", metalness: 0.08, roughness: 0.52, normalMap: grain, normalScale: new THREE.Vector2(0.18, 0.18), clearcoat: 0.5, clearcoatRoughness: 0.22, side: THREE.DoubleSide })
+    : new THREE.MeshPhysicalMaterial({ color: "#232a35", metalness: 0.55, roughness: 0.4, normalMap: grain, normalScale: new THREE.Vector2(0.25, 0.25), clearcoat: 0.4, clearcoatRoughness: 0.2, side: THREE.DoubleSide }));
   // Less mirror, more surface: at 0.7 metal the floor had almost no diffuse term and read as a black
   // void under the button, which hid its contact shadow.
-  const floorMat = own(new THREE.MeshPhysicalMaterial({ color: "#232b36", metalness: 0.45, roughness: 0.38, normalMap: grain, normalScale: new THREE.Vector2(0.22, 0.22), clearcoat: 0.6, clearcoatRoughness: 0.12 }));
-  const sideMat = variant.blueSides
+  const floorMat = own(shelfMode
+    ? new THREE.MeshPhysicalMaterial({ color: "#f1ebdc", metalness: 0.06, roughness: 0.44, normalMap: grain, normalScale: new THREE.Vector2(0.16, 0.16), clearcoat: 0.7, clearcoatRoughness: 0.14 })
+    : new THREE.MeshPhysicalMaterial({ color: "#232b36", metalness: 0.45, roughness: 0.38, normalMap: grain, normalScale: new THREE.Vector2(0.22, 0.22), clearcoat: 0.6, clearcoatRoughness: 0.12 }));
+  const sideMat = shelfMode
+    // One surface, no inner frames: the sides are the same panel, a shade darker where they turn away.
+    ? own(new THREE.MeshPhysicalMaterial({ color: "#cdc5b1", metalness: 0.08, roughness: 0.5, normalMap: grain, normalScale: new THREE.Vector2(0.2, 0.2), clearcoat: 0.5, clearcoatRoughness: 0.2, side: THREE.DoubleSide }))
+    : variant.blueSides
     ? own(new THREE.MeshPhysicalMaterial({ color: "#3a6cf0", emissive: "#0b1e5c", metalness: 0.8, roughness: 0.24, normalMap: grain, normalScale: new THREE.Vector2(0.35, 0.35), clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide }))
     : wallMat;
-  const goldMat = own(new THREE.MeshPhysicalMaterial({ color: GOLD, metalness: 1, roughness: 0.22, clearcoat: 0.6 }));
+  // Shelf mode drops the gold inner trim: the cabinet keeps exactly one surround per bay, in chrome.
+  const goldMat = own(new THREE.MeshPhysicalMaterial({ color: shelfMode ? "#cbd2dc" : GOLD, metalness: 1, roughness: shelfMode ? 0.12 : 0.22, clearcoat: 0.6 }));
   const { halfW, floorFront, floorBack, ceilingY, overhangFront, overhangTop, apronBottom } = NICHE;
   const W = halfW * 2;
 
@@ -230,12 +247,15 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   // Ceiling downlight strip under the overhang edge: warm line + a real area light onto the floor.
   const stripMat = own(new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff1dc").multiplyScalar(2.2), toneMapped: false }));
   const strip = new THREE.Mesh(own(new THREE.BoxGeometry(W - 0.3, 0.03, 0.08)), stripMat); strip.position.set(0, ceilingY - 0.04, overhangFront - 0.25); scene.add(strip);
-  const down = new THREE.RectAreaLight("#fff0da", 9, W - 0.3, 0.3); down.position.set(0, ceilingY - 0.06, overhangFront - 0.25); down.lookAt(0, 0, 0.3); scene.add(down);
+  // A cream shelf returns far more light than the old dark walls, so the same rig blows it out flat
+  // and the button loses its shadow again. Everything below is scaled back for that case.
+  const L = shelfMode ? 0.42 : 1;
+  const down = new THREE.RectAreaLight("#fff0da", 9 * L, W - 0.3, 0.3); down.position.set(0, ceilingY - 0.06, overhangFront - 0.25); down.lookAt(0, 0, 0.3); scene.add(down);
 
-  const fill = new THREE.PointLight("#ffe6c4", 5, 7, 2); fill.position.set(0, 2.4, 2.2); scene.add(fill); // spill from the strip toward the front lip
+  const fill = new THREE.PointLight("#ffe6c4", 5 * L, 7, 2); fill.position.set(0, 2.4, 2.2); scene.add(fill); // spill from the strip toward the front lip
   // Pool of light on the floor where the DRAW button stands, so its contact shadow has something to
   // fall on. Kept low and close so it grazes the floor without washing out the tray.
-  const seat = new THREE.PointLight("#ffe9cc", 3.4, 5.2, 2); seat.position.set(0, 1.25, 2.1); scene.add(seat);
+  const seat = new THREE.PointLight("#ffe9cc", 3.4 * L, 5.2, 2); seat.position.set(0, 1.25, 2.1); scene.add(seat);
 
   // ── DESTINY WARS, placed by `logo`; "none" leaves it off entirely.
   const wallLogoY = back.y + 0.62; // low enough to clear the overhang edge from the camera, above the DRAW dome

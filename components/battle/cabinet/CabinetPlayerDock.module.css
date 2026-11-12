@@ -1,5 +1,11 @@
 .dock, .outlet { position: absolute; box-sizing: border-box; pointer-events: none; color: #e8d5ab; }
-.dock { left: 30px; top: 88px; width: 276px; height: 500px; z-index: 20; border: 8px double #a58750; border-radius: 25px 16px 18px 20px; background: linear-gradient(110deg, #302b2050, transparent 25% 75%, #302b2030), #05090c; box-shadow: 0 0 0 3px #090e12, 0 0 0 5px #55432b, inset 0 0 0 3px #010305; }
+/* まとまり対応（オーナー承認 2026-11-12・design-ref/cabinet-cohesion-v1.html）：
+   投入口と排出口がそれぞれ金の二重枠を持っていたのをやめ、左列ぜんぶを 1 本のクローム
+   見切りで囲む（右パネルと同じ囲み方）。枠は透明にして残し箱の寸法は変えない ―― 排出口の
+   6px は CabinetPlayerDock.geometry.ts が座標計算に使っている。 */
+.dock { left: 30px; top: 88px; width: 276px; height: 500px; z-index: 20; border: 8px solid transparent; border-radius: 10px 10px 0 0; background: linear-gradient(110deg, #302b2050, transparent 25% 75%, #302b2030), #05090c; box-shadow: inset 0 0 0 3px #010305; }
+/* 左列ぜんぶ（投入口 88px〜排出口の下端 706px）を囲む見切り。装飾だけで当たり判定は持たない。 */
+.dock::after { content: ""; position: absolute; left: -8px; top: -8px; width: 276px; height: 618px; border-radius: 10px; pointer-events: none; box-shadow: 0 0 0 2px #0a0d11, 0 0 0 6px #c9cfd8, 0 0 0 8px #3d434d, 0 0 0 10px #05080b, 0 16px 34px rgba(0, 0, 0, 0.72); }
 .target { position: absolute; left: 8px; top: 12px; width: 244px; height: 456px; border: 1px solid #9a855749; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .label { position: absolute; top: 12px; font: 700 12px/1.2 sans-serif; letter-spacing: .2em; color: #b9a477; }
 .card { width: 220px; max-height: 408px; padding: 0; border: 0; background: transparent; pointer-events: auto; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -9,7 +15,7 @@
 .empty strong { font-weight: 500; letter-spacing: .08em; }
 .empty > span { font-size: 36px; color: #b49d6666; }
 .dock[data-drop-active="true"] .target { border-color: #eddda2; box-shadow: inset 0 0 24px #d2b46b22, 0 0 12px #d2b46b44; }
-.outlet { z-index: 21; overflow: visible; border: 6px double #a68b51; border-radius: 38px 38px 15px 15px; background: url('/images/cabinet/card-holder.png') center / 256px auto no-repeat #070b0e; box-shadow: 0 0 0 3px #070b0d, 0 5px 9px #0008; }
+.outlet { z-index: 21; overflow: visible; border: 6px solid transparent; border-radius: 30px 30px 10px 10px; background: url('/images/cabinet/card-holder.png') center / 256px auto no-repeat #070b0e; box-shadow: inset 0 0 0 2px #7f8894; }
 .throat { position: absolute; inset: 15px 20px 18px; border: 3px solid #76613b; border-radius: 22px 22px 8px 8px; background: #020508; box-shadow: inset 0 12px 16px #000; }
 .backs { position: absolute; inset: 0; z-index: 5; }
 .backs img { position: absolute; display: block; object-fit: contain; filter: drop-shadow(0 3px 3px #000b); }

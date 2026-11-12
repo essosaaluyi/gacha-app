@@ -9465,3 +9465,76 @@ body.page-video-active .trust-page {
 .bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-draw-btn { z-index: 3; }
 .bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-ticker,
 .bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-mascot { z-index: 3; }
+
+/* ══ 筐体のまとまり（オーナー承認 2026-11-12）════════════════════════════════════════════
+   ラフ：design-ref/cabinet-cohesion-v1.html の「修正案 ― 操作部を 1 枚の棚にする」。
+   実機は (a) 全幅を通る横帯の見切りと (b) 下半分でいちばん明るい 1 枚の操作棚、で
+   まとまって見える。現状は右の操作部が 3 つの暗いくぼみに分かれ、内側の金枠が 5〜6 個
+   ばらばらに入っていたため、ボタンが浮いて見えていた。ここではその 2 点を実装に移す。 */
+
+/* ── 1. 右パネル：暗いくぼみ → 1 枚の明るい棚。内側の小枠はやめ、外周のクローム見切り 1 本に統一。
+      8px のボーダー枠は箱の寸法を変えないため透明で残す（中の絶対座標はそのまま）。 */
+.bcab-air-cabinet .bcab-led-panel {
+  border-color: transparent;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.67), rgba(255, 255, 255, 0) 20%),
+    linear-gradient(180deg, #f6f2e8 0%, #e3dccb 16%, #cdc5b1 46%, #b0a894 72%, #8d8676 100%);
+  box-shadow:
+    0 0 0 2px #0a0d11, 0 0 0 6px #d6cdb4, 0 0 0 8px #4a412c, 0 0 0 10px #05080b,
+    0 16px 34px rgba(0, 0, 0, 0.72),
+    inset 0 2px 0 rgba(255, 255, 255, 0.87), inset 0 -3px 8px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+/* 操作棚の面（2D 版）。DRAW と AUTO がこの 1 枚に載る。3D 版は niche 側が同じ面を描くので出さない。 */
+.bcab-air-cabinet .bcab-led-panel::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 172px;
+  bottom: 128px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fffdf6 0%, #f0ead9 24%, #dcd4c0 58%, #bdb49f 100%);
+  box-shadow: inset 0 2px 0 #fff, inset 0 -2px 6px rgba(0, 0, 0, 0.2),
+    0 2px 0 #8d8676, 0 4px 8px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d::before { content: none; }
+
+/* 明るい棚に載る 2D パーツの調整（3D 版では隠れている要素なので 2D 専用）。 */
+.bcab-air-cabinet .bcab-led-panel:not(.bcab-niche-3d) .bcab-logo {
+  background: linear-gradient(180deg, #6f5b2d, #41341a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: none;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.bcab-air-cabinet .bcab-led-panel:not(.bcab-niche-3d) .bcab-auto {
+  border: 2px solid #868f9c;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.62), 0 2px 0 rgba(255, 255, 255, 0.6);
+}
+.bcab-air-cabinet .bcab-led-panel .bcab-ticker {
+  border: 2px solid #7f8894;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9), 0 2px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* ── 2. 上下の帯の見切り：左列・液晶・右棚を端から端まで 1 本で結ぶ。
+      液晶の上端 88px / 下端 706px のすぐ外側を通るので、どの部品とも重ならない。 */
+.bcab-air-cabinet::before,
+.bcab-air-cabinet::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 6;
+  border-radius: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, #6d5a33 3%, var(--gold) 20%,
+    var(--gold-bright) 50%, var(--gold) 80%, #6d5a33 97%, transparent);
+  box-shadow: 0 0 10px rgba(239, 214, 149, 0.45), 0 2px 0 rgba(0, 0, 0, 0.6);
+}
+.bcab-air-cabinet::before { top: 78px; }
+.bcab-air-cabinet::after { top: 710px; }
