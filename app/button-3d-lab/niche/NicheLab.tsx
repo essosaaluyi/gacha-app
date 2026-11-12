@@ -11,7 +11,8 @@ const VARIANTS: { name: string; note: string; v: NicheVariant }[] = [
   { name: "B：立体ロゴ＋受け皿", note: "奥の壁に立体クロームロゴ・手前にクロームの受け皿", v: { logo: "wallRaised", tray: true } },
   { name: "C：看板＋受け皿＋青", note: "看板・受け皿・青い側面・壁に彫り込みロゴ", v: { sign: true, tray: true, blueSides: true, logo: "wallEngraved" } },
   { name: "D：旧採用（暗いくぼみ）", note: "看板・受け皿・青い側面。奥の壁のロゴは 2026-11-12 に撤去", v: { sign: true, logo: "none", tray: true, blueSides: true } },
-  { name: "E：採用（明るい棚）", note: "くぼみを 1 枚のクリーム色の操作棚に。金の内枠はやめクロームに統一（2026-11-12）", v: { sign: true, logo: "none", tray: true, shelf: true } },
+  { name: "E：明るい棚＋看板", note: "くぼみを 1 枚のクリーム色の操作棚に。金の内枠はやめクロームに統一（2026-11-12）", v: { sign: true, logo: "none", tray: true, shelf: true } },
+  { name: "F：採用（DATA を DRAW に寄せる）", note: "DATA COUNTER を看板から押しボタンへ。ベゼル・紫のカラー・霜面の文字を DRAW と揃えた（2026-11-12）", v: { sign: false, logo: "none", tray: true, shelf: true } },
 ];
 
 export default function NicheLab() {

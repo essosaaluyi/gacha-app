@@ -78,7 +78,7 @@ function flatRect(w: number, h: number, r: number) {
  * Text cut into a plate: colour map (base, letters filled with `fill`, a lit far wall), optional
  * emissive map (lit plate, dark letters) and a normal map from the blurred letter mask.
  */
-function engraveMaps(text: string | { t: string; x: number }[], aspect: number, o: { base: string; fill: string; font: string; widthFrac: number; emissive?: boolean; lines?: boolean }) {
+function engraveMaps(text: string | { t: string; x: number }[], aspect: number, o: { base: string; fill: string; font: string; widthFrac: number; emissive?: boolean; lines?: boolean; dots?: boolean; rimLit?: boolean }) {
   const W = 1024, H = Math.round(W / aspect);
   const mask = canvas(W, H);
   mask.g.fillStyle = "#000"; mask.g.fillRect(0, 0, W, H);
@@ -96,7 +96,24 @@ function engraveMaps(text: string | { t: string; x: number }[], aspect: number, 
   if (o.lines) { // fine brushed / diffuser lines
     for (let y = 0; y < H; y += 3) { col.g.fillStyle = `rgba(255,255,255,${0.025 + 0.025 * Math.sin(y * 0.7)})`; col.g.fillRect(0, y, W, 1); }
   }
-  emi.g.fillStyle = "#fff"; emi.g.fillRect(0, 0, W, H);
+  // rimLit + dots reproduce the DRAW cap's inner face: frosted lamp plastic lit hardest at the rim,
+  // with a fine hexagonal diffuser pattern. Keeps DATA COUNTER in the same button family (2026-11-12).
+  if (o.rimLit) {
+    const r = emi.g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) / 2);
+    r.addColorStop(0, "rgb(70,70,70)"); r.addColorStop(0.65, "rgb(120,120,120)");
+    r.addColorStop(0.92, "rgb(255,255,255)"); r.addColorStop(1, "rgb(255,255,255)");
+    emi.g.fillStyle = r;
+  } else emi.g.fillStyle = "#fff";
+  emi.g.fillRect(0, 0, W, H);
+  if (o.dots) {
+    const step = 13;
+    for (let row = 0, y = 0; y < H + step; row++, y += step * 0.866) {
+      for (let x = (row % 2) * step / 2; x < W + step; x += step) {
+        col.g.fillStyle = "rgba(150,165,190,0.55)"; col.g.beginPath(); col.g.arc(x, y, 3.2, 0, Math.PI * 2); col.g.fill();
+        emi.g.fillStyle = "rgba(255,255,255,0.25)"; emi.g.beginPath(); emi.g.arc(x, y, 3.2, 0, Math.PI * 2); emi.g.fill();
+      }
+    }
+  }
   const cI = col.g.getImageData(0, 0, W, H), eI = emi.g.getImageData(0, 0, W, H), nI = nor.g.createImageData(W, H);
   const fill = new THREE.Color(o.fill); const fr = fill.r * 255, fg = fill.g * 255, fb = fill.b * 255;
   const h = (x: number, y: number) => 1 - soft[(Math.min(H - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))) * 4] / 255;
@@ -332,18 +349,32 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   dataS.add(new THREE.Mesh(own(extruded(Object.assign(roundedRect(3.0, 1.62, 0.32), { holes: [roundedRect(2.62, 1.26, 0.2)] }), 0.08, 0.08, 0.06, 6)), bezelMat));
   const dWell = new THREE.Mesh(own(flatRect(2.66, 1.3, 0.2)), own(new THREE.MeshStandardMaterial({ color: "#05080f", roughness: 0.8 }))); dWell.position.z = 0.02; dataS.add(dWell);
   const dCap = new THREE.Group(); dataS.add(dCap);
-  const dataFace = engraveMaps("DATA COUNTER", (2.1 * DS.x) / (0.82 * DS.y), { base: "#606b7d", fill: "#0b0d10", font: `900 SIZEpx "Arial Black", "Segoe UI", Arial, sans-serif`, widthFrac: 0.86, emissive: true, lines: true });
-  const dCoreMat = own(new THREE.MeshPhysicalMaterial({ map: own(dataFace.map), emissiveMap: own(dataFace.emissiveMap!), normalMap: own(dataFace.normalMap), normalScale: new THREE.Vector2(1.3, 1.3), emissive: "#000000", roughness: 0.3, clearcoat: 0.5, envMapIntensity: 0.7 }));
+  // Same face recipe as the DRAW cap's core (runtime.ts innerDomeMaps): #606b7d frosted plastic,
+  // hexagonal diffuser dots, rim-lit, label engraved and filled black.
+  const dataFace = engraveMaps("DATA COUNTER", (2.1 * DS.x) / (0.82 * DS.y), { base: "#606b7d", fill: "#0b0d10", font: `900 SIZEpx "Arial Black", "Segoe UI", Arial, sans-serif`, widthFrac: 0.86, emissive: true, dots: true, rimLit: true });
+  const dCoreMat = own(new THREE.MeshPhysicalMaterial({ map: own(dataFace.map), emissiveMap: own(dataFace.emissiveMap!), normalMap: own(dataFace.normalMap), normalScale: new THREE.Vector2(1.3, 1.3), emissive: "#000000", roughness: 0.3, clearcoat: 0.5, metalness: 0, envMapIntensity: shelfMode ? 0.3 : 0.7 }));
   const dCore = new THREE.Mesh(own(flatRect(2.1, 0.82, 0.12)), dCoreMat); dCore.position.z = 0.2; dCap.add(dCore);
-  const dRim = new THREE.Mesh(own(extruded(Object.assign(roundedRect(2.22, 0.94, 0.16), { holes: [roundedRect(2.1, 0.82, 0.12)] }), 0.12, 0.02, 0.02, 2)), chrome); dRim.position.z = 0.06; dCap.add(dRim);
+  // Violet collar, the DRAW cap's signature band (runtime.ts collarTexture #7d74d6 → #9a6fc9 → #c98ad6).
+  // Three stacked frames stand in for the gradient: ExtrudeGeometry's side UVs can't carry one reliably.
+  const collarMats = ["#c98ad6", "#9a6fc9", "#7d74d6"].map((c) =>
+    own(new THREE.MeshPhysicalMaterial({ color: c, metalness: 0.85, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.02, emissive: "#000000", emissiveIntensity: 1.6 })));
+  collarMats.forEach((m, i) => {
+    const inset = 0.012 * i, z = 0.075 + i * 0.042;
+    const band = new THREE.Mesh(own(extruded(Object.assign(roundedRect(2.2 - inset * 2, 0.92 - inset * 2, 0.15), { holes: [roundedRect(2.1, 0.82, 0.12)] }), 0.044, 0.004, 0.004, 2)), m);
+    band.position.z = z; dCap.add(band);
+  });
+  const dRimMat = own(new THREE.MeshPhysicalMaterial({ color: "#c9d2e2", metalness: 1, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.02 })); // DRAW's chamfer chrome
+  const dRim = new THREE.Mesh(own(extruded(Object.assign(roundedRect(2.3, 1.02, 0.18), { holes: [roundedRect(2.2, 0.92, 0.15)] }), 0.1, 0.02, 0.02, 2)), dRimMat); dRim.position.z = 0.04; dCap.add(dRim);
   // LED ring between core and cover.
   const dLedMat = own(new THREE.MeshBasicMaterial({ color: "#000000", toneMapped: false }));
   const dHaloMat = own(new THREE.SpriteMaterial({ map: own(radialTexture([[0, "rgba(255,255,255,1)"], [0.12, "rgba(255,255,255,0.6)"], [0.4, "rgba(255,255,255,0.14)"], [1, "rgba(255,255,255,0)"]])), color: "#000000", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
-  const ledPath = roundedRect(2.42, 1.12, 0.22).getSpacedPoints(26); ledPath.pop();
-  const ledGeo = own(new THREE.SphereGeometry(0.026, 12, 10));
+  // Fewer, tighter lamps than before: the plate is squashed to 0.67 vertically, so 26 lamps with a
+  // 0.26 halo merged into one white band instead of reading as DRAW's ring of separate dots.
+  const ledPath = roundedRect(2.42, 1.12, 0.22).getSpacedPoints(18); ledPath.pop();
+  const ledGeo = own(new THREE.SphereGeometry(0.03, 14, 10));
   for (const p of ledPath) {
     const led = new THREE.Mesh(ledGeo, dLedMat); led.position.set(p.x, p.y, 0.1); dCap.add(led);
-    const halo = new THREE.Sprite(dHaloMat); halo.scale.setScalar(0.26); halo.position.set(p.x, p.y, 0.12); halo.renderOrder = 1; dCap.add(halo);
+    const halo = new THREE.Sprite(dHaloMat); halo.scale.set(0.17, 0.24, 1); halo.position.set(p.x, p.y, 0.12); halo.renderOrder = 1; dCap.add(halo);
   }
   const dLights = [-0.8, 0, 0.8].map((x) => { const l = new THREE.PointLight("#ffffff", 0, 1.3, 2); l.position.set(x, 0, 0.3); dCap.add(l); return l; });
   const dCoverMat = clearPlastic(own, grain);
@@ -370,6 +401,9 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
   let clock = 0, autoOn = false, autoT = 0, dataPressAt = -1, dataFlash = 0;
   const lit = new THREE.Color(), tmp = new THREE.Color(), WHITE = new THREE.Color("#ffffff"), dark = new THREE.Color("#1a2433");
   const dataLamp = new THREE.Color(LAMP.gray.color), dataPower = 0.5;
+  // The cream shelf bounces far more light back than the old dark pocket, so the button's own glow
+  // is pulled back to keep the frosted face grey (as on DRAW) instead of blowing out to white.
+  const dataGain = shelfMode ? 0.55 : 1;
   const pressCurve = (t: number) => t < 70 ? 1 - (1 - t / 70) ** 2 : t < 115 ? 1 : t < 355 ? Math.cos(((t - 115) / 240) * Math.PI * 1.25) * (1 - (t - 115) / 240) ** 1.5 : 0;
 
   function step(dt: number) {
@@ -391,10 +425,11 @@ export function mountCabinetNiche(host: HTMLElement, opts: { onLayout?: (l: Nich
     const p = dataPower + dataFlash * 0.8;
     lit.copy(dataLamp).multiplyScalar(p);
     dCoreMat.emissive.copy(lit).multiplyScalar(0.35);
+    for (const m of collarMats) m.emissive.copy(lit).multiplyScalar(0.22); // the collar picks up the lamp, as on DRAW
     dLedMat.color.copy(dark).multiplyScalar(0.6).lerp(tmp.copy(dataLamp).lerp(WHITE, 0.55), Math.min(1, p)).multiplyScalar(Math.max(1, p * 1.6));
-    dHaloMat.color.copy(lit).multiplyScalar(0.55);
-    dCoverMat.emissive.copy(lit);
-    for (const l of dLights) { l.color.copy(dataLamp); l.intensity = p * 1.2; }
+    dHaloMat.color.copy(lit).multiplyScalar(0.55 * dataGain);
+    dCoverMat.emissive.copy(lit).multiplyScalar(dataGain);
+    for (const l of dLights) { l.color.copy(dataLamp); l.intensity = p * 1.2 * dataGain; }
     renderer.render(scene, camera);
   }
 
