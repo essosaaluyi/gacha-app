@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { mountCabinetNiche, type CabinetNiche3D, type NicheVariant } from "@/lib/button-3d/cabinetNiche";
+import { mountCabinetPanelB3, type CabinetPanelB3 } from "@/lib/button-3d/cabinetPanelB3";
 import type { LampState } from "@/lib/button-3d/runtime";
 
 /** The cabinet control niche in several variants, at the real panel size (254 × 599), side by side. */
@@ -16,10 +17,23 @@ const VARIANTS: { name: string; note: string; v: NicheVariant }[] = [
 ];
 
 export default function NicheLab() {
+  const b3Host = useRef<HTMLDivElement>(null);
+  const [b3, setB3] = useState<CabinetPanelB3 | null>(null);
   const hosts = useRef<(HTMLDivElement | null)[]>([]);
   const [niches, setNiches] = useState<CabinetNiche3D[]>([]);
   const [lamp, setLamp] = useState<LampState>("gray");
   const [auto, setAuto] = useState(false);
+
+  // B3 (owner CGI handoff, 2026-11-12) — the adopted panel, shown at 1.19× so details are readable.
+  useEffect(() => {
+    const el = b3Host.current;
+    if (!el) return;
+    const n = mountCabinetPanelB3(el);
+    setB3(n);
+    return () => { n.dispose(); setB3(null); };
+  }, []);
+  useEffect(() => { b3?.setDrawLamp(lamp); }, [b3, lamp]);
+  useEffect(() => { b3?.setAuto(auto); }, [b3, auto]);
 
   useEffect(() => {
     const list = VARIANTS.flatMap((x, i) => {
@@ -39,6 +53,11 @@ export default function NicheLab() {
   return (
     <main style={{ minHeight: "100vh", background: "#0b0d10", color: "#e8eef8", padding: 16, fontFamily: "system-ui, sans-serif", display: "grid", gap: 12, justifyItems: "center" }}>
       <h1 style={{ margin: 0, fontSize: 18, letterSpacing: ".12em" }}>右上パネル 3D（比較）</h1>
+      <figure style={{ margin: 0, display: "grid", gap: 6, justifyItems: "center" }}>
+        <div ref={b3Host} style={{ width: 322, height: 736, position: "relative", background: "#05080b", borderRadius: 16 }} />
+        <figcaption style={{ fontSize: 14, fontWeight: 700 }}>B3：採用（オーナー資料 2026-11-12）</figcaption>
+        <span style={{ fontSize: 11, opacity: .7 }}>真鍮外周・DATA 看板・AUTO ノブ・黒い V 字面と真鍮インレイ・DRAW・下部グリル。単位は mm（230×520×78）</span>
+      </figure>
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
         {VARIANTS.map((x, i) => (
           <figure key={x.name} style={{ margin: 0, display: "grid", gap: 6, justifyItems: "center", width: 270 }}>
@@ -53,8 +72,8 @@ export default function NicheLab() {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
         <button type="button" onClick={() => setLamp(lamp === "gray" ? "sky" : lamp === "sky" ? "off" : "gray")}>DRAW ランプ：{lamp}</button>
         <button type="button" onClick={() => setAuto(!auto)}>AUTO：{auto ? "ON" : "OFF"}</button>
-        <button type="button" onClick={() => niches.forEach((n) => n.pressDraw())}>DRAW を押す</button>
-        <button type="button" onClick={() => niches.forEach((n) => n.pressData())}>DATA COUNTER を押す</button>
+        <button type="button" onClick={() => { b3?.pressDraw(); niches.forEach((n) => n.pressDraw()); }}>DRAW を押す</button>
+        <button type="button" onClick={() => { b3?.pressData(); niches.forEach((n) => n.pressData()); }}>DATA COUNTER を押す</button>
       </div>
     </main>
   );

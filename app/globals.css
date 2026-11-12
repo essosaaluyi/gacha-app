@@ -9474,3 +9474,21 @@ body.page-video-active .trust-page {
 }
 .bcab-air-cabinet::before { top: 78px; }
 .bcab-air-cabinet::after { top: 710px; }
+
+/* ══ B3 右パネル（オーナー資料 2026-11-12・outputs/cabinet-b3-modeling/B3-CGI-handoff.zip）══
+   真鍮の外周ごと 3D 側で描くので、DOM の枠・背景・影はぜんぶ消して canvas に 270×618 を明け渡す。
+   枠を 0 にしても box-sizing が border-box なので箱の寸法は変わらない。 */
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d {
+  border-width: 0;
+  border-radius: 14px;
+  background: #05080b;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.72);
+}
+/* ログティッカーはグリルの開口に入れる（CabinetNiche3D が位置を合わせる）。
+   メッシュの上に文字だけを出したいので、自前の枠と地色は消す。 */
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-ticker {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 4px 10px;
+}

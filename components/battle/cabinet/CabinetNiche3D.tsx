@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { LampState } from "@/lib/button-3d/runtime";
-import { mountCabinetNiche, type CabinetNiche3D as Niche, type NicheLayout, type NicheRect } from "@/lib/button-3d/cabinetNiche";
+import { mountCabinetPanelB3, type CabinetPanelB3 as Niche, type PanelB3Layout, type PanelRect } from "@/lib/button-3d/cabinetPanelB3";
 
 /**
  * The upper-right control panel drawn as one recessed three.js niche (trial, development only).
@@ -17,20 +17,24 @@ export default function CabinetNiche3D({ drawLamp, drawPressTick, autoOn }: { dr
   useEffect(() => {
     const el = host.current, panel = el?.parentElement;
     if (!el || !panel) return;
-    const place = (selector: string, r: NicheRect) => {
+    const place = (selector: string, r: PanelRect) => {
       const b = panel.querySelector<HTMLElement>(selector);
       if (!b) return;
       Object.assign(b.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, minHeight: "0", bottom: "auto", right: "auto" });
     };
-    let layout: NicheLayout | null = null;
-    const apply = () => { if (!layout) return; place(".bcab-draw-btn", layout.draw); place(".bcab-auto", layout.auto); place(".bcab-data-btn", layout.data); };
-    // Owner pick (2026-11-11): variant D — lit sign, chrome tray. The back-wall DESTINY WARS was
-    // dropped on 2026-11-12 (it collided with the AUTO plate), and on the same day the dark pocket
-    // became a bright cream shelf (variant E) so the controls stop looking like they float.
-    // The DRAW-styled DATA push button was tried on 2026-11-12 and rejected the same day: on the
-    // bright shelf it read as a second DRAW. Back to the lit sign (variant E). The button still
-    // exists as lab variant F if it is wanted again.
-    const n = mountCabinetNiche(el, { variant: { sign: true, logo: "none", tray: true, shelf: true }, onLayout: (l) => { layout = l; apply(); } });
+    let layout: PanelB3Layout | null = null;
+    const apply = () => {
+      if (!layout) return;
+      place(".bcab-draw-btn", layout.draw); place(".bcab-auto", layout.auto); place(".bcab-data-btn", layout.data);
+      // B3 puts a speaker grille where the battle log ticker used to sit, so the ticker moves into
+      // the grille opening and reads as the display behind the mesh (deviation noted in the spec).
+      place(".bcab-ticker", layout.log);
+    };
+    // Owner handoff 2026-11-12 (outputs/cabinet-b3-modeling/B3-CGI-handoff.zip): the panel is rebuilt
+    // to the B3 design — brass surround, lit DATA sign, AUTO slide knob, black V face with brass
+    // inlays, DRAW in the middle, speaker grille at the foot. The older niche variants (dark pocket,
+    // cream shelf) stay in lib/button-3d/cabinetNiche.ts and are still reachable from the lab page.
+    const n = mountCabinetPanelB3(el, { onLayout: (l) => { layout = l; apply(); } });
     // Panel controls mount after this (DATA COUNTER renders once its store is ready): re-place on change.
     const mo = new MutationObserver(apply); mo.observe(panel, { childList: true, subtree: true });
     const onDown = (e: PointerEvent) => { if ((e.target as Element | null)?.closest(".bcab-data-btn")) n.pressData(); };

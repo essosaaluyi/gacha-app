@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { playSfx, type SfxName } from "@/lib/audio/sfxStore";
@@ -554,4 +555,85 @@ export function mountDrawButton3D(host: HTMLElement, options: DrawButton3DOption
   };
   raf = requestAnimationFrame(frame);
   return api;
+}
+
+// ── Shared panel geometry / texture helpers (moved out of cabinetNiche.ts on 2026-11-12 so the B3
+//    panel can use them without depending on the older niche module).
+
+export function roundedRect(w: number, h: number, r: number) {
+  const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+  s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+  return s;
+}
+/** Extrude toward +z, bevel included, back face at z = 0; welded for smooth shading. */
+export function extruded(shape: THREE.Shape, depth: number, bevel: number, size: number, segments: number, smooth = true) {
+  let g: THREE.BufferGeometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: size, bevelSegments: segments, curveSegments: 12 });
+  g.translate(0, 0, bevel);
+  if (smooth) { g.deleteAttribute("normal"); g.deleteAttribute("uv"); const m = mergeVertices(g, 1e-4); g.dispose(); g = m; g.computeVertexNormals(); }
+  return g;
+}
+/** Flat shape in XY with UVs spanning its w×h box. */
+export function flatRect(w: number, h: number, r: number) {
+  const g = new THREE.ShapeGeometry(roundedRect(w, h, r), 12);
+  const uv = g.attributes.uv, pos = g.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / w + 0.5, pos.getY(i) / h + 0.5);
+  return g;
+}
+
+/**
+ * Text cut into a plate: colour map (base, letters filled with `fill`, a lit far wall), optional
+ * emissive map (lit plate, dark letters) and a normal map from the blurred letter mask.
+ */
+export function engraveMaps(text: string | { t: string; x: number }[], aspect: number, o: { base: string; fill: string; font: string; widthFrac: number; heightFrac?: number; emissive?: boolean; lines?: boolean; dots?: boolean; rimLit?: boolean }) {
+  const W = 1024, H = Math.round(W / aspect);
+  const mask = canvas(W, H);
+  mask.g.fillStyle = "#000"; mask.g.fillRect(0, 0, W, H);
+  mask.g.textAlign = "center"; mask.g.textBaseline = "middle";
+  const items = typeof text === "string" ? [{ t: text, x: 0.5 }] : text;
+  let size = Math.round(H * 0.62); mask.g.font = o.font.replace("SIZE", String(size));
+  const widest = () => Math.max(...items.map((i) => mask.g.measureText(i.t).width));
+  while ((items.length === 1 ? widest() > W * o.widthFrac : size > H * (o.heightFrac ?? 0.42)) && size > 10) { size -= 2; mask.g.font = o.font.replace("SIZE", String(size)); }
+  mask.g.fillStyle = "#fff"; for (const i of items) mask.g.fillText(i.t, W * i.x, H * 0.53);
+  const hard = mask.g.getImageData(0, 0, W, H).data;
+  const blur = canvas(W, H); blur.g.filter = "blur(2px)"; blur.g.drawImage(mask.c, 0, 0);
+  const soft = blur.g.getImageData(0, 0, W, H).data;
+  const col = canvas(W, H), nor = canvas(W, H), emi = canvas(W, H);
+  col.g.fillStyle = o.base; col.g.fillRect(0, 0, W, H);
+  if (o.lines) { // fine brushed / diffuser lines
+    for (let y = 0; y < H; y += 3) { col.g.fillStyle = `rgba(255,255,255,${0.025 + 0.025 * Math.sin(y * 0.7)})`; col.g.fillRect(0, y, W, 1); }
+  }
+  // rimLit + dots reproduce the DRAW cap's inner face: frosted lamp plastic lit hardest at the rim,
+  // with a fine hexagonal diffuser pattern. Keeps DATA COUNTER in the same button family (2026-11-12).
+  if (o.rimLit) {
+    const r = emi.g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) / 2);
+    r.addColorStop(0, "rgb(70,70,70)"); r.addColorStop(0.65, "rgb(120,120,120)");
+    r.addColorStop(0.92, "rgb(255,255,255)"); r.addColorStop(1, "rgb(255,255,255)");
+    emi.g.fillStyle = r;
+  } else emi.g.fillStyle = "#fff";
+  emi.g.fillRect(0, 0, W, H);
+  if (o.dots) {
+    const step = 13;
+    for (let row = 0, y = 0; y < H + step; row++, y += step * 0.866) {
+      for (let x = (row % 2) * step / 2; x < W + step; x += step) {
+        col.g.fillStyle = "rgba(150,165,190,0.55)"; col.g.beginPath(); col.g.arc(x, y, 3.2, 0, Math.PI * 2); col.g.fill();
+        emi.g.fillStyle = "rgba(255,255,255,0.25)"; emi.g.beginPath(); emi.g.arc(x, y, 3.2, 0, Math.PI * 2); emi.g.fill();
+      }
+    }
+  }
+  const cI = col.g.getImageData(0, 0, W, H), eI = emi.g.getImageData(0, 0, W, H), nI = nor.g.createImageData(W, H);
+  const fill = new THREE.Color(o.fill); const fr = fill.r * 255, fg = fill.g * 255, fb = fill.b * 255;
+  const h = (x: number, y: number) => 1 - soft[(Math.min(H - 1, Math.max(0, y)) * W + Math.min(W - 1, Math.max(0, x))) * 4] / 255;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const p = (y * W + x) * 4, hx = h(x + 1, y) - h(x - 1, y), hy = h(x, y + 1) - h(x, y - 1);
+    let nx = -hx * 6, ny = hy * 6, nz = 1; const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
+    nI.data[p] = (nx * 0.5 + 0.5) * 255; nI.data[p + 1] = (ny * 0.5 + 0.5) * 255; nI.data[p + 2] = (nz * 0.5 + 0.5) * 255; nI.data[p + 3] = 255;
+    const m = hard[p] / 255, above = hard[(Math.max(0, y - 5) * W + x) * 4] / 255, wall = m * (1 - above);
+    cI.data[p] = cI.data[p] * (1 - m) + fr * m + 50 * wall; cI.data[p + 1] = cI.data[p + 1] * (1 - m) + fg * m + 50 * wall; cI.data[p + 2] = cI.data[p + 2] * (1 - m) + fb * m + 50 * wall;
+    for (let k = 0; k < 3; k++) eI.data[p + k] *= 1 - m;
+  }
+  col.g.putImageData(cI, 0, 0); nor.g.putImageData(nI, 0, 0); emi.g.putImageData(eI, 0, 0);
+  return { map: tex(col.c), normalMap: tex(nor.c, false), emissiveMap: o.emissive ? tex(emi.c, false) : null };
 }
