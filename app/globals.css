@@ -6583,8 +6583,6 @@ body.page-video-active .trust-page {
   box-shadow: 0 0 0 4px #030508, 0 5px 10px #000a;
 }
 .bcab-air-cabinet .bcab-led-panel .bcab-auto { left: 18px; top: 414px; bottom: auto; width: 160px; min-height: 44px; font-size: 14px; }
-.bcab-air-cabinet .bcab-led-panel .bcab-mascot { position: absolute; right: 12px; top: 402px; margin: 0; }
-.bcab-air-cabinet .bcab-led-panel .bcab-mascot img { height: 60px; }
 .bcab-air-cabinet .bcab-led-panel .bcab-logo { position: absolute; top: 484px; margin: 0; font-size: 23px; }
 .bcab-air-cabinet .bcab-led-panel .bcab-logo span { font-size: 16px; }
 .bcab-air-cabinet .bcab-led-panel .bcab-ticker { position: absolute; top: 544px; margin: 0; width: 226px; height: 48px; padding: 6px; }
@@ -6632,7 +6630,7 @@ body.page-video-active .trust-page {
 .bcab-air-cabinet .bcab-top-hud-games .battle-game-counter { width: 132px; overflow: visible; clip-path: none; }
 .bcab-air-cabinet .bcab-top-hud .battle-hud-frame { object-fit: contain; }
 
-/* --- Right panel: LED / logotype / ticker / DATA / statue / grille --- */
+/* --- Right panel: LED / logotype / ticker / DATA / grille --- */
 .bcab-led-panel {
   position: absolute;
   top: 88px;
@@ -6735,44 +6733,6 @@ body.page-video-active .trust-page {
 .bcab-data-btn:hover {
   border-color: var(--teal);
   box-shadow: 0 0 14px rgba(77, 232, 210, 0.25);
-}
-
-.bcab-mascot {
-  position: relative;
-  margin-top: 14px;
-  transform-origin: 50% 100%;
-}
-
-.bcab-mascot img {
-  height: 150px;
-  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 14px rgba(201, 162, 75, 0.18));
-}
-
-.bcab-mascot::after {
-  content: "";
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  bottom: -7px;
-  height: 12px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.6), transparent 70%);
-}
-
-.bcab-mascot-active {
-  animation: bcabMascotSignalMove 2000ms cubic-bezier(.2,.72,.24,1) 1 both;
-}
-
-.bcab-mascot-active.bcab-signal-white img { filter: drop-shadow(0 0 14px #fff) brightness(1.2); }
-.bcab-mascot-active.bcab-signal-blue img { filter: drop-shadow(0 0 16px #42aaff) brightness(1.15); }
-.bcab-mascot-active.bcab-signal-green img { filter: drop-shadow(0 0 16px #42df7f) brightness(1.15); }
-.bcab-mascot-active.bcab-signal-red img { filter: drop-shadow(0 0 18px #ff4438) brightness(1.18); }
-.bcab-mascot-active.bcab-signal-gold img { filter: drop-shadow(0 0 18px #ffd35a) brightness(1.2); }
-
-@keyframes bcabMascotSignalMove {
-  0% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-8px) scale(1.045); }
-  100% { transform: translateY(0) scale(1); }
 }
 
 .bcab-grille {
@@ -7213,29 +7173,6 @@ body.page-video-active .trust-page {
 @keyframes bcabReactLed {
   0%, 100% { opacity: 1; filter: none; }
   50% { opacity: 0.72; filter: brightness(1.3) contrast(1.08); }
-}
-
-/* Overrides the mascot's resting bob for the duration of the reaction. */
-.bcab-react-statue .bcab-mascot {
-  animation: bcabReactStatue 800ms ease-in-out 3 !important;
-}
-
-.bcab-react-statue .bcab-mascot img {
-  animation: bcabReactStatueGlow 800ms ease-in-out 3;
-}
-
-@keyframes bcabReactStatue {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  30% { transform: translateY(-4px) rotate(-1.6deg); }
-  65% { transform: translateY(-1px) rotate(1.4deg); }
-}
-
-@keyframes bcabReactStatueGlow {
-  0%, 100% { filter: none; }
-  45% {
-    filter: drop-shadow(0 0 12px rgba(239, 214, 149, 0.95))
-            drop-shadow(0 0 26px rgba(201, 162, 75, 0.7)) brightness(1.25);
-  }
 }
 
 .bcab-react-memboard .bcab-memboard-led-color,
@@ -9463,8 +9400,7 @@ body.page-video-active .trust-page {
 .bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-auto > * { visibility: hidden; }
 .bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-logo { display: none; }
 .bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-draw-btn { z-index: 3; }
-.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-ticker,
-.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-mascot { z-index: 3; }
+.bcab-air-cabinet .bcab-led-panel.bcab-niche-3d .bcab-ticker { z-index: 3; }
 
 /* ══ 筐体のまとまり（オーナー承認 2026-11-12）════════════════════════════════════════════
    ラフ：design-ref/cabinet-cohesion-v1.html の「修正案 ― 操作部を 1 枚の棚にする」。

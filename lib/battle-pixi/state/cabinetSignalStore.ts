@@ -30,8 +30,6 @@ type CabinetSignalState = {
   chanceSweepToken: number;
   chanceSweepActive: boolean;
   chanceSweepEndsAt: number;
-  statueTone: CabinetSignalTone | null;
-  statueToken: number;
   blackout: CabinetBlackoutKind | null;
 };
 
@@ -41,8 +39,6 @@ const initialState: CabinetSignalState = {
   chanceSweepToken: 0,
   chanceSweepActive: false,
   chanceSweepEndsAt: 0,
-  statueTone: null,
-  statueToken: 0,
   blackout: null,
 };
 
@@ -68,15 +64,6 @@ function notify() {
 
 function clearTimer(timer: ReturnType<typeof setTimeout> | null) {
   if (timer !== null) clearTimeout(timer);
-}
-
-function chooseWeightedTone(
-  weights: Readonly<Record<"blue" | "green" | "red", number>>
-): "blue" | "green" | "red" {
-  const roll = Math.random() * (weights.blue + weights.green + weights.red);
-  if (roll < weights.blue) return "blue";
-  if (roll < weights.blue + weights.green) return "green";
-  return "red";
 }
 
 function setMemoryPulse(pulse: Omit<CabinetPulse, "token"> | null) {
@@ -135,16 +122,6 @@ function stopChanceSweep() {
   notify();
 }
 
-function startStatueSignal(tone: CabinetSignalTone) {
-  if (allSignalsSuppressed()) return;
-  state = {
-    ...state,
-    statueTone: tone,
-    statueToken: state.statueToken + 1,
-  };
-  notify();
-}
-
 function pulseBothPanels() {
   const pulse = {
     tone: "white" as const,
@@ -165,8 +142,6 @@ function startBlackout(kind: CabinetBlackoutKind) {
   state = {
     ...state,
     blackout: kind,
-    statueTone:
-      kind === "super" || kind === "superMax" ? null : state.statueTone,
   };
   notify();
 }
@@ -208,33 +183,7 @@ export function beginCabinetDrawSignals(options: {
     });
   }
 
-  // BAR CHANCE expectation colors remain confined to the LCD. Cabinet color
-  // joins only after a successful third BAR, via the dedicated success strobe.
-  if (!options.barChance && !allSignalsSuppressed()) {
-    if (
-      chanceCount > 0 &&
-      Math.random() < cabinetSignalConfig.statue.chanceSignalChance
-    ) {
-      const weights =
-        cabinetSignalConfig.statue.chanceToneWeights[
-          Math.min(3, chanceCount) as 1 | 2 | 3
-        ];
-      startStatueSignal(chooseWeightedTone(weights));
-    } else if (
-      options.result === "Empty" &&
-      Math.random() < cabinetSignalConfig.statue.emptyFakeChance
-    ) {
-      startStatueSignal("white");
-    }
-  }
-
   return { chanceWaitMs };
-}
-
-export function clearCabinetTurnSignals() {
-  if (state.statueTone === null) return;
-  state = { ...state, statueTone: null };
-  notify();
 }
 
 export function armFatalWinCabinetSignal() {
@@ -259,10 +208,6 @@ export function notifyCabinetProgress(point: CabinetProgressPoint) {
   const sameActionBlackout = fatalPlan.blackoutPoint === point;
 
   if (isRelease && !panelsAreBlack()) {
-    if (state.statueTone !== null) {
-      state = { ...state, statueTone: null };
-      notify();
-    }
     pulseBothPanels();
     fatalPlan.flashPlayed = true;
   }
@@ -297,7 +242,7 @@ export function notifyEnemyDefeatResult() {
 export function notifyBonusOpeningStarted() {
   const wasSuperMax = state.blackout === "superMax";
   if (!wasSuperMax) {
-    state = { ...state, blackout: null, statueTone: null };
+    state = { ...state, blackout: null };
     notify();
     const pulse = {
       tone: "white" as const,

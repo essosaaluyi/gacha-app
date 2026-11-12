@@ -2,6 +2,26 @@
 
 新しい記録は一番上に追加すること。
 
+### 【完了：スタチュー撤去／ラフ提出：右パネルの割りつけ 3 案】2026-11-12 ／ 担当：Claude ／ ブランチ：main
+- オーナー指示：(1)「Statue は消していいです」 (2)「ボタン周りがどうしてもバランス悪い。さらに改善できる案が欲しい」。
+
+**(1) スタチュー撤去（完了）**
+- 削除したもの：`BattleScreen.tsx` の `.bcab-mascot` 一式、`globals.css` の `.bcab-mascot*` と `.bcab-react-statue` と `@keyframes bcabMascotSignalMove / bcabReactStatue / bcabReactStatueGlow`、`cabinetSignalStore.ts` の `statueTone` / `statueToken` / `startStatueSignal` / `chooseWeightedTone` / `clearCabinetTurnSignals`、`cabinetSignalConfig.ts` の `statue` 節、`BattlePixiStage.tsx` の import と呼び出し 1 箇所。
+- 画像 `public/images/cabinet/statue.png` は**残してある**（復帰できるように）。
+- **これでチャンス期待度を色で示す部品がなくなった。** 残る信号（memoryPulse / lowerPulse / chanceSweep / blackout）は色で期待度を分ける作りではない。`docs/cabinet-spec.md` の未決 9.13 に候補（DATA ランプを色分け／液晶ベゼルを光らせる／示唆をやめる）を書いた。**オーナー判断待ち。**
+
+**(2) 右パネルの割りつけ ― ラフ 3 案（判断待ち）**
+- 実測（パネル内 px）：DATA 34,28,202×78 ／ AUTO 17,118,237×74 ／ DRAW 25,257,221×213 ／ ticker 22,552,226×48。
+- 不均衡の正体：**左右の端が 4 種類**（左 17/25/34、右 236/246/248/254）、**縦の空きが 12 px と 125 px**。DATA と AUTO はくっつき、DRAW の下に 125 px の空白。
+- 新規：`design-ref/cabinet-balance-v1.html`（右パネルだけを原寸で 4 枚並べた比較）。
+  - **案 A 割りつけを揃える**：全部 x 20–250（幅 230）、縦の空き 20/24/24、DRAW を 140 → 190 px。構造は変えない。
+  - **案 B 表示を上・操作を下**：DATA → ログ → AUTO → DRAW（最下段 216 px）。実機と同じ並びで下の空白が消える。
+  - **案 C パネルを 330 px に広げる**：液晶を 1250 → 1190 px に縮める。DRAW 230 px。比率は最も実機に近いが液晶が小さくなる。
+- **注意：`public/cabinet-balance-v1.html` は配信用の一時コピー。Git に入れていない。レビュー後に削除すること。**（`public/cabinet-cohesion-v1.html` も同様に未削除）
+- 確認：`npx tsc --noEmit` エラー 0、`npx eslint` エラー 0（警告のみ）。`/battle` を開いて起動とラウンド進行を確認。
+- 未確認：スタチュー撤去後のチャンス示唆の見え方（示唆が出なくなっただけなので要判断）。本番ビルド、FPS、スマートフォン。
+- 次の担当への依頼：案が決まったら `lib/button-3d/cabinetNiche.ts`（3D の配置）と `app/globals.css`（2D の配置）の両方に反映する。案 C は液晶の幅（1250 px）と `.bcab-table-space` も動く。
+
 ### 【完了：DATA COUNTER を DRAW のデザイン・色に寄せる（開発環境のみ）】2026-11-12 ／ 担当：Claude ／ ブランチ：main
 - オーナー指示：「データカウンターのボタンはもっとドローボタンのデザインや色に寄せてほしい」。
 - 対応：光る看板（クリーム地＋赤い斜体文字）をやめ、**DRAW と同じ意匠の押しボタン**に戻したうえで、DRAW と揃うように作り直した。

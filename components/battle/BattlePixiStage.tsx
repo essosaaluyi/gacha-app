@@ -226,7 +226,6 @@ import {
 import {
   armFatalWinCabinetSignal,
   beginCabinetDrawSignals,
-  clearCabinetTurnSignals,
   getCabinetSignalState,
   notifyCabinetProgress,
   notifyEnemyDefeatResult,
@@ -3680,7 +3679,6 @@ export default function BattlePixiStage({
 
           resolveReelTenpai();
           handleRevealComplete();
-          if (revealOrder === 3) clearCabinetTurnSignals();
         };
         const startCabinetLanding = () => {
           if (!(card instanceof PerspectiveMesh)) return;

@@ -1023,9 +1023,6 @@ export default function BattleScreen() {
               <span className="bcab-auto-state">{autoEnabled ? "ON" : "OFF"}</span>
             </button>
             </div>
-            <div className={`bcab-mascot ${cabinetSignals.statueTone ? `bcab-mascot-active bcab-signal-${cabinetSignals.statueTone}` : ""}`} aria-hidden="true">
-              <img key={cabinetSignals.statueToken} src="/images/cabinet/statue.png" alt="" />
-            </div>
             <img className="bcab-grille" src="/images/cabinet/grille-wide.png" alt="" aria-hidden="true" />
           </div>
 

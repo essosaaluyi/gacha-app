@@ -20,16 +20,6 @@ export const cabinetSignalConfig = {
     durationMs: 600,
     pulses: 3,
   },
-  statue: {
-    chanceSignalChance: 0.2,
-    emptyFakeChance: 0.1,
-    movementMs: 2000,
-    chanceToneWeights: {
-      1: { blue: 70, green: 30, red: 0 },
-      2: { blue: 10, green: 20, red: 70 },
-      3: { blue: 5, green: 15, red: 80 },
-    },
-  },
   superBonusBlackout: {
     chance: 0.5,
   },
