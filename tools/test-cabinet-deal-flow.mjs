@@ -78,7 +78,9 @@ test("a click turns the card first, then sets it down", () => {
   const natural = width(rest) + (width(present) - width(rest)) * turned.raised;
   assert.ok(width(turned.quad) / natural > 0.99, "flat again by 320ms");
   assert.ok(turned.raised > 0.4, "still most of the way up when the turn finishes");
-  const contact = sampleCabinetManualReveal(rest, 535, 1.787, 61, true);
+  const approach = sampleCabinetManualReveal(rest, 380, 1.787, 61, true);
+  assert.ok(width(approach.quad) > width(turned.quad) * 1.1, "face comes forward before contact");
+  const contact = sampleCabinetManualReveal(rest, 510, 1.787, 61, true);
   assert.deepEqual(contact.quad.slice(4), rest.slice(4), "near edge catches the table first");
   assert.ok(contact.quad[1] < rest[1], "far edge is still raised at contact");
   assert.deepEqual(sampleCabinetManualReveal(rest, 650, 1.787, 61, true).quad, rest);
