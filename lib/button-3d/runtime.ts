@@ -279,7 +279,9 @@ export type DrawButtonModel = {
   vibrate(durationMs?: number): void;
   update(dt: number): void;
 };
-export function buildDrawButton(own: Own, options: { label?: string } = {}): DrawButtonModel {
+/** Bezel ring: inner edge at r 1.03, outer edge at 1.03 + 0.45 × bezelWidth (1 = the full r 1.48 ring). */
+export const drawBezelRadius = (bezelWidth = 1) => 1.03 + 0.45 * bezelWidth;
+export function buildDrawButton(own: Own, options: { label?: string; bezelWidth?: number } = {}): DrawButtonModel {
   const root = new THREE.Group();
   // ── Soft contact shadow and the fixed housing; only the cap moves (press and vibrate()).
   const shadowTex = own(radialTexture([[0, "rgba(0,0,0,0.85)"], [0.55, "rgba(0,0,0,0.5)"], [1, "rgba(0,0,0,0)"]]));
@@ -302,7 +304,8 @@ export function buildDrawButton(own: Own, options: { label?: string } = {}): Dra
   profile.add(B([1.18, 0.315], [1.29, 0.315], [1.41, 0.285], [1.45, 0.19]));  // crown rolling over
   profile.add(B([1.45, 0.19], [1.48, 0.13], [1.48, 0.06], [1.455, 0.025]));  // outer shoulder
   profile.add(B([1.455, 0.025], [1.445, 0.01], [1.43, 0.0], [1.41, 0.0]));    // tucked foot
-  lathe(profile.getPoints(28).map((v) => [v.x, v.y]));
+  const k = options.bezelWidth ?? 1; // narrower ring: squeeze the profile outward of the inner wall
+  lathe(profile.getPoints(28).map((v) => [v.x > 1.03 ? 1.03 + (v.x - 1.03) * k : v.x, v.y]));
   const well = new THREE.Mesh(own(new THREE.CircleGeometry(1.04, 96)), own(new THREE.MeshStandardMaterial({ color: "#05080f", roughness: 0.8 })));
   well.rotation.x = -Math.PI / 2; well.position.y = 0.04; rig.add(well);
 

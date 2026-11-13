@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import {
-  LAMP, buildDrawButton, canvas, engraveMaps, extruded, flatRect, plasticNormalTexture,
+  LAMP, buildDrawButton, drawBezelRadius, canvas, engraveMaps, extruded, flatRect, plasticNormalTexture,
   roundedRect, tex, type LampState,
 } from "./runtime";
 
@@ -323,7 +323,9 @@ export function mountCabinetPanelB3(host: HTMLElement, opts: { onLayout?: (l: Pa
   //    Owner request 2026-11-14: tilted face-up by DRAW_TILT_DEG. Seen dead-on, the press travelled straight
   //    along the line of sight and was invisible; tilted, the cap's sideways drop reads. The mount is pushed
   //    out so the top edge stays on the face, and a short dark plinth fills the wedge under the lower edge.
-  const DRAW_TILT_DEG = 10, drawR = DRAW.bezelD / 2 + 3, tilt = THREE.MathUtils.degToRad(DRAW_TILT_DEG);
+  //    Owner 2026-11-14 (2nd): 15° and the black bezel ring at half its width (cap size unchanged).
+  const DRAW_TILT_DEG = 15, DRAW_BEZEL_WIDTH = 0.5;
+  const drawR = drawBezelRadius(DRAW_BEZEL_WIDTH) * DRAW_SCALE + 3, tilt = THREE.MathUtils.degToRad(DRAW_TILT_DEG);
   const drawMount = new THREE.Group();
   drawMount.position.set(0, DRAW.y, Z.drawSeat + drawR * Math.sin(tilt)); drawMount.rotation.x = -tilt; root.add(drawMount);
   const seat = new THREE.Mesh(own(new THREE.CircleGeometry(drawR, 72)), voidMat);
@@ -331,7 +333,7 @@ export function mountCabinetPanelB3(host: HTMLElement, opts: { onLayout?: (l: Pa
   const plinthDepth = 2 * drawR * Math.sin(tilt) + 4;
   const plinth = new THREE.Mesh(own(new THREE.CylinderGeometry(drawR, drawR, plinthDepth, 72, 1, true)), voidMat);
   plinth.rotation.x = Math.PI / 2; plinth.position.z = -0.4 - plinthDepth / 2; drawMount.add(plinth);
-  const draw = buildDrawButton(own);
+  const draw = buildDrawButton(own, { bezelWidth: DRAW_BEZEL_WIDTH });
   draw.root.rotation.x = Math.PI / 2;            // the model's +Y (button axis) becomes +Z
   draw.root.scale.setScalar(DRAW_SCALE);
   drawMount.add(draw.root);
