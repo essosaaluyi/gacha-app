@@ -35,6 +35,7 @@ import CollectionPhaseOverlay from "@/components/battle/CollectionPhaseOverlay";
 import CollectionPointsHandoff from "@/components/battle/CollectionPointsHandoff";
 import DefenseShieldOverlay from "@/components/battle/DefenseShieldOverlay";
 import CabinetNiche3D from "@/components/battle/cabinet/CabinetNiche3D";
+import CabinetTable3D from "@/components/battle/cabinet/CabinetTable3D";
 import {
   dismissCollectionResult,
   getCollectionState,
@@ -144,6 +145,10 @@ import {
 // fires `ended` at all.
 /** Trial: the upper-right panel as a three.js niche (DRAW, AUTO lever, DATA COUNTER); development only until the owner approves it. */
 const DRAW_BUTTON_3D = process.env.NODE_ENV !== "production";
+// The card table as three.js geometry instead of the baked three-bay image, so
+// a bay can turn over and take its card under the table. Development only
+// while the look is being settled; production still shows the baked art.
+const CARD_TABLE_3D = process.env.NODE_ENV !== "production";
 const BATTLE_OPENING_MAX_MS = 30_000;
 const BATTLE_OPENING_FADE_MS = 700;
 
@@ -1092,7 +1097,13 @@ export default function BattleScreen() {
                 transformOrigin: "50% 0",
               }}
             >
-              <div className="bcab-card-table">
+              <div
+                className="bcab-card-table"
+                // The baked three-bay image is the 2D table; with the 3D one
+                // mounted the canvas is the table, so the painting comes off.
+                style={CARD_TABLE_3D ? { background: "none" } : undefined}
+              >
+                {CARD_TABLE_3D && <CabinetTable3D />}
                 <div className="bcab-table-glass">
                   <div className="bcab-pixi-mount">
                     {audioReady && openingChecked && !openingActive && (
