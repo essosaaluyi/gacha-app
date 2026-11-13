@@ -3,7 +3,8 @@ import { TWO_STEP_DEAL_MS as CABINET_EJECT3D_DURATION_MS } from "@/components/ba
 import { getPendingBattleHand, savePendingBattleHand, clearPendingBattleHand } from "@/lib/battle-pixi/state/pendingBattleHandStore";
 import { activeDelay, createPresentationClock, type CabinetDealPhase } from "@/lib/battle-pixi/presentation/cabinetDealSequence";
 import { isDrawSequenceActive } from "@/lib/battle-pixi/state/drawSequenceGuard";
-import { foldAwayCard, type FoldQuad } from "@/lib/battle-pixi/stage/foldAwayCard";
+import { foldAwayCard, rideSlotFlip, type FoldQuad } from "@/lib/battle-pixi/stage/foldAwayCard";
+import { getCabinetTable3D } from "@/lib/table-3d/tableBridge";
 import { parseFatalPreview, rollEnemyFatal, enemyFatalEscape, enemyFatalSurvives } from "@/lib/battle-pixi/core/enemyFatalRoll";
 import { commitFatalPlan, getFatalPresentation, setFatalStops, setFatalPresentationPhase,
   takeFatalPlan, clearFatalPresentation, isFatalPresentationResolving, type FatalPlan } from "@/lib/battle-pixi/state/fatalPresentationStore";
@@ -1272,13 +1273,28 @@ export default function BattlePixiStage({
           drawCards.forEach((card, index) => {
             if (!(card instanceof PerspectiveMesh) || !card.visible) return;
             if (card.parent !== stage) return;
-            foldAwayCard({
-              parent: stage,
-              texture: card.texture,
-              quad: [...landedCardQuads[index]] as FoldQuad,
-              // Staggered left to right, the way the reference clears a row.
-              durationMs: 190 + index * 45,
-            });
+            // Staggered left to right, the way the reference clears a row.
+            const stagger = index * 45;
+            if (getCabinetTable3D()) {
+              // The 3D table turns the bay over and the card goes under with it.
+              rideSlotFlip({
+                parent: stage,
+                texture: card.texture,
+                index,
+                pixiCanvas: pixiApp.canvas,
+                pixiLogical: { width: STAGE.WIDTH, height: STAGE.HEIGHT },
+                durationMs: 420 + stagger,
+              });
+            } else {
+              // No 3D table (production still draws the baked one), so the card
+              // closes on its own edge instead.
+              foldAwayCard({
+                parent: stage,
+                texture: card.texture,
+                quad: [...landedCardQuads[index]] as FoldQuad,
+                durationMs: 190 + stagger,
+              });
+            }
           });
         }
 

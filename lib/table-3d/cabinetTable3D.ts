@@ -45,6 +45,13 @@ export type CabinetTable3D = {
   slotProgress(index: number): number;
   /** The bay openings in canvas pixels, clockwise from the far-left corner. */
   slotQuads(): TableQuad[];
+  /**
+   * Where the bay opening is *right now*, mid-turn, in canvas pixels. A card
+   * drawn on another layer rides the plate by taking these corners every frame.
+   */
+  livePlateQuad(index: number): TableQuad;
+  /** The canvas the table is drawn on, for mapping its pixels onto another. */
+  canvasEl(): HTMLCanvasElement;
   resize(): void;
   dispose(): void;
 };
@@ -272,19 +279,34 @@ export function mountCabinetTable3D(host: HTMLElement): CabinetTable3D {
     bays.push({ pivot, angle: 0, startedAt: 0, durationMs: 0 });
   }
 
-  /** Where a bay opening lands on the canvas, for whoever draws the cards. */
-  const quadFor = (i: number): TableQuad => {
+  /**
+   * Where a bay opening lands on the canvas, for whoever draws the cards.
+   * `live` follows the plate through its turn; otherwise the bay is taken at
+   * rest, which is the layout the cards are dealt into.
+   */
+  const scratch = new THREE.Vector3();
+  const quadFor = (i: number, live = false): TableQuad => {
+    const bay = bays[i];
     const x = (i - 1) * BAY.pitchX;
     const w = renderer.domElement.clientWidth;
     const h = renderer.domElement.clientHeight;
     const out: number[] = [];
     const corners: [number, number][] = [
-      [x - BAY.halfW, BAY.zFar], [x + BAY.halfW, BAY.zFar],
-      [x + BAY.halfW, BAY.zNear], [x - BAY.halfW, BAY.zNear],
+      [-BAY.halfW, BAY.zFar], [BAY.halfW, BAY.zFar],
+      [BAY.halfW, BAY.zNear], [-BAY.halfW, BAY.zNear],
     ];
     for (const [cx, cz] of corners) {
-      const v = new THREE.Vector3(cx, 0, cz).project(camera);
-      out.push(((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h);
+      if (live && bay) {
+        // Local to the pivot, so the rotation the plate is holding this frame
+        // is applied for free by the pivot's own world matrix.
+        scratch.set(cx, PLATE_T / 2, cz - BAY_Z);
+        bay.pivot.updateWorldMatrix(true, false);
+        scratch.applyMatrix4(bay.pivot.matrixWorld);
+      } else {
+        scratch.set(x + cx, 0, cz);
+      }
+      scratch.project(camera);
+      out.push(((scratch.x + 1) / 2) * w, ((1 - scratch.y) / 2) * h);
     }
     return out as TableQuad;
   };
@@ -343,6 +365,8 @@ export function mountCabinetTable3D(host: HTMLElement): CabinetTable3D {
       return b ? (b.angle / Math.PI) * 2 : 0;
     },
     slotQuads: () => [quadFor(0), quadFor(1), quadFor(2)],
+    livePlateQuad: (index) => quadFor(index, true),
+    canvasEl: () => renderer.domElement,
     resize,
     dispose() {
       disposed = true;

@@ -1,5 +1,7 @@
 import { Container, Graphics, PerspectiveMesh, Texture } from "pixi.js";
 
+import { getCabinetTable3D, tablePointToPixi } from "@/lib/table-3d/tableBridge";
+
 export type FoldQuad = [
   number, number, number, number, number, number, number, number,
 ];
@@ -144,6 +146,68 @@ export function foldAwayCard({
     else finish();
   };
 
+  raf = requestAnimationFrame(frame);
+  return finish;
+}
+
+/**
+ * The same exit, but driven by the 3D table instead of faked in 2D.
+ *
+ * The owner's call: the bay itself turns over and the card goes under the
+ * table with it. The bay is three.js and the card is Pixi on a canvas above
+ * it, so they cannot be one object — the bay turns, and the card copies the
+ * bay's corners every frame until the bay passes edge-on and the card is
+ * underneath, at which point there is nothing left to draw.
+ */
+export function rideSlotFlip({
+  parent,
+  texture,
+  index,
+  pixiCanvas,
+  pixiLogical,
+  durationMs = 420,
+}: {
+  parent: Container;
+  texture: Texture;
+  index: number;
+  pixiCanvas: HTMLCanvasElement;
+  pixiLogical: { width: number; height: number };
+  durationMs?: number;
+}): () => void {
+  const table = getCabinetTable3D();
+  if (!table) return () => {};
+
+  const mesh = new PerspectiveMesh({ texture, verticesX: 12, verticesY: 18 });
+  mesh.eventMode = "none";
+  parent.addChild(mesh);
+  table.flipSlot(index, durationMs);
+
+  const tableCanvas = table.canvasEl();
+  let raf = 0;
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    cancelAnimationFrame(raf);
+    mesh.destroy();
+  };
+
+  const frame = () => {
+    if (finished) return;
+    // Past 1 the bay has gone through edge-on and the card is under the table.
+    if (table.slotProgress(index) >= 1) {
+      finish();
+      return;
+    }
+    const q = table.livePlateQuad(index);
+    const c: number[] = [];
+    for (let i = 0; i < 8; i += 2) {
+      const [x, y] = tablePointToPixi([q[i], q[i + 1]], tableCanvas, pixiCanvas, pixiLogical);
+      c.push(x, y);
+    }
+    mesh.setCorners(c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]);
+    raf = requestAnimationFrame(frame);
+  };
   raf = requestAnimationFrame(frame);
   return finish;
 }

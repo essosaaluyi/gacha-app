@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { mountCabinetTable3D, type CabinetTable3D as Table } from "@/lib/table-3d/cabinetTable3D";
+import { setCabinetTable3D } from "@/lib/table-3d/tableBridge";
 
 /**
  * The card table drawn as three.js geometry instead of the baked
@@ -20,8 +21,10 @@ export default function CabinetTable3D() {
     const el = host.current;
     if (!el) return;
     const table = mountCabinetTable3D(el);
+    setCabinetTable3D(table);
     (window as unknown as { __cabinetTable?: Table }).__cabinetTable = table;
     return () => {
+      setCabinetTable3D(null);
       delete (window as unknown as { __cabinetTable?: Table }).__cabinetTable;
       table.dispose();
     };
