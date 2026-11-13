@@ -184,6 +184,7 @@ export function mountCabinetPanelB3(host: HTMLElement, opts: { onLayout?: (l: Pa
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
+  if (process.env.NODE_ENV !== "production") (window as unknown as { __panelB3Scene?: THREE.Scene }).__panelB3Scene = scene; // QA hook
   const camera = new THREE.PerspectiveCamera(22, 1, 10, 4000);
   camera.position.set(0, 0, DIST);
 
@@ -337,6 +338,13 @@ export function mountCabinetPanelB3(host: HTMLElement, opts: { onLayout?: (l: Pa
   draw.root.rotation.x = Math.PI / 2;            // the model's +Y (button axis) becomes +Z
   draw.root.scale.setScalar(DRAW_SCALE);
   drawMount.add(draw.root);
+  // Tilted up, the two clear covers caught a broad white highlight right over "DR" (it came from their
+  // specular + clearcoat layers; hiding any single light did not remove it). On this panel the covers keep
+  // only their lamp haze and sheen, so the lettering under them stays readable.
+  draw.root.traverse((o) => {
+    const m = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial | undefined;
+    if (m?.isMeshPhysicalMaterial && m.blending === THREE.AdditiveBlending) { m.specularIntensity = 0; m.clearcoat = 0.1; }
+  });
   // A three.js point light ignores its parent's scale: `distance` and `intensity` are world-space. At
   // 52× the button's own lamps would light a 1 mm bubble, so the reach is scaled once here and the
   // brightness after every update (the button rewrites intensity from its lamp state each frame).
