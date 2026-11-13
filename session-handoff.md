@@ -2,6 +2,11 @@
 
 新しい記録は一番上に追加すること。
 
+### 【完了】テーブルの不可視面テクスチャ4点 ／ Codex ／ 2026-11-13
+- `public/images/cabinet/table3d/` に `bay-plate-back.v1.webp` (512×512)、`bay-well-walls.v1.webp` (1024×144)、`bay-well-floor.v1.webp` (256×256)、`bay-plate-edge.v1.webp` (512×16)。WebP / sRGB / アルファなしを確認。裏面先行コミットは `26daa78`。
+- 壁アトラスの有効範囲は半開区間で X=[0,256) 奥、[256,510) 右、[510,766) 手前、[766,1020) 左。Y=[0,133) が上端から底。右4pxと下11pxは端の画素を延長した余白。UVは有効範囲内で半テクセル内側を使用。個別の指定解像度を優先したため全素材が同じ実効テクセル密度にはならない。
+- 原本PNG4点は `D:/asset-sources/gacha-app/images/cabinet/table3d/`。裏面の金具は画像下辺。次の担当 Claude はUVを割り当て、回転中の向きと色・境界、Safari実機を確認する。組み込み表示と実機動作は未確認。
+
 ### 【完了】カードテーブル3D：ライト全廃＋原画をそのまま貼る方式へ ／ Claude ／ 2026-11-13 ／ ブランチ：main
 - オーナー決定どおり、テーブルのライト計算を**全廃**した。ライト3灯・生成環境マップ・生成フェルト／断面マップ・emissive での色合わせ・頂点カラー2種（`edgeFade`・`depthShade`）をすべて削除。材質は全部 `MeshBasicMaterial`、`toneMapping = NoToneMapping`。変更：`lib/table-3d/cabinetTable3D.ts`、`tools/make-table3d-textures.mjs`（新規）、`docs/cabinet-table-3d-texture-assets.md`（新規・改訂）、`public/images/cabinet/table3d/*`（新規）。
 - **原画を貼るのに新規素材は要らなかった**。ジオメトリは原画を逆投影して作ってあるので、カメラを順方向に回せば各頂点が原画のどのピクセル由来か分かる。それを UV にすると原画がそのまま表面になる（`projectUV`／リサンプリングなし）。フェルト・真鍮の縁・ベイ枠・金のヘアライン・留め具・下部機構は、もう原画そのもの。
