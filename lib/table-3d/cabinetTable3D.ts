@@ -1,7 +1,5 @@
 import * as THREE from "three";
 
-import { canvas, tex } from "@/lib/button-3d/runtime";
-
 /**
  * The card table as real geometry, replacing the baked
  * card-table-premium-three-bay-center-only-1120x420 image.
@@ -30,6 +28,17 @@ import { canvas, tex } from "@/lib/button-3d/runtime";
  *    plainly. That makes the brass rim 0.052 (20px at mid-side) and the bay
  *    frame 0.050 (the painted frame runs 631..655px at y=135, which 0.034
  *    would cover only to 646), both wider than the spec's draft values.
+ *
+ * 3. NO LIGHTS. Nothing here is lit. Every surface takes its colour from the
+ *    painting, pinned on by running the camera forwards (`projectUV`), so the
+ *    table is drawn from the very pixels the baked image was. This replaced a
+ *    rig of three lights, a generated environment, generated cloth and section
+ *    maps, emissive colour-matching and two passes of vertex shading — all of
+ *    it there to argue with the fact that the painting is lit bright along the
+ *    back while this cabinet's key is at the player's end. The painting wins
+ *    the argument by being the texture. What the art cannot see, because it
+ *    looks from one place, is listed in UNSEEN and is flat colour until it is
+ *    painted (docs/cabinet-table-3d-texture-assets.md).
  *
  * CAMERA: not invented. The baked art is a true perspective render, so the
  * camera was solved back out of the three bay quads BattlePixiStage had been
@@ -64,12 +73,6 @@ const WELL_D = 0.26;
 /** Corner chamfer on a bay frame. */
 const BAY_CHAMFER = 0.022;
 
-/**
- * The colour the painting uses inside a bay, sampled straight out of the art.
- * The panel has to disappear into the slot while it is at rest, so this is the
- * target, not a guess at "black" — the painted slot is a very dark green.
- */
-const BAY_PAINT = "#0e1a1b";
 /**
  * Nothing of the panel is drawn above the table surface, which is also the
  * height the fixed frame tops out at. A panel really hinged in a table would
@@ -303,52 +306,58 @@ function wallGeometry(top: Pt[], topY: number, bottom: Pt[], bottomY: number) {
   return g;
 }
 
-/**
- * Darkens a mesh toward the table's left and right ends.
- *
- * The art does not stop at a lit edge: the brass and the cloth lose their
- * light into the cabinet long before the silhouette ends, and the corners the
- * render came out brightest in are the ones the painting has darkest. Written
- * as vertex colour rather than the alpha fade the spec asks for because the
- * cabinet behind is near black either way, and this keeps every shell mesh
- * opaque and out of the transparent sorting.
- */
-function edgeFade(geometry: THREE.BufferGeometry, from = 0.86, to = 1.4, floor = 0.26) {
-  const pos = geometry.getAttribute("position");
-  const col = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i++) {
-    const t = Math.min(1, Math.max(0, (Math.abs(pos.getX(i)) - from) / (to - from)));
-    const k = 1 - (1 - floor) * t * t;
-    col[i * 3] = k;
-    col[i * 3 + 1] = k;
-    col[i * 3 + 2] = k;
-  }
-  geometry.setAttribute("color", new THREE.BufferAttribute(col, 3));
-  return geometry;
+/** The painting's own size. It is drawn 420 tall and clipped at REF.h. */
+const ART = { w: 1120, h: 420 };
+
+/** An unlit material's colour at rest: the texture, untouched. */
+const WHITE = new THREE.Color(0xffffff);
+
+/** A world point into art pixels: the exact inverse of unprojectArt. */
+function projectArt(x: number, y: number, z: number): [number, number] {
+  const pitch = d2r(CAM.pitchDeg);
+  const t = Math.tan(d2r(CAM.fovDeg) / 2);
+  const aspect = REF.w / REF.h;
+  const dy = y - CAM.y;
+  const dz = z - CAM.z;
+  const yc = Math.cos(pitch) * dy - Math.sin(pitch) * dz;
+  const zc = Math.sin(pitch) * dy + Math.cos(pitch) * dz;
+  return [
+    ((x / -zc / (t * aspect) + 1) / 2) * REF.w,
+    ((1 - yc / -zc / t) / 2) * REF.h,
+  ];
 }
 
 /**
- * Shades a mesh from its far edge to its near one, on top of whatever
- * edgeFade left.
+ * Pins the painting to a mesh by where that mesh lands on screen.
  *
- * The painted brass is brightest along the back of the table and almost out
- * by the player; this cabinet lights it from the front, so the render had it
- * exactly the wrong way round — #744c24 at the back against the art's
- * #c19d6a, and twice too bright at the near-left corner. Nothing in the
- * lighting can be moved to fix that without changing the insert the owner has
- * already approved, so the gradient the painting has is applied directly.
+ * The geometry was built by unprojecting measured art pixels through the
+ * solved camera, so running the camera forwards again tells each vertex which
+ * pixel of the painting it came from. Used as UVs, that makes the painting the
+ * surface — not a likeness of it, the same pixels, with no resampling in
+ * between and nothing for a light to do.
+ *
+ * It is a projection taken once, at rest, and then it belongs to the mesh. The
+ * shell never moves, so for the shell it is simply exact. A plate carries its
+ * own slice of the painting over with it as it turns, which is what a real one
+ * does with its own paint.
  */
-function depthShade(geometry: THREE.BufferGeometry, farK: number, nearK: number, zFar = 0.11, zNear = 1.05) {
+function projectUV(
+  geometry: THREE.BufferGeometry,
+  { dx = 0, dy = 0, dz = 0 }: { dx?: number; dy?: number; dz?: number } = {},
+) {
   const pos = geometry.getAttribute("position");
-  const col = geometry.getAttribute("color") as THREE.BufferAttribute | undefined;
-  if (!col) return geometry;
+  const uv = new Float32Array(pos.count * 2);
   for (let i = 0; i < pos.count; i++) {
-    const t = Math.min(1, Math.max(0, (pos.getZ(i) - zFar) / (zNear - zFar)));
-    const k = farK + (nearK - farK) * t;
-    col.setXYZ(i, col.getX(i) * k, col.getY(i) * k, col.getZ(i) * k);
+    // The offsets are the mesh's own placement: UVs have to be projected from
+    // where the mesh ends up in the world, not from where its geometry sits.
+    const [px, py] = projectArt(pos.getX(i) + dx, pos.getY(i) + dy, pos.getZ(i) + dz);
+    uv[i * 2] = px / ART.w;
+    uv[i * 2 + 1] = py / ART.h;
   }
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
   return geometry;
 }
+
 
 /** A flat sheet filling `outer`, with holes cut out of it. */
 function sheetShape(outer: Pt[], holes: Pt[][]) {
@@ -367,143 +376,85 @@ function sheetShape(outer: Pt[], holes: Pt[][]) {
   return shape;
 }
 
-// --- generated maps ---------------------------------------------------------
+// --- the painted surface ----------------------------------------------------
 
-function mapTex(c: HTMLCanvasElement) {
-  const t = tex(c);
-  // These are authored with v=0 on the first row, matching bandGeometry.
+/**
+ * The painting, made safe to use as a texture.
+ *
+ * The same image the baked table was drawn with, with its cut-out edge flooded
+ * outwards and its alpha dropped — see tools/make-table3d-textures.mjs. Both
+ * matter: a sample taken at the silhouette would otherwise mix in transparent
+ * black and darken the rim, and this canvas composites over the page, so any
+ * alpha the texture carried would punch a hole through the table.
+ */
+const PAINT_MAP_URL = "/images/cabinet/table3d/table-paint.v1.webp";
+
+/**
+ * Everything that used to be a generated map — cloth weave, brass section,
+ * frame section, environment — is gone. The painting already holds all of
+ * them, correctly shaded, and nothing here is lit, so what the file holds is
+ * what the screen shows.
+ */
+function loadPaintMap(onReady: () => void) {
+  const t = new THREE.TextureLoader().load(PAINT_MAP_URL, onReady, undefined, onReady);
+  t.colorSpace = THREE.SRGBColorSpace;
+  // Row 0 of the file is the far edge of the table, which is what projectUV's
+  // art pixels count from; the default flip would stand the painting on its
+  // head.
   t.flipY = false;
+  // No mipmaps, and no filtering off them.
+  //
+  // This texture is never minified: the UVs are the camera's own projection of
+  // the geometry, so an art pixel covers about one screen pixel wherever it
+  // lands — that is what projecting the painting onto the thing it is a picture
+  // of means. A mip level is therefore never the right sample, only a blur of
+  // one, and at the bay frames it was averaging the gold hairlines into their
+  // surroundings and rendering the frame's inner edge about 25% too bright.
+  t.generateMipmaps = false;
+  t.minFilter = THREE.LinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
   return t;
 }
 
-/** The felt's world extent, and the window its generated map covers. */
-const FELT_X = 1.44;
-const FELT_Z0 = 0.03;
-const FELT_Z1 = 1.12;
+/** An unlit material: the map, or a flat colour, straight to the screen. */
+function paint(options: {
+  map?: THREE.Texture;
+  color?: number;
+  side?: THREE.Side;
+  clippingPlanes?: THREE.Plane[];
+}) {
+  return new THREE.MeshBasicMaterial({
+    map: options.map,
+    color: options.color ?? 0xffffff,
+    side: options.side ?? THREE.FrontSide,
+    clippingPlanes: options.clippingPlanes,
+  });
+}
 
 /**
- * The cloth, keyed to the world rather than to the mesh.
+ * The surfaces the painting cannot see.
  *
- * Sampled off the art between the bays and in the bands fore and aft of them:
- * the green runs from about rgb(3,23,24) at the sides to rgb(24,57,60) down
- * the middle at the back, and the pool in front of the centre bay reaches
- * rgb(58,120,125). So the cloth is not one colour with a vignette on it — the
- * highlight tightens and strengthens toward the player, and that is what the
- * old flat sheet was missing.
+ * The art looks at the table from one place, so the walls inside a bay, the
+ * back of a plate, the table's front thickness and the panel below it have no
+ * pixels in it at all — nothing to unproject. They are flat colours until
+ * Codex paints them (docs/cabinet-table-3d-texture-assets.md), sampled from
+ * the nearest thing the art does show.
  */
-function feltTexture() {
-  const W = 1024;
-  const H = 512;
-  const { c, g } = canvas(W, H);
-  const img = g.createImageData(W, H);
-  let seed = 260113;
-  const rnd = () => {
-    // Fixed seed, so the weave is the same every run and on every machine.
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
+const UNSEEN = {
+  /** Inside a bay, below the surface. The art's slot interior is #0e1a1e. */
+  well: 0x070d10,
+  /** The floor of the well, darker than its walls. */
+  wellFloor: 0x03070a,
+  /** The back of a plate, seen only while it turns. */
+  plateBack: 0x121a1d,
+  /** A plate's thickness, edge-on at the middle of the turn. */
+  plateEdge: 0x4a7a80,
+  /** The panel below the near edge. */
+  under: 0x0a0d10,
+};
 
-  for (let j = 0; j < H; j++) {
-    const z = FELT_Z0 + (j / (H - 1)) * (FELT_Z1 - FELT_Z0);
-    const u = (z - FELT_Z0) / (FELT_Z1 - FELT_Z0);
-    // The pool grows and tightens as the cloth comes toward the player.
-    const amp = 32 + 44 * u ** 2.2;
-    const sigma = 0.8 - 0.48 * u;
-    for (let i = 0; i < W; i++) {
-      const x = -FELT_X + (i / (W - 1)) * FELT_X * 2;
-      // Lit from the player's left, as the cabinet's key is.
-      const bias = x < 0 ? 1.06 : 0.94;
-      const falloff = 10 * Math.min(1, (Math.abs(x) / FELT_X) ** 3);
-      const green = 20 + amp * Math.exp(-((x / sigma) ** 2)) * bias - falloff;
-      const gg = Math.max(8, green) + (rnd() - 0.5) * 6;
-      const o = (j * W + i) * 4;
-      // sRGB round-tripping crushes the low red far harder than the green, so the
-      // ratio has to be pushed well past the measured one to come back at it.
-      img.data[o] = Math.max(0, Math.min(255, gg * Math.min(0.62, 0.3 + 0.004 * gg)));
-      img.data[o + 1] = Math.max(0, Math.min(255, gg));
-      img.data[o + 2] = Math.max(0, Math.min(255, gg * 1.05));
-      img.data[o + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  return c;
-}
-
-/**
- * A cross-section strip, for the bands swept around the outline and the bays.
- * v runs 0 (outer) to 1 (inner); the stops paint by that distance in.
- */
-function sectionTexture(
-  base: readonly (readonly [number, string])[],
-  lines: readonly (readonly [number, number, string])[] = []
-) {
-  const H = 256;
-  const { c, g } = canvas(8, H);
-  const grad = g.createLinearGradient(0, 0, 0, H);
-  for (const [at, col] of base) grad.addColorStop(at, col);
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 8, H);
-  // Hairlines are hard edges, not gradient stops, or they wash out.
-  for (const [at, w, col] of lines) {
-    g.fillStyle = col;
-    g.fillRect(0, Math.round(at * H), 8, Math.max(1, Math.round(w * H)));
-  }
-  return c;
-}
-
-/**
- * A small environment for the metal to reflect.
- *
- * Without one, brass at metalness 0.72 has no diffuse term and only three
- * lights to catch, so it renders near black — measured #352008 against the
- * art's #c19d6a. This is the cabinet as the table sees it: dark all round,
- * with the light bar overhead as a warm band and the player's side a little
- * cooler. Never shown as the background; it exists to be reflected.
- */
-function environmentTexture() {
-  const W = 256;
-  const H = 128;
-  const { c, g } = canvas(W, H);
-  g.fillStyle = "#05090c";
-  g.fillRect(0, 0, W, H);
-  const bar = g.createLinearGradient(0, 0, 0, H);
-  bar.addColorStop(0, "#1b2b33");
-  bar.addColorStop(0.22, "#d8e4ee");
-  bar.addColorStop(0.34, "#6f8794");
-  bar.addColorStop(0.52, "#0b1318");
-  bar.addColorStop(1, "#04070a");
-  g.fillStyle = bar;
-  g.fillRect(0, 0, W, H);
-  // The warm key, off to the player's left, and a cool fill opposite it.
-  for (const [cx, col, r] of [[W * 0.32, "rgba(255,238,206,0.85)", 46], [W * 0.78, "rgba(126,196,224,0.5)", 34]] as const) {
-    const glow = g.createRadialGradient(cx, H * 0.26, 0, cx, H * 0.26, r);
-    glow.addColorStop(0, col);
-    glow.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = glow;
-    g.fillRect(0, 0, W, H);
-  }
-  return c;
-}
-
-/**
- * The face of one black insert. Painted nearly black to sit inside the
- * opening, with only enough sheen to say "surface": the panel has to pass for
- * the painted slot while it is sitting still.
- */
-function insertFaceTexture() {
-  const W = 512;
-  const H = Math.round((W * BAY_D) / BAY_W);
-  const { c, g } = canvas(W, H);
-  g.fillStyle = BAY_PAINT;
-  g.fillRect(0, 0, W, H);
-  const sheen = g.createLinearGradient(0, 0, W * 0.8, H);
-  sheen.addColorStop(0, "rgba(150,196,214,0.07)");
-  sheen.addColorStop(0.45, "rgba(90,130,150,0.02)");
-  sheen.addColorStop(1, "rgba(0,0,0,0.18)");
-  g.fillStyle = sheen;
-  g.fillRect(0, 0, W, H);
-  return c;
-}
 
 export type MountOptions = {
   /** Called once the first frame has actually been drawn. */
@@ -522,8 +473,10 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
   // running its own renderer over the top of this one.
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.98;
+  // No tone mapping. The whole point of an unlit table is that a texture byte
+  // reaches the screen unchanged; a tone curve across the middle of that would
+  // pull the painting's own colours around on the way out.
+  renderer.toneMapping = THREE.NoToneMapping;
   Object.assign(renderer.domElement.style, {
     position: "absolute",
     inset: "0",
@@ -540,25 +493,21 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
   camera.rotation.order = "YXZ";
   camera.rotation.x = -d2r(CAM.pitchDeg);
 
-  // Lighting, unchanged from the insert-only table so the panels keep reading
-  // the same. The key sits where the painted table's own highlights come from
-  // — front, above, player's left — so a glint appearing mid-turn agrees with
-  // the picture around it.
-  scene.add(new THREE.HemisphereLight(0x9fd8ff, 0x08161a, 0.35));
-  const key = new THREE.DirectionalLight(0xfff2dc, 2.4);
-  key.position.set(-1.6, 3.0, 2.6);
-  scene.add(key);
-  const fill = new THREE.DirectionalLight(0x6fb8d8, 0.8);
-  fill.position.set(2.4, 1.4, 1.2);
-  scene.add(fill);
-  const FILL_BASE = 0.8;
-
-  // Something for the brass and the bevels to reflect. Set as the scene's
-  // environment only — never as its background, which stays transparent.
-  const envTex = own(tex(environmentTexture()));
-  envTex.mapping = THREE.EquirectangularReflectionMapping;
-  // Applied per material rather than scene-wide: the insert was colour-matched
-  // against the painting without one and must not pick up reflections now.
+  /**
+   * There are no lights.
+   *
+   * The painted table was lit by whoever painted it: bright along the back,
+   * falling away toward the player, with the brass catching the light from
+   * behind. A real rig in here cannot reproduce that without moving the key to
+   * where it would wreck the insert the owner already approved, and the five
+   * rounds of measuring it took to get close were all spent fighting that one
+   * disagreement. So the shading stays in the texture, every material is
+   * unlit, and the lighting problem stops existing.
+   */
+  let mapReady = false;
+  const paintMap = own(loadPaintMap(() => {
+    mapReady = true;
+  }));
 
   renderer.localClippingEnabled = true;
   const surface = [new THREE.Plane(new THREE.Vector3(0, -1, 0), SURFACE_CLIP)];
@@ -578,111 +527,68 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
   const shell = new THREE.Group();
   scene.add(shell);
 
+  // Every material that takes the painting, kept so the cabinet's reaction can
+  // tint them together.
+  const painted: THREE.MeshBasicMaterial[] = [];
+  const paintShell = (options: Parameters<typeof paint>[0]) => {
+    const mat = own(paint({ map: paintMap, ...options }));
+    painted.push(mat);
+    return mat;
+  };
+
   // Cloth, with a real opening under each bay. A solid sheet looked right
   // until a plate turned and there was still felt underneath it.
-  const feltMap = own(tex(feltTexture()));
-  feltMap.repeat.set(1 / (FELT_X * 2), 1 / (FELT_Z1 - FELT_Z0));
-  feltMap.offset.set(0.5, 1 + FELT_Z0 / (FELT_Z1 - FELT_Z0));
-  const felt = new THREE.Mesh(
-    own(edgeFade(new THREE.ShapeGeometry(sheetShape(feltEdge, bayFrames)))),
-    own(new THREE.MeshStandardMaterial({
-      map: feltMap,
-      // The map carries the measured colour; the diffuse term under this
-      // cabinet's weak key would otherwise crush it by about eight times, the
-      // same way it crushed the insert, so emissive carries most of it and the
-      // diffuse is left to do the light response.
-      emissive: 0xffffff,
-      // Measured back off the render: 1.35 came out about half again too
-      // bright across the middle of the cloth.
-      emissiveMap: feltMap,
-      emissiveIntensity: 1,
-      roughness: 0.92,
-      metalness: 0,
-      vertexColors: true,
-    }))
-  );
-  felt.rotation.x = -Math.PI / 2;
-  shell.add(felt);
+  // Laid down as geometry rather than by rotating the mesh, so its vertices
+  // are already in the world and it can be projected the same way as every
+  // other surface. Going through the shape's own UVs instead put the painting
+  // about 6px off across the cloth in front of the bays.
+  const feltGeo = new THREE.ShapeGeometry(sheetShape(feltEdge, bayFrames));
+  feltGeo.rotateX(-Math.PI / 2);
+  shell.add(new THREE.Mesh(own(projectUV(feltGeo)), paintShell({})));
 
-  // The brass edging. Bright on its outer bevel, flat across the top, then
-  // down to the cloth; the two hairlines are painted, not modelled — at 2px on
-  // screen, geometry that fine costs more than it shows.
-  const brassMap = own(mapTex(sectionTexture(
-    [[0, "#8a6a3a"], [0.12, "#d9b57a"], [0.3, "#b88948"], [0.78, "#73502c"], [1, "#3d2c17"]],
-    [[0.55, 0.008, "#c79a4e"], [0.6, 0.008, "#c79a4e"]]
-  )));
-  const brassMat = own(new THREE.MeshStandardMaterial({
-    map: brassMap,
-    emissiveMap: brassMap,
-    // Brass at 0.72 has almost no diffuse term, and three lights plus a small
-    // environment left the far edge at #37210c against the painting's
-    // #c19d6a. Half metal, with the map carried on emissive as well, is what
-    // puts it back on the painted colour.
-    metalness: 0.45,
-    roughness: 0.38,
-    envMap: envTex,
-    envMapIntensity: 1.2,
-    emissive: 0xffffff,
-    emissiveIntensity: 0.28,
-    vertexColors: true,
-    side: THREE.DoubleSide,
-  }));
+  // The brass edging. Its bevel rises 0.006 and falls again inside 0.052, so
+  // the band lies near enough flat for the painting's own brass to key onto it
+  // by position — the hairlines, the bevel highlight and the back-to-front
+  // gradient all arrive painted, none of them modelled or shaded.
   shell.add(new THREE.Mesh(
-    own(depthShade(edgeFade(bandGeometry(outline, [[0, -0.002], [0.008, 0.006], [0.026, 0.006], [BRASS_W, 0]], brassWidth)), 2.2, 0.3)),
-    brassMat
+    own(projectUV(bandGeometry(outline, [[0, 0], [BRASS_W, 0]], brassWidth))),
+    paintShell({ side: THREE.DoubleSide })
   ));
 
   // The skirt: the table's own thickness, leaning in as it drops the way the
-  // art's near edge does (rows 254..280 pull in by 56px).
+  // art's near edge does (rows 254..280 pull in by 56px). Projecting it takes
+  // those rows, which is the one place the art does show the table's side; the
+  // skirt down the flanks and the back projects behind the table, where the
+  // flooded art is near black — and so is anything tucked under a table.
   const skirtBottom = outline.map(([x, z]) => [x * SKIRT_INSET, z] as Pt);
   shell.add(new THREE.Mesh(
-    own(depthShade(edgeFade(wallGeometry(outline, -0.002, skirtBottom, -SKIRT_DROP)), 2.2, 0.3)),
-    brassMat
+    own(projectUV(wallGeometry(outline, 0, skirtBottom, -SKIRT_DROP))),
+    paintShell({ side: THREE.DoubleSide })
   ));
 
   // One bay frame per bay, each with its own material so a single bay can be
   // lit without the others. The section is three segments — rise, top, fall to
   // the opening — so the bevel breaks the light instead of rolling over.
-  const frameSection = [[0, 0], [0.013, SURFACE_CLIP], [0.03, SURFACE_CLIP], [RIM, -0.007]] as const;
-  const frameMap = own(mapTex(sectionTexture(
-    [[0, "#1d3538"], [0.18, "#4b7c80"], [0.42, "#335a5d"], [0.86, "#2a4b4e"], [1, "#16282a"]],
-    [[0.62, 0.01, "#c79a4e"], [0.93, 0.01, "#c79a4e"]]
-  )));
-  // Only a narrow band at the inner edge can glow, so a highlight reads as the
-  // frame lighting up rather than the whole surround turning on.
-  const frameGlow = own(mapTex(sectionTexture([
-    [0, "#000000"], [0.74, "#000000"], [0.84, "#ffffff"], [0.97, "#ffffff"], [1, "#000000"],
-  ])));
+  const frameSection = [[0, 0], [RIM, 0]] as const;
+  // The gold hairlines and the bevel highlight were the worst of the remaining
+  // differences from the painting while they were being modelled and lit. They
+  // are not modelled or lit now: they are in the painting, and the frame is
+  // keyed to the pixels they are in.
   const frameMats = bayFrames.map((loop) => {
-    const mat = own(new THREE.MeshStandardMaterial({
-      map: frameMap,
-      emissive: 0x000000,
-      emissiveMap: frameGlow,
-      emissiveIntensity: 0,
-      metalness: 0.52,
-      roughness: 0.36,
-      envMap: envTex,
-      envMapIntensity: 0.35,
-      vertexColors: true,
-      side: THREE.DoubleSide,
-    }));
-    shell.add(new THREE.Mesh(own(edgeFade(bandGeometry(loop, frameSection))), mat));
+    const mat = paintShell({ side: THREE.DoubleSide });
+    shell.add(new THREE.Mesh(own(projectUV(bandGeometry(loop, frameSection))), mat));
     return mat;
   });
 
   // The hole under each bay. Walls just outside the opening, because the plate
   // sweeps to 0.2257 and the opening is 0.2256.
-  const wellMat = own(new THREE.MeshStandardMaterial({
-    color: 0x03070a,
-    roughness: 1,
-    metalness: 0,
-    side: THREE.DoubleSide,
-  }));
+  const wellMat = own(paint({ color: UNSEEN.well, side: THREE.DoubleSide }));
+  const wellFloorMat = own(paint({ color: UNSEEN.wellFloor }));
   const wellFloorGeo = own(new THREE.PlaneGeometry(BAY_W * 1.02, BAY_D * 1.02));
   for (let i = 0; i < 3; i++) {
     const mouth = offsetLoop(bayOpenings[i], -0.003);
     shell.add(new THREE.Mesh(own(wallGeometry(mouth, -0.012, mouth, -WELL_D)), wellMat));
-    const floor = new THREE.Mesh(wellFloorGeo, wellMat);
+    const floor = new THREE.Mesh(wellFloorGeo, wellFloorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.set((i - 1) * BAY.pitchX, -WELL_D, BAY_Z);
     shell.add(floor);
@@ -712,54 +618,20 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
     const b = i * 2;
     mechIdx.push(b, b + 3, b + 1, b, b + 2, b + 3);
   }
-  const mechBot = unprojectArt(MECH_ROWS[2][0], MECH_ROWS[2][1], MECH_ROWS[2][2]);
   const mechGeo = own(new THREE.BufferGeometry());
   mechGeo.setAttribute("position", new THREE.Float32BufferAttribute(mechPos, 3));
   mechGeo.setIndex(mechIdx);
   mechGeo.computeVertexNormals();
-  shell.add(new THREE.Mesh(mechGeo, own(new THREE.MeshStandardMaterial({
-    color: 0x0a0d10,
-    roughness: 0.78,
-    metalness: 0.2,
-    side: THREE.DoubleSide,
-  }))));
-  // The axle and its bearing blocks, which are all the art shows of the
-  // machinery before the box cuts it off.
-  const axle = new THREE.Mesh(
-    own(new THREE.CylinderGeometry(0.045, 0.045, mechBot[0] * 1.72, 12)),
-    own(new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.55, roughness: 0.43 }))
-  );
-  axle.rotation.z = Math.PI / 2;
-  axle.position.set(0, -0.36, mechBot[1] + 0.03);
-  shell.add(axle);
-  const supportMat = own(new THREE.MeshStandardMaterial({
-    color: 0xb88948,
-    metalness: 0.72,
-    roughness: 0.33,
-    envMap: envTex,
-    emissive: 0xb88948,
-    emissiveIntensity: 0.3,
-  }));
-  const supportGeo = own(new THREE.BoxGeometry(0.15, 0.14, 0.1));
-  for (const sx of [-1, 1]) {
-    const s = new THREE.Mesh(supportGeo, supportMat);
-    s.position.set(sx * mechBot[0] * 0.62, -0.36, mechBot[1] + 0.04);
-    shell.add(s);
-  }
-
-  // The catch plates on each bay's frame, fore and aft: the hardware a real
-  // panel would pivot and latch on, and the reason a bay reads as something
-  // that can turn at all. The art has them at x=556, rows 64..72 and 200..214.
-  const rearGeo = own(new THREE.BoxGeometry(0.115, 0.01, 0.022));
-  const frontGeo = own(new THREE.BoxGeometry(0.186, 0.012, 0.046));
-  for (let i = 0; i < 3; i++) {
-    const x = (i - 1) * BAY.pitchX;
-    for (const [geo, z] of [[rearGeo, BAY.zFar - RIM / 2], [frontGeo, BAY.zNear + RIM / 2]] as const) {
-      const clip = new THREE.Mesh(geo, supportMat);
-      clip.position.set(x, SURFACE_CLIP + 0.004, z);
-      shell.add(clip);
-    }
-  }
+  // Projected like the rest of the shell: the art does show these rows, below
+  // where the 350px box cuts the picture off, and they are nearly black.
+  shell.add(new THREE.Mesh(own(projectUV(mechGeo)), paintShell({ side: THREE.DoubleSide })));
+  // No axle, no bearing blocks, no catch plates.
+  //
+  // The painting draws all of them, and the surfaces they sat on carry the
+  // painting now: the bay frames paint their own catches, and the panel below
+  // the near edge paints the axle and its blocks. Modelling them again only
+  // put flat colour over the top of their own picture — two bright brass
+  // lumps where the art is black, in the case of the blocks.
 
   /**
    * The table again, as depth only.
@@ -785,44 +657,49 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
 
   // --- the moving part ------------------------------------------------------
 
-  // Matching the painting is done with emissive, not with the lit colour.
-  // Lying flat under this cabinet's weak key, a diffuse panel set to the
-  // painted colour rendered at #000202 against the painting's #0c1a1a.
-  const faceTex = own(tex(insertFaceTexture()));
-  const faceMat = own(new THREE.MeshStandardMaterial({
-    color: 0x000000,
-    emissive: 0xffffff,
-    emissiveMap: faceTex,
-    emissiveIntensity: 1.9,
-    roughness: 0.45,
-    metalness: 0,
-    // The insert was measured against the painting without an environment and
-    // matched it; it must not drift now that one exists for the brass.
-    envMapIntensity: 0,
-    clippingPlanes: surface,
-  }));
-  // The panel's own thickness, lit brighter than its face: edge-on, this thin
-  // band is the only thing left to see, and it has to read.
-  const edgeMat = own(new THREE.MeshStandardMaterial({
-    color: 0x5d969d,
-    roughness: 0.28,
-    metalness: 0.75,
-    envMapIntensity: 0.6,
-    clippingPlanes: surface,
-  }));
+  // The plate's face is the painted slot interior, taken from the painting at
+  // the bay it sits in and then carried through the turn. Its old generated
+  // face map and the emissive trick that made it match are both gone: the
+  // painting was always the thing being matched.
+  const faceMat = own(paint({ map: paintMap, clippingPlanes: surface }));
+  painted.push(faceMat);
+  // The panel's own thickness. Edge-on, halfway through a turn, this thin band
+  // is the only thing left to see, so it reads lighter than the face. Nothing
+  // in the art shows it.
+  const edgeMat = own(paint({ color: UNSEEN.plateEdge, clippingPlanes: surface }));
 
-  const plateGeo = own(new THREE.BoxGeometry(BAY_W, PLATE_T, BAY_D));
+  /**
+   * One plate geometry per bay, in two draw groups instead of six.
+   *
+   * The UVs are the bay's own place in the painting, so the geometry cannot be
+   * shared between bays. A BoxGeometry comes with one group per face, and six
+   * groups times three plates was 18 of the table's 32 draw calls. The index
+   * buffer is rewritten so the four sides come first and the two faces last,
+   * which is two groups — 6 draw calls for all three plates, and the table
+   * fits the spec's 24 at rest.
+   */
+  const plateGeo = (i: number) => {
+    const g = new THREE.BoxGeometry(BAY_W, PLATE_T, BAY_D);
+    const idx = g.getIndex()!.array;
+    // BoxGeometry's faces are +x -x +y -y +z -z, six indices each.
+    const sides = [0, 1, 4, 5].flatMap((f) => [...idx.slice(f * 6, f * 6 + 6)]);
+    const faces = [2, 3].flatMap((f) => [...idx.slice(f * 6, f * 6 + 6)]);
+    g.setIndex([...sides, ...faces]);
+    g.clearGroups();
+    g.addGroup(0, sides.length, 0);
+    g.addGroup(sides.length, faces.length, 1);
+    return own(projectUV(g, { dx: (i - 1) * BAY.pitchX, dz: BAY_Z }));
+  };
+  const plateGeos = [0, 1, 2].map(plateGeo);
 
   type Bay = { pivot: THREE.Group; angle: number; startedAt: number; durationMs: number };
   const bays: Bay[] = [];
 
   for (let i = 0; i < 3; i++) {
-    // BoxGeometry orders its materials +x -x +y -y +z -z, so the same face
-    // goes on both the top and the bottom: turning the panel over presents
-    // another empty slot and the table is immediately playable again.
-    const plate = new THREE.Mesh(plateGeo, [
-      edgeMat, edgeMat, faceMat, faceMat, edgeMat, edgeMat,
-    ]);
+    // Sides first, then both flat faces — the regrouping above. The same face
+    // material goes on the top and the bottom, so turning the panel over
+    // presents another empty slot and the table is immediately playable again.
+    const plate = new THREE.Mesh(plateGeos[i], [edgeMat, faceMat]);
     // The pivot runs far-to-near through the middle of the bay, so the plate
     // closes sideways — the direction the card closes in the owner's reference
     // clip — rather than tipping toward or away from the player.
@@ -899,7 +776,10 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
       b.pivot.rotation.z = b.angle;
     }
     renderer.render(scene, camera);
-    if (!drew) {
+    // The baked image behind this canvas is only taken away once there is
+    // something to replace it with. Everything here is its texture now, so a
+    // frame drawn before that file arrives is a bare grey table.
+    if (!drew && mapReady) {
       drew = true;
       options.onFirstFrame?.();
     }
@@ -928,15 +808,20 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
     },
     slotQuads: () => [quadFor(0), quadFor(1), quadFor(2)],
     livePlateQuad: (index) => quadFor(index, true),
+    // Both of these used to move a light. With nothing lit, they tint the
+    // material's own multiplier instead: the painting is what gets brighter or
+    // takes on a colour, which is also what a lamp behind a painted panel
+    // would do. A frame no longer glows only along its inner edge — that was
+    // the emissive map's doing — so this is the whole frame coming up.
     setSlotHighlight(index, color = 0x9fd8ff, intensity = 0) {
       const mat = frameMats[index];
       if (!mat) return;
-      mat.emissive.setHex(color);
-      mat.emissiveIntensity = Math.max(0, Math.min(1, intensity)) * 2.2;
+      const k = Math.max(0, Math.min(1, intensity));
+      mat.color.setHex(color).lerp(WHITE, 1 - k).multiplyScalar(1 + k * 0.7);
     },
     setCabinetReaction(color = 0x6fb8d8, intensity = 0) {
-      fill.color.setHex(color);
-      fill.intensity = FILL_BASE + Math.max(0, Math.min(1, intensity)) * 0.35;
+      const k = Math.max(0, Math.min(1, intensity)) * 0.18;
+      for (const mat of painted) mat.color.setHex(color).lerp(WHITE, 1 - k);
     },
     canvasEl: () => renderer.domElement,
     resize,
