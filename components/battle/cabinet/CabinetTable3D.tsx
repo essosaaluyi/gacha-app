@@ -12,7 +12,12 @@ import { setCabinetTable3D } from "@/lib/table-3d/tableBridge";
  * keep being drawn by Pixi on top. The bays are solved to the same screen
  * positions the baked art had, so nothing the cards do has to move.
  *
- * QA hook: window.__cabinetTable.flipSlot(0..2) turns a bay over.
+ * The baked image is only taken away once a frame has actually been drawn, and
+ * is left alone if the mount throws — a table that fails to start has to leave
+ * the painted one showing rather than a hole.
+ *
+ * QA hooks: window.__cabinetTable.flipSlot(0..2) turns a bay over;
+ * setSlotHighlight(i, 0x9fd8ff, 1) lights one frame.
  */
 export default function CabinetTable3D() {
   const host = useRef<HTMLDivElement>(null);
@@ -20,13 +25,25 @@ export default function CabinetTable3D() {
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const table = mountCabinetTable3D(el);
+    const painted = el.parentElement;
+    let table: Table | null = null;
+    try {
+      table = mountCabinetTable3D(el, {
+        onFirstFrame: () => {
+          if (painted) painted.style.backgroundImage = "none";
+        },
+      });
+    } catch (error) {
+      console.error("[cabinet-table-3d] mount failed; keeping the baked table", error);
+      return;
+    }
     setCabinetTable3D(table);
     (window as unknown as { __cabinetTable?: Table }).__cabinetTable = table;
     return () => {
       setCabinetTable3D(null);
       delete (window as unknown as { __cabinetTable?: Table }).__cabinetTable;
-      table.dispose();
+      if (painted) painted.style.removeProperty("background-image");
+      table?.dispose();
     };
   }, []);
 
@@ -38,7 +55,14 @@ export default function CabinetTable3D() {
       ref={host}
       className="bcab-table-3d"
       aria-hidden="true"
-      style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: 8, overflow: "hidden" }}
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 0,
+        borderRadius: 8,
+        overflow: "hidden",
+        pointerEvents: "none",
+      }}
     />
   );
 }
