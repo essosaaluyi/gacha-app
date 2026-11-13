@@ -17,8 +17,8 @@ export const SFX = {
   attackOnTarget: "/audio/se/attack-card-ontarget.mp3",
   // Draw button pressed (every press).
   buttonPush: "/audio/se/button-push-se.mp3",
-  // A card flips to reveal its symbol (0725 batch replacement).
-  cardReveal: "/audio/se/characard-reveal-se.mp3",
+  // A card flips to reveal its symbol.
+  cardReveal: "/audio/se/card-flip-only.v1.wav",
   // Cards are set out to the disk exit gate (first draw press).
   cardSetToDisk: "/audio/se/card-set-to-disk.mp3",
   // A card settles / lands on the table.

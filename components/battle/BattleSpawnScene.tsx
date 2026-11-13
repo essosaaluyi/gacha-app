@@ -8,9 +8,7 @@ import {
   getBattlePresentationFlow,
   subscribeBattlePresentationFlow,
   completeBattleSummon,
-  claimBattleSummonSound,
 } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
-import { playSfx } from "@/lib/audio/sfxStore";
 import {
   getCurrentEnemy,
   subscribeCurrentEnemy,
@@ -1335,17 +1333,9 @@ function FighterPresentation({
 
   useEffect(() => {
     if (status !== "summoning" || startedAt === null) return;
-    // Claim the cue inside the cancellable frame: Strict Mode's first effect
-    // pass cannot consume a cue that its cleanup prevented from playing.
-    const soundFrame = window.requestAnimationFrame(() => {
-      if (claimBattleSummonSound(side, identity)) playSfx("cardReveal");
-    });
     const remaining = Math.max(0, preset.durationMs - (Date.now() - startedAt));
     const timer = window.setTimeout(() => completeBattleSummon(side, identity), remaining);
-    return () => {
-      window.cancelAnimationFrame(soundFrame);
-      window.clearTimeout(timer);
-    };
+    return () => window.clearTimeout(timer);
   }, [identity, preset.durationMs, side, startedAt, status]);
 
   if (status === "waiting" || status === "absent") return null;
