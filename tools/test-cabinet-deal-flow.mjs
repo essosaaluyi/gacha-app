@@ -50,6 +50,20 @@ test("the flight bends instead of turning a corner", () => {
   console.log(`    flight bows ${worst.toFixed(0)}px off the straight line`);
 });
 
+test("waiting cards have the same size and height above different bays", () => {
+  const bays = [
+    [222, 156, 404, 156, 373, 292, 183, 292],
+    [508, 156, 689, 156, 707, 292, 492, 292],
+    [796, 156, 977, 156, 1013, 292, 823, 292],
+  ];
+  const waiting = bays.map(bay => cabinetPresentQuad(bay, 1.787, 61));
+  for (const quad of waiting) {
+    assert.ok(Math.abs(width(quad) - 164) < 0.001);
+    assert.equal(quad[1], waiting[0][1]);
+    assert.ok(quad[5] < 292, "bottom edge stays above the bay's front edge");
+  }
+});
+
 test("a click turns the card first, then sets it down", () => {
   const rest = [222, 156, 404, 156, 373, 292, 183, 292];
   const present = cabinetPresentQuad(rest, 1.787, 61);

@@ -23,20 +23,25 @@ const PRESENT_DESCEND_MS = 520;
 const ease = (value:number) => {const t=Math.max(0,Math.min(1,value));return t*t*(3-2*t);};
 
 /**
- * Where a card waits for the player: in front of its bay, 1.78x wider, lifted
- * clear of the table and held off the top of the glass.
- *
- * This is the pose the reveal always rose into; naming it lets the deal aim at
- * it, so the card the player clicks is already where the turn begins.
+ * All three backs hover at the same size above their respective bays.
  */
 export function cabinetPresentQuad(rest:CardQuad,verticalProjection=1,clipTop=0):CardQuad {
-  const center=cardQuadCenter(rest),width=(Math.hypot(rest[2]-rest[0],rest[3]-rest[1])+Math.hypot(rest[4]-rest[6],rest[5]-rest[7]))/2*1.78;
-  const height=width*1.5/verticalProjection,cy=Math.max(center.y-46,clipTop+height/2+6);
+  return raisedQuad(rest, verticalProjection, clipTop, 164, 64);
+}
+
+function raisedQuad(rest:CardQuad,verticalProjection:number,clipTop:number,width:number,lift:number):CardQuad {
+  const center=cardQuadCenter(rest);
+  const height=width*1.5/verticalProjection,cy=Math.max(center.y-lift,clipTop+height/2+6);
   return [center.x-width/2,cy-height/2,center.x+width/2,cy-height/2,center.x+width/2,cy+height/2,center.x-width/2,cy+height/2];
 }
 
+function legacyRevealQuad(rest:CardQuad,verticalProjection:number,clipTop:number):CardQuad {
+  const width=(Math.hypot(rest[2]-rest[0],rest[3]-rest[1])+Math.hypot(rest[4]-rest[6],rest[5]-rest[7]))/2*1.78;
+  return raisedQuad(rest, verticalProjection, clipTop, width, 46);
+}
+
 export function sampleCabinetManualReveal(rest:CardQuad,time:number,verticalProjection=1,clipTop=0,fromPresent=false) {
-  const peak=cabinetPresentQuad(rest,verticalProjection,clipTop);
+  const peak=fromPresent ? cabinetPresentQuad(rest,verticalProjection,clipTop) : legacyRevealQuad(rest,verticalProjection,clipTop);
   // Waiting out front: start raised and come down. Starting at the bay: rise,
   // hold, then settle back.
   const raised=fromPresent

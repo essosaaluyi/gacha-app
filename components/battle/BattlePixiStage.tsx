@@ -3902,6 +3902,8 @@ export default function BattlePixiStage({
             cardHitProxies[index].hitArea=new Rectangle(Math.min(...xs)-14,Math.min(...ys)-14,Math.max(...xs)-Math.min(...xs)+28,Math.max(...ys)-Math.min(...ys)+28);
             card.parent?.removeChild(card);stage.addChild(card);card.x=hoverTargets[index].x;card.y=hoverTargets[index].y;card.rotation=0;card.scale.set(L.CARD_SCALE);card.alpha=1;card.visible=true;
             if(card instanceof PerspectiveMesh)setMeshQuad(card,toLocalQuad(q,card.x,card.y,L.CARD_SCALE));
+            hoverShadows[index].visible = true;
+            hoverShadows[index].alpha = 0.55;
             handTimeout(()=>{card.eventMode="static";setCardPickable(index,true);},getChanceWaitRemaining());
           });cardGroup.visible=false;attachPlacementHandlers();setCardPhase("hovering","physical3d-landed");
           if(currentBattleResult.result==="Reply")runReplyFrameSparks();return;
