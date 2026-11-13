@@ -67,11 +67,11 @@ function fixture(restored=false,auto=false){
  return {...api,stops:()=>stops,cues:()=>cues,counts:()=>({commits,releases,openings}),block:value=>blocked=value,cancel:()=>cancelled=true,advance(to){while(timers.length){timers.sort((a,b)=>a.at-b.at);if(timers[0].at>to)break;const t=timers.shift();now=t.at;t.fn();}now=to;}};
 }
 
-test("outlet SET cue pauses with preparation and both DRAW2 cues play once at release",()=>{
+test("the first outlet card plays discard and DRAW2 only plays the ejection cue",()=>{
  const run=fixture();run.press();run.block(true);run.advance(800);assert.deepEqual(run.cues(),[]);
- run.block(false);run.advance(1600);assert.deepEqual(run.cues(),["cardSetToDisk"]);
- run.press();run.press();assert.deepEqual(run.cues(),["cardSetToDisk","drawCard","discard"]);
- run.advance(3000);assert.deepEqual(run.cues(),["cardSetToDisk","drawCard","discard"]);assert.equal(run.counts().commits,1);
+ run.block(false);run.advance(1600);assert.deepEqual(run.cues(),["discard"]);
+ run.press();run.press();assert.deepEqual(run.cues(),["discard","drawCard"]);
+ run.advance(3000);assert.deepEqual(run.cues(),["discard","drawCard"]);assert.equal(run.counts().commits,1);
 });
 test("actual request funnel commits once, absorbs setting spam, holds SET indefinitely and releases same hand free",()=>{
  const run=fixture();run.press();run.press();run.advance(650);

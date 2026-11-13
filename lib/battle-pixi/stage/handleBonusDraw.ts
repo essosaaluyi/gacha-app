@@ -58,6 +58,7 @@ import { terminateActiveBarBoost } from "@/lib/battle-pixi/state/barProgressionS
 
 
 type HandleBonusDrawArgs = {
+  immediateCommit: boolean;
   setCardsAreOut: (value: boolean) => void;
   drawButton: Sprite;
   drawCards: BattleCardView[];
@@ -81,6 +82,7 @@ function getBonusReward(result: string, hasBar: boolean) {
 }
 
 export function handleBonusDraw({
+  immediateCommit,
   setCardsAreOut,
   drawButton,
   resetCardsToGroup,
@@ -128,12 +130,8 @@ export function handleBonusDraw({
     { affectsCost: false }
   );
 
-  // Cards set out to the disk exit. handleDrawButtonPress fires this cue for a
-  // normal battle draw, but it returns into this handler BEFORE reaching it, so
-  // the bonus was dealing in silence. The cue belongs to the deal, so it lives
-  // with the deal -- and it is after the result-confirm branch above, which
-  // sets no cards out and must stay silent.
-  playSfx("cardSetToDisk");
+  // The two-step cabinet plays its cue at the outlet.
+  if (!immediateCommit) playSfx("cardSetToDisk");
 
   resetCardsToGroup();
   drawCardsFromHolder();

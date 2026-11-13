@@ -9,7 +9,7 @@ export type Cue = {
   category: Category;
   timing: string;
   detail?: string;
-  status?: "条件付き" | "未使用";
+  status?: "条件付き" | "通常筐体では未使用" | "未使用";
   video?: string;
   reference?: { href: string; label: string };
   volume?: number;
@@ -21,14 +21,14 @@ const fakeout = { href: "/attack-fakeout-workstation", label: "テキスト演�
 
 export const cues: Cue[] = [
   { id: "buttonPush", title: "DRAW・操作ボタン", category: "筐体・カード", timing: "DRAWを押した瞬間。音声開始、QUIT、終了確認の選択でも鳴る。", reference: cabinet },
-  { id: "cardSetToDisk", title: "裏向きカードのセット", category: "筐体・カード", timing: "1回目のDRAW。抽選確定時と、1枚目を排出口にセットする時に呼び出される。", detail: "現行の通常筐体には近接する2つの呼び出しがある。素材の先頭0.30秒をスキップ。", reference: cabinet },
+  { id: "cardSetToDisk", title: "裏向きカードのセット（旧音）", category: "筐体・カード", timing: "従来の描画経路と開発用プレビューのセット音。通常筐体のDRAW 1は「古いカードの退場音」を使う。", detail: "素材の先頭0.30秒をスキップ。", status: "通常筐体では未使用" },
   { id: "drawCard", title: "カードの排出", category: "筐体・カード", timing: "2回目のDRAW。排出口から3枚が動き出す瞬間。", reference: cabinet },
   { id: "cardReveal", title: "カードのめくり", category: "筐体・カード", timing: "裏向きのカードをクリックして、めくり始める瞬間。", detail: "COLLECTIONのめくりにも呼び出しはあるが、モードの制限で発音しない。", reference: cabinet },
   { id: "cardPlaced", title: "カードが台に着地", category: "筐体・カード", timing: "カードが表を向いてテーブルに収まった瞬間。AttackがTARGETに入る場合もこの着地音。", reference: cabinet },
   { id: "chanceCardLand", title: "Chanceカードの着地", category: "筐体・カード", timing: "Chanceがテーブルに収まった瞬間。通常のカード着地音と同時。", status: "条件付き" },
   { id: "reply", title: "Reply成立", category: "筐体・カード", timing: "Replyの手で3枚目のめくりを開始した瞬間。", detail: "素材の先頭0.70秒をスキップ。COLLECTIONの追加ピックではモードの制限で発音しない。", status: "条件付き" },
   { id: "coinCard", title: "Coin成立", category: "筐体・カード", timing: "Coinの手で3枚目のめくりを開始した瞬間。", detail: "COLLECTIONの得点カードにも呼び出しはあるが、モードの制限で発音しない。", status: "条件付き" },
-  { id: "discard", title: "古いカードの退場音", category: "筐体・カード", timing: "2回目のDRAW。セット済みのカードが排出口から浮き上がる間に、排出音と重ねて1回鳴る。", detail: "従来の描画経路では、旧カードの退場時に120ms間隔で鳴る。", reference: cabinet },
+  { id: "discard", title: "古いカードの退場音", category: "筐体・カード", timing: "1回目のDRAW。裏向きカードの1枚目を排出口にセットする時に1回鳴る。", detail: "従来の描画経路では、旧カードの退場時に120ms間隔で鳴る。", reference: cabinet },
   { id: "attackOnTarget", title: "Attack専用の着地音（候補）", category: "筐体・カード", timing: "音源登録のみ。現行のAttack着地では通常のカード着地音が鳴る。", status: "未使用" },
   { id: "oldReveal", title: "旧めくり音ファイル", category: "筐体・カード", timing: "ファイルのみ。現行のめくり音は card-flip-only.v1.wav。", status: "未使用" },
   { id: "battleOpening", title: "バトル開始ムービー", category: "バトル演出", timing: "オープニングが画面に出る時。動画の音声はミュート。", video: "/videos/openings/battle-opening.v2.mp4" },

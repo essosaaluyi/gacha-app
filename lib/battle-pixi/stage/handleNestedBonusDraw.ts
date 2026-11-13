@@ -38,6 +38,7 @@ import {
 } from "@/lib/battle-pixi/core/nestedBonusLottery";
 
 type HandleNestedBonusDrawArgs = {
+  immediateCommit: boolean;
   setCardsAreOut: (value: boolean) => void;
   drawButton: Sprite;
   drawCards: BattleCardView[];
@@ -88,6 +89,7 @@ function finishToResult(
 }
 
 export function handleNestedBonusDraw({
+  immediateCommit,
   setCardsAreOut,
   drawButton,
   resetCardsToGroup,
@@ -134,9 +136,8 @@ export function handleNestedBonusDraw({
     { affectsCost: false }
   );
 
-  // See handleBonusDraw: the draw-press handler returns into here before it
-  // reaches the set-to-disk cue, so the nested bonus dealt silently too.
-  playSfx("cardSetToDisk");
+  // The two-step cabinet plays its cue at the outlet.
+  if (!immediateCommit) playSfx("cardSetToDisk");
 
   resetCardsToGroup();
   drawCardsFromHolder();

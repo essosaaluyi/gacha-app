@@ -4087,7 +4087,6 @@ const globalY = cardGroup.y + card.y;
         if(cabinetMode && cardsAreOut && dealPhase==="set") {
           if(presentationBlocked()||dealBusy||!canUseBattleControls())return;
           dealBusy=true;dealPhase="dealing";ejectClock=presentationClock.now();ejectStartedAt=performance.now();playSfx("drawCard");
-          playSfx("discard");
           const root=wrapperRef.current?.closest(".bcab-air-cabinet")?.getBoundingClientRect();
           if(root){const surface=pixiApp.canvas.getBoundingClientRect();
             // The deal aims at where the cards will wait — out in front of the
@@ -4125,7 +4124,7 @@ const globalY = cardGroup.y + card.y;
           dealBusy=true;dealPhase="setting";setCount=0;emitCabinetPile("set");
           if(!runDrawRequest()){dealBusy=false;dealPhase="idle";emitCabinetPile("consumed");return;}
           const awaitCommitted=()=>{if(cancelled)return;if(!cardsAreOut){setTimeout(awaitCommitted,25);return;}
-            setCount=0;[1,2,3].forEach((count,index)=>handTimeout(()=>{setCount=count;if(index===0)playSfx("cardSetToDisk");emitCabinetPile("set");},index*160));
+            setCount=0;[1,2,3].forEach((count,index)=>handTimeout(()=>{setCount=count;if(index===0)playSfx("discard");emitCabinetPile("set");},index*160));
             handTimeout(()=>{dealPhase="set";dealBusy=false;persistPendingHand();emitCabinetPile("set");},650);
           };setTimeout(awaitCommitted,0);
           return;

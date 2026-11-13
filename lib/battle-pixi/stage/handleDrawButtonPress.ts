@@ -115,6 +115,7 @@ hideRoundInsert();
 if (isBonusModeActive()) {
   setBattlePresentationPhase("draw_reveal", confirmingBonus ? "bonus-confirm" : "bonus-draw");
   handleBonusDraw({
+  immediateCommit,
   setCardsAreOut,
   drawButton,
   drawCards,
@@ -132,6 +133,7 @@ if (isBonusModeActive()) {
 if (isNestedBonusActive()) {
   setBattlePresentationPhase("draw_reveal", confirmingBonus ? "bonus-confirm" : "nested-bonus-draw");
   handleNestedBonusDraw({
+    immediateCommit,
     setCardsAreOut,
     drawButton,
     drawCards,
@@ -165,6 +167,7 @@ if (hasBonusStock()) {
   startBonusOpening();
   setBattlePresentationPhase("draw_reveal", "bonus-stock-opening");
   handleBonusDraw({
+    immediateCommit,
     setCardsAreOut,
     drawButton,
     drawCards,
@@ -199,10 +202,8 @@ setBattlePresentationPhase("draw_reveal", "draw-start");
 // press or lock the button; the player keeps drawing and flipping while it runs.
 startPendingChancePointsReveal();
 
-// The draw is committed: cards set out to the disk exit. Fire the set/slide
-// cues here (earliest committed point) so they lead the sequence, and so both
-// manual and auto draws get them.
-playSfx("cardSetToDisk");
+// The two-step cabinet plays its cue when the first card reaches the outlet.
+if (!immediateCommit) playSfx("cardSetToDisk");
 
 preparePendingNextRound();
 
