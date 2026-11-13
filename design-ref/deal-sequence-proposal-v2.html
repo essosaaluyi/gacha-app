@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>配りの流れ 提案 v2</title>
+<style>
+  :root{ --gold:#c9a86a }
+  *{box-sizing:border-box}
+  body{margin:0;background:#07090c;color:#d8d2c4;font:14px/1.6 system-ui,sans-serif}
+  header{padding:12px 20px;border-bottom:1px solid #1d2229}
+  header h1{margin:0 0 3px;font:600 16px/1.3 system-ui;color:#e8d5ab}
+  header p{margin:0;color:#8d8775}
+  #wrap{position:relative;width:100%;overflow:hidden}
+  /* ゲームと同じ 1920x1080 のステージ */
+  #stage{position:relative;width:1920px;height:1080px;transform-origin:0 0;
+         background:radial-gradient(120% 90% at 50% 0,#13181f,#06080b 70%)}
+  .screen{position:absolute;left:330px;top:88px;width:1250px;height:618px;
+          border:3px solid #39404b;border-radius:6px;
+          background:linear-gradient(#16202b,#0b1118);box-shadow:inset 0 0 60px #000}
+  .screen span{position:absolute;left:14px;top:10px;color:#3f4a57;font:600 20px system-ui;letter-spacing:.2em}
+  .outlet{position:absolute;left:40px;top:604px;width:256px;height:100px;
+          border-radius:30px 30px 10px 10px;background:#070b0e;box-shadow:inset 0 0 0 2px #7f8894}
+  .throat{position:absolute;left:66px;top:625px;width:204px;height:55px;
+          border:3px solid #76613b;border-radius:22px 22px 8px 8px;background:#020508}
+  .lip{position:absolute;left:54px;top:684px;width:228px;height:16px;border-radius:3px 3px 9px 9px;
+       background:linear-gradient(#6f5e38,#182027 30%,#080d11)}
+  .table{position:absolute;left:430px;top:736px;width:1010px;height:344px;
+         border:6px solid var(--gold);border-radius:14px;background:linear-gradient(#17413f,#0c2422)}
+  .bay{position:absolute;border:2px dashed #2f6360;border-radius:8px}
+
+  /* クリップはステージ全面の入れ物にかける。カード自身にかけると、カードの
+     ローカル座標で切られてしまい全部消える。 */
+  .hold{position:absolute;inset:0;pointer-events:none}
+  #cards.masked .hold{clip-path:polygon(66px 625px,270px 625px,270px 700px,
+      1920px 700px,1920px 1080px,0 1080px,0 700px,66px 700px)}
+  #cards{position:absolute;inset:0}
+
+  /* カードは常に 2:3。どの瞬間も比率は変わらない。 */
+  .card{position:absolute;pointer-events:auto;cursor:pointer;
+        transform-style:preserve-3d;will-change:transform}
+  .face{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;
+        border:2px solid #b89a5e;box-shadow:0 8px 18px #000a;
+        display:flex;align-items:center;justify-content:center;font:600 26px system-ui}
+  .back{background:repeating-linear-gradient(135deg,#0d1b22 0 8px,#112530 8px 16px);color:#b89a5e}
+  .front{background:linear-gradient(#20323d,#101d26);color:#9fe6d8;transform:rotateY(180deg)}
+  .card.waiting .back{box-shadow:0 0 0 2px #e9d49a88,0 12px 28px #000c}
+
+  nav{padding:10px 20px;border-top:1px solid #1d2229;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  button{font:600 13px system-ui;padding:8px 13px;border-radius:8px;border:1px solid #3a4350;
+         background:#141a22;color:#d8d2c4;cursor:pointer}
+  button[aria-pressed="true"]{background:#2a3545;border-color:#6d7c90;color:#fff}
+  .note{color:#8d8775;margin-left:auto}
+  .step{color:#e8d5ab;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>配りの流れ 提案 v2 — 半分だけ口の中／カーブ／めくってから置く</h1>
+  <p>ゲームと同じ 1920×1080 の座標。絵は仮。<strong>動きと並びだけ</strong>を見てほしいページです。</p>
+</header>
+
+<div id="wrap"><div id="stage">
+  <div class="screen"><span>SCREEN</span></div>
+  <div class="outlet"></div><div class="throat"></div><div class="lip"></div>
+  <div class="table"></div>
+  <div id="bays"></div>
+  <div id="cards"></div>
+</div></div>
+
+<nav>
+  <button data-go="0">① セット（半分が口の中）</button>
+  <button data-go="1">② スライドして出る</button>
+  <button data-go="2">③ カーブで画面の前へ</button>
+  <button data-go="3">④ クリック → めくって置く</button>
+  <span class="note">いまの状態：<span class="step" id="label">—</span></span>
+</nav>
+
+<script>
+// ---- ゲームから採った実寸（stage px） --------------------------------------
+const LIP  = 700;                 // 排出口のリップ下端
+const CARD = { w: 168, h: 252 };  // カードは 2:3（絵は 132x198）
+
+// ① カードの半分が口の中。手前のカードの中心線がリップに重なる位置。
+//    手前ほど上、奥ほど下。横には一切ずらさない。
+const SET_TOP  = LIP - CARD.h / 2;   // = 574
+const SET_STEP = 24;
+
+// ② 完全に出きった位置。下のカードほど長く出る。
+const OUT_STEP = 56;
+
+const BAYS = [650, 885, 1121].map(x => ({ x, y: 787, w: 149, h: 201 }));
+// ③ テーブルの前。バトルスクリーンは隠さない。各カードは自分のベイの真上。
+const PRESENT = { cy: 870, w: 200, h: 300 };
+
+// ---- 各段階の姿勢 ----------------------------------------------------------
+const set   = i => ({ x: 84, y: SET_TOP + i * SET_STEP,  w: CARD.w, h: CARD.h });
+const out   = i => ({ x: 84, y: LIP + i * OUT_STEP,      w: CARD.w, h: CARD.h });
+const front = i => ({ x: BAYS[i].x + BAYS[i].w / 2 - PRESENT.w / 2,
+                      y: PRESENT.cy - PRESENT.h / 2, w: PRESENT.w, h: PRESENT.h });
+const bay   = i => ({ x: BAYS[i].x, y: BAYS[i].y, w: BAYS[i].w, h: BAYS[i].h });
+
+// ---- 動き ------------------------------------------------------------------
+// 「下に行ってから右に行く」直角をやめる。位置は2次ベジエで動かし、
+// bow で経路のふくらみを決める（負で上に張り出す）。
+const LEGS = {
+  slide:   { ms: 480, bow:    0 },  // ①→② 口から下へ。ここは直線が正しい
+  present: { ms: 700, bow: -190 },  // ②→③ ここが直角だったところ
+  place:   { ms: 460, bow:  -70 },  // ③→④ テーブルへ。軽くふくらませる
+};
+// めくりは置きよりわずかに早い。めくり始めが先、終わりも先。
+const FLIP = { ms: 300 };
+const PLACE_DELAY = 70;
+
+const smooth = t => t * t * (3 - 2 * t);
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = t => Math.min(1, Math.max(0, t));
+
+/** 2次ベジエ。始点と終点を結ぶ直線の中点から、法線方向に bow だけ膨らませる。 */
+function curve(p0, p1, bow, t) {
+  const mx = (p0.x + p1.x) / 2, my = (p0.y + p1.y) / 2;
+  const dx = p1.x - p0.x, dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const cx = mx + (-dy / len) * bow, cy = my + (dx / len) * bow;
+  const u = 1 - t;
+  return { x: u * u * p0.x + 2 * u * t * cx + t * t * p1.x,
+           y: u * u * p0.y + 2 * u * t * cy + t * t * p1.y };
+}
+
+const holds = [], cards = [], placed = [false, false, false];
+for (let i = 0; i < 3; i++) {
+  const hold = document.createElement('div'); hold.className = 'hold';
+  const el = document.createElement('div'); el.className = 'card';
+  el.innerHTML = '<div class="face back">' + (i + 1) + '</div><div class="face front">★</div>';
+  el.addEventListener('click', () => place(i));
+  hold.appendChild(el); document.getElementById('cards').appendChild(hold);
+  holds.push(hold); cards.push(el);
+}
+BAYS.forEach(b => {
+  const el = document.createElement('div'); el.className = 'bay';
+  Object.assign(el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
+  document.getElementById('bays').appendChild(el);
+});
+
+const POSE = [set, out, front, front];
+const NAME = ['① セット（カードの半分が口の中・手前が上）',
+              '② スライドして出る（下のカードほど長く）',
+              '③ カーブで画面の前へ（クリック待ち）',
+              '④ カードをクリック → めくりながらテーブルへ'];
+let phase = 0;
+const now = () => performance.now();
+const pose = i => (phase === 3 && placed[i] ? bay(i) : POSE[phase](i));
+
+function draw(el, p, deg) {
+  Object.assign(el.style, { left: p.x + 'px', top: p.y + 'px', width: p.w + 'px', height: p.h + 'px' });
+  el.style.transform = 'rotateY(' + deg + 'deg)';
+}
+
+/** 1枚を from から to へカーブで動かす。flip を立てるとめくりが先行する。 */
+function move(i, from, to, leg, flip) {
+  const el = cards[i], t0 = now();
+  (function step() {
+    const e = now() - t0;
+    const mt = clamp01((e - (flip ? PLACE_DELAY : 0)) / leg.ms);
+    const at = curve(from, to, leg.bow, smooth(mt));
+    const ft = flip ? clamp01(e / FLIP.ms) : 0;
+    draw(el, { x: at.x, y: at.y, w: lerp(from.w, to.w, smooth(mt)), h: lerp(from.h, to.h, smooth(mt)) },
+         flip ? smooth(ft) * 180 : 0);
+    if (mt < 1 || (flip && ft < 1)) requestAnimationFrame(step);
+  })();
+}
+
+function render(leg, fromPose) {
+  document.getElementById('cards').classList.toggle('masked', phase === 0 || phase === 1);
+  for (let i = 0; i < 3; i++) {
+    holds[i].style.zIndex = 3 - i;          // 手前のカードがずっと手前
+    cards[i].classList.toggle('waiting', phase === 2 || (phase === 3 && !placed[i]));
+    if (leg) move(i, fromPose(i), pose(i), leg, false);
+    else draw(cards[i], pose(i), placed[i] ? 180 : 0);
+  }
+  document.getElementById('label').textContent = NAME[phase];
+  document.querySelectorAll('[data-go]').forEach(b =>
+    b.setAttribute('aria-pressed', String(+b.dataset.go === phase)));
+}
+
+function go(next) {
+  const was = phase;
+  const leg = next === was + 1 ? (next === 1 ? LEGS.slide : next === 2 ? LEGS.present : null) : null;
+  phase = next; placed.fill(false);
+  render(leg, POSE[was]);
+}
+function place(i) {
+  if (phase !== 3 || placed[i]) return;
+  placed[i] = true;
+  cards[i].classList.remove('waiting');
+  move(i, front(i), bay(i), LEGS.place, true);
+}
+
+document.querySelectorAll('[data-go]').forEach(b =>
+  b.addEventListener('click', () => go(+b.dataset.go)));
+
+function fit() {
+  const wrap = document.getElementById('wrap');
+  const s = wrap.clientWidth / 1920;
+  document.getElementById('stage').style.transform = 'scale(' + s + ')';
+  wrap.style.height = (1080 * s) + 'px';
+}
+addEventListener('resize', fit); fit(); render();
+</script>
+</body>
+</html>

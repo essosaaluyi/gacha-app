@@ -23,14 +23,15 @@ export const CABINET_PLAYER_DOCK_MOUTH = { x0: 66, x1: 270, y0: 625, y1: 700 } a
 export const CABINET_PLAYER_DOCK_CARD = { width: 168, height: 252 } as const;
 
 /**
- * Where the three waiting cards sit: inside the dispenser, stacked 20px deeper
- * each, with the first one's bottom edge at the lip. Only the slot shows any
- * of them, so the player sees three card edges in the mouth rather than three
- * flattened cards hanging off it.
+ * Where the three waiting cards sit: half of each card inside the dispenser,
+ * so the mouth cuts them across the middle. Stacked 20px deeper each, the one
+ * in front highest and the ones behind stepping down, which is how three cards
+ * in a slot read as three. They are never offset sideways — the stack is
+ * straight, and the step alone separates them.
  */
 export const CABINET_PLAYER_DOCK_BACK_RECTS = [0, 1, 2].map((index) => ({
   x: 84,
-  y: CABINET_PLAYER_DOCK_MOUTH.y1 - CABINET_PLAYER_DOCK_CARD.height - index * 20,
+  y: CABINET_PLAYER_DOCK_MOUTH.y1 - CABINET_PLAYER_DOCK_CARD.height / 2 + index * 24,
   width: CABINET_PLAYER_DOCK_CARD.width,
   height: CABINET_PLAYER_DOCK_CARD.height,
 })) as readonly { x: number; y: number; width: number; height: number }[];

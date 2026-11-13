@@ -14,7 +14,7 @@ import { getBattlePresentationFlow } from "@/lib/battle-pixi/state/battlePresent
 import { isCardOverviewOpen, subscribeCardOverview } from "@/lib/battle-pixi/config/cardOverview";
 import { setBattleState } from "@/lib/battle-pixi/state/battleStateStore";
 import { revealCard } from "@/lib/battle-pixi/presentation/cardRevealSystem";
-import { animateCabinetManualReveal } from "@/lib/battle-pixi/presentation/cabinetManualReveal";
+import { animateCabinetManualReveal, cabinetPresentQuad } from "@/lib/battle-pixi/presentation/cabinetManualReveal";
 import { useEffect, useRef } from "react";
 import {
   Application,
@@ -1105,6 +1105,26 @@ export default function BattlePixiStage({
       const landedCardQuads = slotTargets.map((_, index) =>
         getLandedCardQuad(index)
       );
+
+      /**
+       * The frame the reveal's raised pose is measured in.
+       *
+       * The table is drawn in perspective, so a card lifted off it is wider
+       * than it is tall by the canvas's own aspect, and it must not rise past
+       * the top of the glass. Both come from the live rects, and both the deal
+       * and the reveal need them — the deal aims at the pose the reveal starts
+       * from, so if they disagreed the card would jump the moment it is
+       * clicked.
+       */
+      const revealFrame = () => {
+        const surface = pixiApp.canvas.getBoundingClientRect();
+        const glass = wrapperRef.current?.closest(".bcab-table-glass")?.getBoundingClientRect();
+        return {
+          verticalProjection: (surface.height / STAGE.HEIGHT) / (surface.width / STAGE.WIDTH),
+          clipTop: glass ? Math.max(0, (glass.top - surface.top) / (surface.height / STAGE.HEIGHT)) : 0,
+        };
+      };
+
 
       // Picking proxies.
       //
@@ -3771,13 +3791,13 @@ export default function BattlePixiStage({
           openDurationMs: cabinetMode ? CABINET_CARD_FLIP_OPEN_MS : undefined,
           onFaceSwap: cabinetMode && !(card instanceof PerspectiveMesh) ? startCabinetLanding : undefined,
           present: cabinetMode && card instanceof PerspectiveMesh ? (swapFace, complete) => {
-            const surface = pixiApp.canvas.getBoundingClientRect();
-            const glass = wrapperRef.current?.closest(".bcab-table-glass")?.getBoundingClientRect();
-            const verticalProjection = (surface.height / STAGE.HEIGHT) / (surface.width / STAGE.WIDTH);
-            const clipTop = glass ? Math.max(0, (glass.top - surface.top) / (surface.height / STAGE.HEIGHT)) : 0;
+            const { verticalProjection, clipTop } = revealFrame();
             stage.addChild(card);
             let finished = false, cancel = () => {};
-            cancel = animateCabinetManualReveal({ rest: cardQuad, verticalProjection, clipTop,
+            // The card is already waiting out in front, so this is only the
+            // second half of the old motion: turn, then come down. fromPresent
+            // leads the turn, which is what the reference clip does.
+            cancel = animateCabinetManualReveal({ rest: cardQuad, verticalProjection, clipTop, fromPresent: true,
               now: () => presentationClock.now(), blocked: presentationBlocked, alive,
               schedule: callback => window.requestAnimationFrame(callback), cancelFrame: id => window.cancelAnimationFrame(id),
               onFrame: sample => {
@@ -3870,14 +3890,18 @@ export default function BattlePixiStage({
           playSfx("chanceUpDraw");
         }
         if(cabinetMode){
-          const root=wrapperRef.current?.closest(".bcab-air-cabinet")?.getBoundingClientRect();
+          // The cards come to rest out in front of the table, not in their
+          // bays. Recomputed here rather than projected back from the corners
+          // the deal was given, so the pose the card lands on and the pose the
+          // reveal starts from are the same numbers and cannot disagree.
+          const frame=revealFrame();
           drawCards.forEach((card,index)=>{
-            const q=root&&landingCorners?projectCabinetQuadToPixi(landingCorners[index],pixiApp.canvas.getBoundingClientRect(),root,{width:STAGE.WIDTH,height:STAGE.HEIGHT}):null;
-            if(q){landedCardQuads[index]=q;hoverTargets[index]={...getQuadCenter(q),rotation:0};
-              const xs=[q[0],q[2],q[4],q[6]],ys=[q[1],q[3],q[5],q[7]];
-              cardHitProxies[index].hitArea=new Rectangle(Math.min(...xs)-14,Math.min(...ys)-14,Math.max(...xs)-Math.min(...xs)+28,Math.max(...ys)-Math.min(...ys)+28);}
+            const q=cabinetPresentQuad(landedCardQuads[index],frame.verticalProjection,frame.clipTop) as Quad;
+            hoverTargets[index]={...getQuadCenter(q),rotation:0};
+            const xs=[q[0],q[2],q[4],q[6]],ys=[q[1],q[3],q[5],q[7]];
+            cardHitProxies[index].hitArea=new Rectangle(Math.min(...xs)-14,Math.min(...ys)-14,Math.max(...xs)-Math.min(...xs)+28,Math.max(...ys)-Math.min(...ys)+28);
             card.parent?.removeChild(card);stage.addChild(card);card.x=hoverTargets[index].x;card.y=hoverTargets[index].y;card.rotation=0;card.scale.set(L.CARD_SCALE);card.alpha=1;card.visible=true;
-            if(card instanceof PerspectiveMesh)setMeshQuad(card,toLocalQuad(landedCardQuads[index],card.x,card.y,L.CARD_SCALE));
+            if(card instanceof PerspectiveMesh)setMeshQuad(card,toLocalQuad(q,card.x,card.y,L.CARD_SCALE));
             handTimeout(()=>{card.eventMode="static";setCardPickable(index,true);},getChanceWaitRemaining());
           });cardGroup.visible=false;attachPlacementHandlers();setCardPhase("hovering","physical3d-landed");
           if(currentBattleResult.result==="Reply")runReplyFrameSparks();return;
@@ -4069,7 +4093,13 @@ const globalY = cardGroup.y + card.y;
           dealBusy=true;dealPhase="dealing";ejectClock=presentationClock.now();ejectStartedAt=performance.now();playSfx("drawCard");
           const root=wrapperRef.current?.closest(".bcab-air-cabinet")?.getBoundingClientRect();
           if(root){const surface=pixiApp.canvas.getBoundingClientRect();
-            landingCorners=slotTargets.map((_,index)=>projectPixiQuadToCabinet(getLandedCardQuad(index),surface,root,{width:STAGE.WIDTH,height:STAGE.HEIGHT})!);
+            // The deal aims at where the cards will wait — out in front of the
+            // table — not at the bays they end up in. Clicking one is what
+            // sends it down.
+            const frame=revealFrame();
+            landingCorners=slotTargets.map((_,index)=>projectPixiQuadToCabinet(
+              cabinetPresentQuad(getLandedCardQuad(index),frame.verticalProjection,frame.clipTop) as Quad,
+              surface,root,{width:STAGE.WIDTH,height:STAGE.HEIGHT})!);
             measuredGeometry={mouth:{x:168,y:710,width:168,height:120},bays:landingCorners};}
           emitCabinetPile("launching");consumeArmedBonusPresentation();persistPendingHand();
           flightFrame=window.requestAnimationFrame(pumpFlightClock);

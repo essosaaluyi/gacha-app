@@ -2,6 +2,22 @@
 
 新しい記録は一番上に追加すること。
 
+### 【完了・要目視確認】配りの流れを作り直した（口の中→カーブ→画面の前で待つ→クリックでめくって置く） ／ Claude ／ 2026-11-13 ／ ブランチ：main
+- オーナー提供の参照動画（`C:\Users\essos\Videos\2026-11-08 22-58-33.mkv`、ポケモンTCG Live、6.3秒）をフレーム展開して確認。**カードは手前で大きくなってから表に返り、そのあと縮んでスロットへ降りる**。返るのは 1〜2フレーム（33〜66ms）とほぼ瞬間で、降り始めはそのあと。
+- 合意した流れは `design-ref/deal-sequence-proposal-v2.html`（新規・モック）。①半分が口の中・手前が上・横ずれなし ②下のカードほど長く出る ③カーブで画面の前へ・ここで止まる ④クリックでめくりながらテーブルへ。
+- **実装の要点**：既存の「浮き上がって1.78倍になってから返り、戻る」演出（`cabinetManualReveal.ts`）が、そのまま③の姿勢だった。**配りの着地点をベイからその姿勢へ移し、クリック時はその往復の後半だけを再生する**形にした。往復をやめたので、カードは出てきたあとそこで待ち、クリックで返って降りる。
+  - `cabinetManualReveal.ts`：`cabinetPresentQuad()` を公開（待機姿勢＝旧 peak）。`sampleCabinetManualReveal(...,fromPresent)` を追加。`fromPresent` では raised が 1→0（140ms から 520ms）、返りは 60→180ms で真横・180ms で面入れ替え・320ms で平ら。**返り終わりで降下はまだ 72%** 残る＝「ほぼ同時、めくりが少し先」。既定（false）の挙動は一切変えていない（既存テスト 3件 通過）。
+  - `BattlePixiStage.tsx`：`revealFrame()` を新設（縦圧縮とガラス上端を1か所に）。配りの目標 `landingCorners` を `cabinetPresentQuad(...)` に変更。受け渡し時に `landedCardQuads` を上書きするのをやめ（ベイのまま保持）、カード・当たり判定・hoverTargets を待機姿勢へ。クリック時は `fromPresent:true`。
+  - `cabinetTwoStepMotion.ts`：2段（スライド480ms／カーブ700ms、ずらし100ms、計1380ms）。`curveQuad()` を新設し、四隅の補間はそのまま、**クアッド全体を2次ベジエでずらす**（形は崩さず経路だけ曲げる）。`CURVE_BOW=-190`。
+  - `CabinetPlayerDock.geometry.ts`：待機位置を「カードの中心線がリップ」に変更（上端 574/598/622）。横ずれなし。
+- **検証（`tools/test-cabinet-deal-flow.mjs` 新規・4件通過）**：待機は半分が口の中・手前が上・x同一／スライド中は縦横比が一定で奥のカードほど長く出る／**飛行経路は直線より 95px 膨らむ**（直角ではない）／クリック後 180ms で真横・320ms で平ら・そのとき降下はまだ 72% 残っている。`npx tsc --noEmit` 通過。
+- **未確認（重要）**：**ゲーム内で実際に動かせていない。** 検証中にバトルの進行が `dealPhase:"setting"` で止まる状態に入り、通しができなかった。途中で `localStorage` の `battle_session_snapshot`（自分のテストで作られた途中のハンド）を削除している。目視確認は次の作業で行う必要がある。本番ビルド・Safari実機も未確認。
+- 注意：`lib/audio/sfxStore.ts` と `app/se-workstation/` は Codex（OD）が作業中のため触っていない。今回のコミットにも含めていない。
+
+### 【作業中】現行SEの使用場面と試聴ワークステーション ／ Codex（OD） ／ 2026-11-13 ／ ブランチ：main
+- 担当範囲：`app/se-workstation/`、試聴用に必要な `lib/audio/sfxStore.ts` の公開口、`session-handoff.md`。現行の呼び出しと発音条件を調査し、単体試聴と場面の確認をできるようにする。
+- `main` 同期済み。既存の筐体・排出まわりの未コミット差分と未追跡ファイルを確認し、その差分は保全する。
+
 ### 【完了】排出演出：スライドを長く／3枚ずらして／画面の前に出す ／ Claude ／ 2026-11-13 ／ ブランチ：main
 - オーナー指示3点に対応。変更：`lib/battle-pixi/presentation/cabinetTwoStepMotion.ts` のみ（マスクとカード比率は前コミット `a77b4e8` のまま）。
 - **(1) スライドを長く**：300ms → **480ms**。ずらしも 90ms → 100ms。
