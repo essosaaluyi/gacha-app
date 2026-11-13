@@ -28,6 +28,21 @@ const BAY_W = BAY.halfW * 2;
 const BAY_D = BAY.zNear - BAY.zFar;
 const BAY_Z = (BAY.zNear + BAY.zFar) / 2;
 const PLATE_T = 0.014;
+/**
+ * The colour the painting already uses inside a bay, sampled straight out of
+ * card-table-premium-three-bay-center-only-1120x420.webp. The panel has to
+ * disappear into the slot while it is at rest, so this is the target, not a
+ * guess at "black" — the painted slot is a very dark green, not black at all.
+ */
+const BAY_PAINT = "#0e1a1b";
+/**
+ * Nothing of the panel is drawn above the table surface. A panel really
+ * hinged in a table would swing up and stand proud of its frame, and it did,
+ * and it looked like a flap landing on the brasswork. Clipped at the surface
+ * it reads as turning down inside its own slot, which is what the owner is
+ * after and also what the frame around it allows.
+ */
+const SURFACE_CLIP = 0.009;
 
 export type TableQuad = [
   number, number, number, number, number, number, number, number,
@@ -63,19 +78,16 @@ function insertFaceTexture() {
   const W = 512;
   const H = Math.round((W * BAY_D) / BAY_W);
   const { c, g } = canvas(W, H);
-  g.fillStyle = "#070f13";
+  g.fillStyle = BAY_PAINT;
   g.fillRect(0, 0, W, H);
+  // Only enough sheen to say "surface". The panel has to pass for the painted
+  // slot while it is sitting still, so anything stronger shows up as a patch.
   const sheen = g.createLinearGradient(0, 0, W * 0.8, H);
-  sheen.addColorStop(0, "rgba(150,196,214,0.16)");
-  sheen.addColorStop(0.45, "rgba(90,130,150,0.05)");
-  sheen.addColorStop(1, "rgba(0,0,0,0.35)");
+  sheen.addColorStop(0, "rgba(150,196,214,0.07)");
+  sheen.addColorStop(0.45, "rgba(90,130,150,0.02)");
+  sheen.addColorStop(1, "rgba(0,0,0,0.18)");
   g.fillStyle = sheen;
   g.fillRect(0, 0, W, H);
-  // A hairline right on the edge so the panel has a readable boundary at rest
-  // and a bright leading edge the moment it starts to turn.
-  g.strokeStyle = "rgba(143,211,216,0.5)";
-  g.lineWidth = 2;
-  g.strokeRect(1, 1, W - 2, H - 2);
   return c;
 }
 
@@ -124,13 +136,61 @@ export function mountCabinetTable3D(host: HTMLElement): CabinetTable3D {
   fill.position.set(2.4, 1.4, 1.2);
   scene.add(fill);
 
-  // Smooth and slightly metallic so the panel picks up the key the instant it
-  // leaves the horizontal. Flat matte black turned invisibly against the black
-  // opening it sits in.
+  // Everything above the table surface is cut away, so the panel turns down
+  // into its slot instead of swinging up over the painted frame.
+  renderer.localClippingEnabled = true;
+  const surface = [new THREE.Plane(new THREE.Vector3(0, -1, 0), SURFACE_CLIP)];
+
+  // The other half of the same problem. Below the surface the panel is inside
+  // the slot in world terms but still projects down past the near edge of the
+  // frame on screen, because the table it would disappear behind is a picture
+  // on another layer and cannot occlude anything. This is that table as depth
+  // only: an invisible sheet at the surface with the three openings cut out of
+  // it, which hides whatever is under the table except through a slot.
+  const occluder = new THREE.Shape();
+  const REACH = 6;
+  occluder.moveTo(-REACH, -BAY_Z - REACH);
+  occluder.lineTo(REACH, -BAY_Z - REACH);
+  occluder.lineTo(REACH, -BAY_Z + REACH);
+  occluder.lineTo(-REACH, -BAY_Z + REACH);
+  occluder.closePath();
+  for (let i = 0; i < 3; i++) {
+    const x = (i - 1) * BAY.pitchX;
+    const hole = new THREE.Path();
+    hole.moveTo(x - BAY.halfW, -BAY.zFar);
+    hole.lineTo(x + BAY.halfW, -BAY.zFar);
+    hole.lineTo(x + BAY.halfW, -BAY.zNear);
+    hole.lineTo(x - BAY.halfW, -BAY.zNear);
+    hole.closePath();
+    occluder.holes.push(hole);
+  }
+  const occluderMesh = new THREE.Mesh(
+    own(new THREE.ShapeGeometry(occluder)),
+    own(new THREE.MeshBasicMaterial({ colorWrite: false }))
+  );
+  occluderMesh.rotation.x = -Math.PI / 2;
+  // Depth before anything else, so the panels test against it.
+  occluderMesh.renderOrder = -1;
+  scene.add(occluderMesh);
+
+  // Matching the painting is done with emissive, not with the lit colour.
+  // Lying flat under this cabinet's weak key, a diffuse panel set to the
+  // painted colour rendered at #000202 against the painting's #0c1a1a — eight
+  // times too dark — because the lighting and the tone map crush it. Emissive
+  // skips both, so the panel reads as the painted slot while it is still, and
+  // the specular on top is then free to do nothing but carry the turn.
+  const faceTex = own(tex(insertFaceTexture()));
   const faceMat = own(new THREE.MeshStandardMaterial({
-    map: own(tex(insertFaceTexture())),
-    roughness: 0.34,
-    metalness: 0.45,
+    color: 0x000000,
+    emissive: 0xffffff,
+    emissiveMap: faceTex,
+    // Tuned against the painting on screen, not picked. The painted slot
+    // measures #0c1a1a there; 1.15 gave #050f10 and 2.7 gave #102425, and
+    // this is the value between them that lands on it.
+    emissiveIntensity: 1.9,
+    roughness: 0.45,
+    metalness: 0,
+    clippingPlanes: surface,
   }));
   // The panel's own thickness, lit brighter than its face: edge-on, this thin
   // band is the only thing left to see, and it has to read.
@@ -138,6 +198,7 @@ export function mountCabinetTable3D(host: HTMLElement): CabinetTable3D {
     color: 0x5d969d,
     roughness: 0.28,
     metalness: 0.75,
+    clippingPlanes: surface,
   }));
 
   // What the panel turns away from. The painted bay underneath is dark teal,

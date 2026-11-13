@@ -177,19 +177,38 @@ export function rideSlotFlip({
   const table = getCabinetTable3D();
   if (!table) return () => {};
 
+  const tableCanvas = table.canvasEl();
+  const toPixi = (q: readonly number[]) => {
+    const c: number[] = [];
+    for (let i = 0; i < 8; i += 2) {
+      const [x, y] = tablePointToPixi([q[i], q[i + 1]], tableCanvas, pixiCanvas, pixiLogical);
+      c.push(x, y);
+    }
+    return c;
+  };
+
   const mesh = new PerspectiveMesh({ texture, verticesX: 12, verticesY: 18 });
   mesh.eventMode = "none";
-  parent.addChild(mesh);
-  table.flipSlot(index, durationMs);
 
-  const tableCanvas = table.canvasEl();
+  // The slot at rest, as a mask. The panel is cut off at the table surface on
+  // the 3D side so it cannot climb over the painted frame; the card has to be
+  // held to the same opening or it would climb over the frame on its own.
+  const s = toPixi(table.slotQuads()[index]);
+  const clip = new Graphics()
+    .poly([s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]])
+    .fill(0xffffff);
+  mesh.mask = clip;
+  parent.addChild(clip, mesh);
+  table.flipSlot(index, durationMs);
   let raf = 0;
   let finished = false;
   const finish = () => {
     if (finished) return;
     finished = true;
     cancelAnimationFrame(raf);
+    mesh.mask = null;
     mesh.destroy();
+    clip.destroy();
   };
 
   const frame = () => {
@@ -199,12 +218,7 @@ export function rideSlotFlip({
       finish();
       return;
     }
-    const q = table.livePlateQuad(index);
-    const c: number[] = [];
-    for (let i = 0; i < 8; i += 2) {
-      const [x, y] = tablePointToPixi([q[i], q[i + 1]], tableCanvas, pixiCanvas, pixiLogical);
-      c.push(x, y);
-    }
+    const c = toPixi(table.livePlateQuad(index));
     mesh.setCorners(c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]);
     raf = requestAnimationFrame(frame);
   };
