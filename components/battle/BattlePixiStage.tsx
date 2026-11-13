@@ -3,6 +3,7 @@ import { TWO_STEP_DEAL_MS as CABINET_EJECT3D_DURATION_MS } from "@/components/ba
 import { getPendingBattleHand, savePendingBattleHand, clearPendingBattleHand } from "@/lib/battle-pixi/state/pendingBattleHandStore";
 import { activeDelay, createPresentationClock, type CabinetDealPhase } from "@/lib/battle-pixi/presentation/cabinetDealSequence";
 import { isDrawSequenceActive } from "@/lib/battle-pixi/state/drawSequenceGuard";
+import { foldAwayCard, type FoldQuad } from "@/lib/battle-pixi/stage/foldAwayCard";
 import { parseFatalPreview, rollEnemyFatal, enemyFatalEscape, enemyFatalSurvives } from "@/lib/battle-pixi/core/enemyFatalRoll";
 import { commitFatalPlan, getFatalPresentation, setFatalStops, setFatalPresentationPhase,
   takeFatalPlan, clearFatalPresentation, isFatalPresentationResolving, type FatalPlan } from "@/lib/battle-pixi/state/fatalPresentationStore";
@@ -1263,6 +1264,24 @@ export default function BattlePixiStage({
       };
 
       const resetCardsToGroup = () => {
+        // Owner note 2026-11-13: the cards used to blink out of the slots the
+        // instant DRAW was pressed. The reference clip hinges each card up out
+        // of its slot instead. The real meshes are reset synchronously below,
+        // so the exit is played by throwaway copies left behind on the table.
+        if (cabinetMode && cardsReleased) {
+          drawCards.forEach((card, index) => {
+            if (!(card instanceof PerspectiveMesh) || !card.visible) return;
+            if (card.parent !== stage) return;
+            foldAwayCard({
+              parent: stage,
+              texture: card.texture,
+              quad: [...landedCardQuads[index]] as FoldQuad,
+              // Staggered left to right, the way the reference clears a row.
+              durationMs: 190 + index * 45,
+            });
+          });
+        }
+
         // Centralized per-hand cleanup (requirement 7): bump the hand id,
         // cancel stale timers, remove hover tickers, and drop pointer handlers
         // so no callback from the previous hand can write to a reused sprite.
