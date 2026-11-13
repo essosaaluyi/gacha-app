@@ -2,6 +2,10 @@
 
 新しい記録は一番上に追加すること。
 
+### 【完了・要目視確認】排出口のスライドと待機カード拡大 ／ Codex ／ 2026-11-14
+- 排出口CSSで最初のDRAW時の各カードを320msで口からスライド表示。待機クアッドの幅は164から197に変更。
+- 型チェックと排出テスト5件通過。実画面の動きは未確認。次回は最初のDRAWから着地まで確認する。
+
 ### 【完了】カードめくりSEから召喚音を削除 ／ Codex（OD） ／ 2026-11-14 ／ ブランチ：main
 - 元の `characard-reveal-se.mp3` は短いめくり音の後、約1.4秒から別の音が続く。先頭のめくりだけを抜き出した `public/audio/se/card-flip-only.v1.wav`（270ms）に `lib/audio/sfxStore.ts` の参照を差し替えた。旧素材は保全。
 - `components/battle/BattleSpawnScene.tsx` の敵・味方召喚時の同音源再生と、`lib/battle-pixi/state/battlePresentationFlowStore.ts` の再生専用の重複防止処理を削除。`tools/test-battle-summon-session.mjs` は召喚演出の重複防止の確認を維持。`app/se-workstation/catalog.ts` は「カードのめくり」に更新。

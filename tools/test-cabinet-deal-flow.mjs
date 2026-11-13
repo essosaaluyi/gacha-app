@@ -58,7 +58,7 @@ test("waiting cards have the same size and height above different bays", () => {
   ];
   const waiting = bays.map(bay => cabinetPresentQuad(bay, 1.787, 61));
   for (const quad of waiting) {
-    assert.ok(Math.abs(width(quad) - 164) < 0.001);
+    assert.ok(Math.abs(width(quad) - 197) < 0.001);
     assert.equal(quad[1], waiting[0][1]);
     assert.ok(quad[5] < 292, "bottom edge stays above the bay's front edge");
   }

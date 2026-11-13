@@ -26,4 +26,11 @@
   clip-path: inset(15px 20px -252px 20px);
 }
 .backs img { position: absolute; display: block; object-fit: contain; filter: drop-shadow(0 3px 3px #000b); }
+.outlet[data-phase="prepared"] .backs img {
+  animation: slideFromOutlet 320ms cubic-bezier(.24, .66, .34, 1) both;
+}
+@keyframes slideFromOutlet {
+  from { translate: 0 -252px; }
+  to { translate: 0 0; }
+}
 .lip { position: absolute; left: 8px; right: 8px; bottom: -2px; height: 16px; z-index: 4; border: 1px solid #ad9259; border-radius: 3px 3px 9px 9px; background: linear-gradient(#6f5e38, #182027 30%, #080d11); box-shadow: 0 4px 0 #030608; }

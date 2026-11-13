@@ -26,7 +26,7 @@ const ease = (value:number) => {const t=Math.max(0,Math.min(1,value));return t*t
  * All three backs hover at the same size above their respective bays.
  */
 export function cabinetPresentQuad(rest:CardQuad,verticalProjection=1,clipTop=0):CardQuad {
-  return raisedQuad(rest, verticalProjection, clipTop, 164, 64);
+  return raisedQuad(rest, verticalProjection, clipTop, 197, 64);
 }
 
 function raisedQuad(rest:CardQuad,verticalProjection:number,clipTop:number,width:number,lift:number):CardQuad {
