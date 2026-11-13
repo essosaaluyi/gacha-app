@@ -320,12 +320,21 @@ export function mountCabinetPanelB3(host: HTMLElement, opts: { onLayout?: (l: Pa
 
   // ── DRAW: the shared button model, laid on its back so it faces the player, standing on a dark seat
   //    disc that hides where the bezel foot overhangs the V face's sloping edges.
-  const seat = new THREE.Mesh(own(new THREE.CircleGeometry(DRAW.bezelD / 2 + 3, 72)), voidMat);
-  seat.position.set(0, DRAW.y, Z.drawSeat - 0.4); root.add(seat);
+  //    Owner request 2026-11-14: tilted face-up by DRAW_TILT_DEG. Seen dead-on, the press travelled straight
+  //    along the line of sight and was invisible; tilted, the cap's sideways drop reads. The mount is pushed
+  //    out so the top edge stays on the face, and a short dark plinth fills the wedge under the lower edge.
+  const DRAW_TILT_DEG = 10, drawR = DRAW.bezelD / 2 + 3, tilt = THREE.MathUtils.degToRad(DRAW_TILT_DEG);
+  const drawMount = new THREE.Group();
+  drawMount.position.set(0, DRAW.y, Z.drawSeat + drawR * Math.sin(tilt)); drawMount.rotation.x = -tilt; root.add(drawMount);
+  const seat = new THREE.Mesh(own(new THREE.CircleGeometry(drawR, 72)), voidMat);
+  seat.position.z = -0.4; drawMount.add(seat);
+  const plinthDepth = 2 * drawR * Math.sin(tilt) + 4;
+  const plinth = new THREE.Mesh(own(new THREE.CylinderGeometry(drawR, drawR, plinthDepth, 72, 1, true)), voidMat);
+  plinth.rotation.x = Math.PI / 2; plinth.position.z = -0.4 - plinthDepth / 2; drawMount.add(plinth);
   const draw = buildDrawButton(own);
   draw.root.rotation.x = Math.PI / 2;            // the model's +Y (button axis) becomes +Z
   draw.root.scale.setScalar(DRAW_SCALE);
-  draw.root.position.set(0, DRAW.y, Z.drawSeat); root.add(draw.root);
+  drawMount.add(draw.root);
   // A three.js point light ignores its parent's scale: `distance` and `intensity` are world-space. At
   // 52× the button's own lamps would light a 1 mm bubble, so the reach is scaled once here and the
   // brightness after every update (the button rewrites intensity from its lamp state each frame).
