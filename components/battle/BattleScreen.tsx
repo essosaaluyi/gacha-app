@@ -729,6 +729,17 @@ export default function BattleScreen() {
     ? !collectionResultReady
     : drawLocked);
 
+  // QA hook: window.__drawLock() says which of these is holding DRAW down.
+  if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+    (window as unknown as { __drawLock?: () => unknown }).__drawLock = () => ({
+      locked: cabinetDrawLocked,
+      overviewOpen, stageReady, summonLocked, collectionActive, collectionResultReady,
+      drawLocked, dealPhase, bonusVideoActive, battleMode, battleState, activeCardIndex,
+      phase: presentationFlow.phase, reason: presentationFlow.reason,
+      summon: presentationFlow.summon,
+    });
+  }
+
   const canConfirmHand = () => {
     const enemy = getCurrentEnemy();
     const collection = getCollectionState();

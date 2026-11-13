@@ -2,6 +2,14 @@
 
 新しい記録は一番上に追加すること。
 
+### 【完了・調査】「DRAWが押せなくなって止まる」の原因 ／ Claude ／ 2026-11-13 ／ ブランチ：main
+- **不具合ではなかった**。テーブルに出たカードは**プレイヤーが1枚ずつクリックしてめくる**仕様で、3枚めくり終わるまで DRAW は閉じたまま。実際に3枚クリックしたら `phase` が `draw_reveal/automatic-eject` → `next_round_ready/reveal-complete` に進み、DRAW が即開いた。
+- 状態を読むために `components/battle/BattleScreen.tsx` に開発時のみの QA フック `window.__drawLock()` を追加（`cabinetDrawLocked` の各項目を返す）。止まっている状態は `dealPhase:"ready"` / `phase:"draw_reveal"` / `reason:"automatic-eject"` / `drawLocked:true`、他は正常。`drawLocked` の式（BattleScreen.tsx:720）がそのまま効いている。
+- 15秒のハンド監視（`HAND_WATCHDOG_MS`）は**意図的にこの待ちを救わない**（BattlePixiStage.tsx:1604 のコメント：ユーザー操作によるめくり待ちは「停止」ではなく、支払い済みの結果を保持する）。AUTO を ON にすると `placeCardFromHover` が 680ms 間隔で自動でめくる（BattlePixiStage.tsx:4078）。
+- **前回報告の訂正**：「回転演出が一度も出なかった」は誤り。めくり終えてから DRAW を押すと、3つのベイが 0→2（180度）まで時間差（0.38/0.31/0.25）で回るのを実測した（29フレーム≒480ms）。前回は3枚めくる手順を踏んでいなかったため出番が来ていなかっただけ。
+- 観察：めくる操作を促す表示は画面にない（grep 済み。`CLICK / TAP TO ENABLE SOUND` のような案内は音声ゲートだけ）。DRAW ランプも消えるので、知らないと「固まった」に見える。仕様判断はオーナー。
+- 変更ファイル：`components/battle/BattleScreen.tsx`（QAフック追加のみ、挙動は不変）。`npx tsc --noEmit` 通過。
+
 ### 【完了】不可視面テクスチャ4点の組み込み ／ Claude ／ 2026-11-13 ／ ブランチ：main
 - Codex の4点（`26daa78`〜`afc2c93`）を `lib/table-3d/cabinetTable3D.ts` に組み込んだ。これでテーブルのどの面も単色ではなくなり、原画で見える面は原画、見えない面は Codex の絵になった。
 - **板の裏面が別の絵になった**。これまで表裏とも原画のスロット内側を貼っていたので、180度回しても同じ絵に戻っていた。`BoxGeometry` のグループを「側面／天面／裏面」の3つに分け（従来は「側面／両面」の2つ）、天面だけ `projectUV` の投影UVを残し、残り5面は位置から平面UVを張り直す（`plateFaceUV`）。裏面は画像の下辺が手前（Codex への依頼どおり）、側面は 512×16 の帯を4面で共有し、端は半テクセル内側。
