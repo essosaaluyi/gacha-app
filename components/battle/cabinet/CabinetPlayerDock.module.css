@@ -26,6 +26,32 @@
   clip-path: inset(15px 20px -252px 20px);
 }
 .backs img { position: absolute; display: block; object-fit: contain; filter: drop-shadow(0 3px 3px #000b); }
+.backs[data-pullable="true"] img {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.backs[data-pullable="true"] img:active { cursor: grabbing; }
+.pullArrow {
+  position: absolute;
+  z-index: 6;
+  left: calc(50% - 27px);
+  top: 54px;
+  width: 54px;
+  height: 56px;
+  background: #67ef9c;
+  opacity: 0.35;
+  clip-path: polygon(36% 0, 64% 0, 64% 55%, 100% 55%, 50% 100%, 0 55%, 36% 55%);
+  animation: pullArrowBob 1.8s ease-in-out infinite alternate;
+}
+@keyframes pullArrowBob {
+  from { transform: translateY(-6px); }
+  to { transform: translateY(6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pullArrow { animation: none; }
+}
 .outlet[data-phase="prepared"] .backs img {
   animation: slideFromOutlet 320ms cubic-bezier(.24, .66, .34, 1) both;
 }

@@ -889,6 +889,7 @@ export default function BattleScreen() {
           <CabinetPlayerDock dropTargetRef={dockRef} activeCard={getCurrentPlayerBattleCard()} acceptingDrop={handSelectionVisible}
             dropActive={dockDropActive} onInspect={()=>{const origin=dockRef.current;if(origin)inspectField("player",origin);}}
             outletPhase={dealPhase==="set"||dealPhase==="setting"?"prepared":dealPhase==="dealing"?"dealing":"empty"}
+            onPull={dealPhase === "set" && !cabinetDrawLocked ? handleDrawPress : undefined}
             preparedCount={Math.max(0,Math.min(3,setCount)) as 0|1|2|3}/>
           {ejectGeometry && dealPhase==="dealing" && <CabinetTwoStepCards ref={ejectRenderer} geometry={ejectGeometry}/>}
 
