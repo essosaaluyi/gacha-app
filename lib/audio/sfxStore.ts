@@ -12,7 +12,7 @@ import {
   type BattleMode,
 } from "@/lib/battle-pixi/state/battleModeStore";
 
-const SFX = {
+export const SFX = {
   // Attack card lands on the target slot.
   attackOnTarget: "/audio/se/attack-card-ontarget.mp3",
   // Draw button pressed (every press).
@@ -293,6 +293,23 @@ function start(clip: LoadedClip, name: SfxName, options: PlayOptions) {
     source.disconnect();
     gain.disconnect();
   };
+  return source;
+}
+
+/** Audition a clip at gameplay gain/offset without changing the battle mode. */
+export async function auditionSfx(name: SfxName, volume: number, signal: AbortSignal) {
+  const ctx = getContext();
+  if (!ctx) throw new Error("Web Audio unavailable");
+  const resumed = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+  const [, clip] = await Promise.all([resumed, loadClip(name)]);
+  if (signal.aborted) return;
+  if (!clip) throw new Error(`Could not load ${SFX[name]}`);
+
+  const source = start(clip, name, { volume });
+  if (!source) return;
+  const stop = () => source.stop();
+  signal.addEventListener("abort", stop, { once: true });
+  source.addEventListener("ended", () => signal.removeEventListener("abort", stop), { once: true });
 }
 
 /** Play a one-shot effect. Safe to call from any client trigger. */
@@ -340,8 +357,9 @@ export function playSfx(name: SfxName, options: PlayOptions = {}): void {
  * card or jackpot clip: layered filtered noise gives the frame a broad power
  * rush while the short descending oscillators add the heavy electrical body.
  */
-export function playTripleChanceSurgeSfx(): void {
-  if (!BATTLE_AND_BONUS.includes(getBattleMode())) return;
+export function playTripleChanceSurgeSfx(auditionSignal?: AbortSignal): void {
+  if (!auditionSignal && !BATTLE_AND_BONUS.includes(getBattleMode())) return;
+  if (auditionSignal?.aborted) return;
 
   const ctx = getContext();
   const destination = runtime.masterGain;
@@ -380,6 +398,13 @@ export function playTripleChanceSurgeSfx(): void {
   noiseFilter.connect(output);
   noiseSource.start(now);
   noiseSource.stop(now + duration);
+
+  const disconnect = () => output.disconnect();
+  auditionSignal?.addEventListener("abort", disconnect, { once: true });
+  noiseSource.onended = () => {
+    auditionSignal?.removeEventListener("abort", disconnect);
+    disconnect();
+  };
 
   [96, 148, 236].forEach((frequency, index) => {
     const oscillator = ctx.createOscillator();
