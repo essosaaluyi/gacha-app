@@ -37,8 +37,9 @@ import * as THREE from "three";
  *    it there to argue with the fact that the painting is lit bright along the
  *    back while this cabinet's key is at the player's end. The painting wins
  *    the argument by being the texture. What the art cannot see, because it
- *    looks from one place, is listed in UNSEEN and is flat colour until it is
- *    painted (docs/cabinet-table-3d-texture-assets.md).
+ *    looks from one place — the walls inside a bay, a plate's back and its
+ *    thickness — is painted too, as four separate images with their own UVs
+ *    (UNSEEN_MAPS, docs/cabinet-table-3d-texture-assets.md).
  *
  * CAMERA: not invented. The baked art is a true perspective render, so the
  * camera was solved back out of the three bay quads BattlePixiStage had been
@@ -418,6 +419,65 @@ function loadPaintMap(onReady: () => void) {
   return t;
 }
 
+/**
+ * A plate's UVs, for the five faces that are not the painting.
+ *
+ * projectUV has just pinned the whole box to the painting, which is what the
+ * top face wants and meaningless for the rest: they wear their own textures,
+ * laid on flat. BoxGeometry's vertices are four per face in its own face
+ * order, +x -x +y -y +z -z, which is what makes this addressable at all.
+ */
+function plateFaceUV(g: THREE.BufferGeometry) {
+  const pos = g.getAttribute("position");
+  const uv = g.getAttribute("uv") as THREE.BufferAttribute;
+  for (let i = 0; i < pos.count; i += 1) {
+    const face = Math.floor(i / 4);
+    if (face === 2) continue;
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    if (face === 3) {
+      // The back. Its hardware is painted along the bottom edge of the image,
+      // which is the near end of the bay.
+      uv.setXY(i, 0.5 + x / BAY_W, 0.5 - z / BAY_D);
+      continue;
+    }
+    // The four sides, off the one 512x16 strip, each reading left to right as
+    // it is seen from outside. Half a texel in at every end: at 16px tall the
+    // strip has no margin to lose to filtering.
+    const along =
+      face === 0 ? 0.5 - z / BAY_D
+      : face === 1 ? 0.5 + z / BAY_D
+      : face === 4 ? 0.5 + x / BAY_W
+      : 0.5 - x / BAY_W;
+    uv.setXY(i, (0.5 + along * 511) / 512, (0.5 + (0.5 + y / PLATE_T) * 15) / 16);
+  }
+  uv.needsUpdate = true;
+}
+
+/**
+ * One of the painted surfaces the art could not see.
+ *
+ * These are not projections of anything, so they are minified like any other
+ * texture and want mipmaps — the plate's 512px back is about 150px across on
+ * screen, and its 16px edge is a hairline. The wall atlas is the exception:
+ * its four cells touch, and a mip level averages across that boundary.
+ */
+function loadUnseenMap(url: string, onReady: () => void, atlas = false) {
+  const t = new THREE.TextureLoader().load(url, onReady, undefined, onReady);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  if (atlas) {
+    t.flipY = false;
+    t.generateMipmaps = false;
+    t.minFilter = THREE.LinearFilter;
+    t.magFilter = THREE.LinearFilter;
+  }
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
 /** An unlit material: the map, or a flat colour, straight to the screen. */
 function paint(options: {
   map?: THREE.Texture;
@@ -437,23 +497,131 @@ function paint(options: {
  * The surfaces the painting cannot see.
  *
  * The art looks at the table from one place, so the walls inside a bay, the
- * back of a plate, the table's front thickness and the panel below it have no
- * pixels in it at all — nothing to unproject. They are flat colours until
- * Codex paints them (docs/cabinet-table-3d-texture-assets.md), sampled from
- * the nearest thing the art does show.
+ * back of a plate and a plate's own thickness have no pixels in it at all —
+ * nothing to unproject. They were flat colours sampled from the nearest thing
+ * the art does show; these are painted (docs/cabinet-table-3d-texture-assets.md,
+ * by Codex). Unlike the painting these are ordinary textures laid on their own
+ * surfaces, so their UVs come from the geometry and they are mipmapped.
  */
-const UNSEEN = {
-  /** Inside a bay, below the surface. The art's slot interior is #0e1a1e. */
-  well: 0x070d10,
-  /** The floor of the well, darker than its walls. */
-  wellFloor: 0x03070a,
-  /** The back of a plate, seen only while it turns. */
-  plateBack: 0x121a1d,
-  /** A plate's thickness, edge-on at the middle of the turn. */
-  plateEdge: 0x4a7a80,
-  /** The panel below the near edge. */
-  under: 0x0a0d10,
+const UNSEEN_MAPS = {
+  wells: "/images/cabinet/table3d/bay-well-walls.v1.webp",
+  wellFloor: "/images/cabinet/table3d/bay-well-floor.v1.webp",
+  plateBack: "/images/cabinet/table3d/bay-plate-back.v1.webp",
+  plateEdge: "/images/cabinet/table3d/bay-plate-edge.v1.webp",
 };
+
+/**
+ * The four walls of a well, laid side by side in one image.
+ *
+ * Far, right, near, left, left to right as each is seen from inside the well.
+ * The cells touch, so a vertex on the corner between two walls has one u and
+ * no seam; the right 4px and bottom 11px of the file are padding, which is why
+ * the cells and the rows have to be named rather than assumed.
+ */
+const WALL_ATLAS = {
+  w: 1024,
+  h: 144,
+  /** Image rows 0..132 run from the table surface to the floor of the well. */
+  rows: 133,
+  cells: [
+    [0, 256],
+    [256, 510],
+    [510, 766],
+    [766, 1020],
+  ] as const,
+};
+
+/** A height inside the well, as a row of the wall atlas. */
+function wallV(y: number) {
+  const row = (-y / WELL_D) * WALL_ATLAS.rows;
+  return Math.min(WALL_ATLAS.rows - 0.5, Math.max(0.5, row)) / WALL_ATLAS.h;
+}
+
+/**
+ * The walls of every well, as one geometry.
+ *
+ * A vertex's u is which wall it stands on and how far along that wall it is,
+ * by arc length — not where it is round the loop, which would land the cell
+ * boundaries a corner and a half out. All three wells are identical and share
+ * the one atlas, so they are built into a single geometry: three meshes of the
+ * same material were three draw calls for a surface nobody can see more than a
+ * sliver of.
+ */
+function wellWallsGeometry(loops: Pt[][], topY: number, bottomY: number) {
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+  const vTop = wallV(topY);
+  const vBottom = wallV(bottomY);
+  for (const loop of loops) {
+    const n = loop.length;
+    // bayLoop is four chamfered corners of three points each, running
+    // far-left, far-right, near-right, near-left. A wall is therefore the run
+    // from the middle of one chamfer to the middle of the next, which is why
+    // it starts half a corner in.
+    const per = n / 4;
+    const mid = Math.floor(per / 2);
+    for (let wall = 0; wall < 4; wall += 1) {
+      const pts: Pt[] = [];
+      for (let k = 0; k <= per; k += 1) pts.push(loop[(mid + wall * per + k) % n]);
+      const run = [0];
+      for (let k = 1; k < pts.length; k += 1) {
+        run.push(run[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+      }
+      const total = run[run.length - 1] || 1;
+      const [x0, x1] = WALL_ATLAS.cells[wall];
+      // Half a texel in at both ends of the cell, so filtering at the corner
+      // cannot reach into the wall next door.
+      const u = run.map((s) => (x0 + 0.5 + (s / total) * (x1 - x0 - 1)) / WALL_ATLAS.w);
+      for (let k = 0; k < per; k += 1) {
+        const [ax, az] = pts[k];
+        const [bx, bz] = pts[k + 1];
+        const base = pos.length / 3;
+        pos.push(ax, topY, az, bx, topY, bz, ax, bottomY, az, bx, bottomY, bz);
+        uv.push(u[k], vTop, u[k + 1], vTop, u[k], vBottom, u[k + 1], vBottom);
+        idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * The floor of every well, as one geometry.
+ *
+ * Laid the same way up as a plate's back: the top of the image is the far edge
+ * of the bay.
+ */
+function wellFloorsGeometry(centres: number[], y: number) {
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+  // A touch wider than the opening, so no gap shows at the corners.
+  const hw = (BAY_W * 1.02) / 2;
+  const hd = (BAY_D * 1.02) / 2;
+  for (const cx of centres) {
+    const base = pos.length / 3;
+    pos.push(
+      cx - hw, y, BAY_Z - hd,
+      cx + hw, y, BAY_Z - hd,
+      cx - hw, y, BAY_Z + hd,
+      cx + hw, y, BAY_Z + hd,
+    );
+    uv.push(0, 1, 1, 1, 0, 0, 1, 0);
+    idx.push(base, base + 2, base + 1, base + 1, base + 2, base + 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
 
 
 export type MountOptions = {
@@ -504,10 +672,21 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
    * disagreement. So the shading stays in the texture, every material is
    * unlit, and the lighting problem stops existing.
    */
-  let mapReady = false;
-  const paintMap = own(loadPaintMap(() => {
-    mapReady = true;
-  }));
+  // Every texture is counted, because the first frame is what takes the baked
+  // image away: drawing before they are all here shows a grey table, or a bay
+  // with nothing inside it.
+  let mapsLeft = 0;
+  const waitFor = <T extends THREE.Texture>(make: (onReady: () => void) => T) => {
+    mapsLeft += 1;
+    return own(make(() => {
+      mapsLeft -= 1;
+    }));
+  };
+  const paintMap = waitFor(loadPaintMap);
+  const wellsMap = waitFor((d) => loadUnseenMap(UNSEEN_MAPS.wells, d, true));
+  const wellFloorMap = waitFor((d) => loadUnseenMap(UNSEEN_MAPS.wellFloor, d));
+  const plateBackMap = waitFor((d) => loadUnseenMap(UNSEEN_MAPS.plateBack, d));
+  const plateEdgeMap = waitFor((d) => loadUnseenMap(UNSEEN_MAPS.plateEdge, d));
 
   renderer.localClippingEnabled = true;
   const surface = [new THREE.Plane(new THREE.Vector3(0, -1, 0), SURFACE_CLIP)];
@@ -582,17 +761,16 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
 
   // The hole under each bay. Walls just outside the opening, because the plate
   // sweeps to 0.2257 and the opening is 0.2256.
-  const wellMat = own(paint({ color: UNSEEN.well, side: THREE.DoubleSide }));
-  const wellFloorMat = own(paint({ color: UNSEEN.wellFloor }));
-  const wellFloorGeo = own(new THREE.PlaneGeometry(BAY_W * 1.02, BAY_D * 1.02));
-  for (let i = 0; i < 3; i++) {
-    const mouth = offsetLoop(bayOpenings[i], -0.003);
-    shell.add(new THREE.Mesh(own(wallGeometry(mouth, -0.012, mouth, -WELL_D)), wellMat));
-    const floor = new THREE.Mesh(wellFloorGeo, wellFloorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set((i - 1) * BAY.pitchX, -WELL_D, BAY_Z);
-    shell.add(floor);
-  }
+  const mouths = bayOpenings.map((loop) => offsetLoop(loop, -0.003));
+  const centres = [0, 1, 2].map((i) => (i - 1) * BAY.pitchX);
+  shell.add(new THREE.Mesh(
+    own(wellWallsGeometry(mouths, -0.012, -WELL_D)),
+    own(paint({ map: wellsMap, side: THREE.DoubleSide }))
+  ));
+  shell.add(new THREE.Mesh(
+    own(wellFloorsGeometry(centres, -WELL_D)),
+    own(paint({ map: wellFloorMap }))
+  ));
 
   // The mechanism below the table. Only about 60 of its rows are inside the
   // 350px box and nearly all of it is black, so it is a dark block with the
@@ -664,31 +842,40 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
   const faceMat = own(paint({ map: paintMap, clippingPlanes: surface }));
   painted.push(faceMat);
   // The panel's own thickness. Edge-on, halfway through a turn, this thin band
-  // is the only thing left to see, so it reads lighter than the face. Nothing
-  // in the art shows it.
-  const edgeMat = own(paint({ color: UNSEEN.plateEdge, clippingPlanes: surface }));
+  // is the only thing left to see. Nothing in the art shows it.
+  const edgeMat = own(paint({ map: plateEdgeMap, clippingPlanes: surface }));
+  // The underside. At rest it faces the floor of the well and is never seen;
+  // through a turn it swings up and is the largest thing on screen that the
+  // painting has no pixels for, which is why it was the one asset that had to
+  // be painted. Until it was, both faces took the painting, so the plate
+  // turned over to show the same slot interior it started as.
+  const backMat = own(paint({ map: plateBackMap, clippingPlanes: surface }));
 
   /**
-   * One plate geometry per bay, in two draw groups instead of six.
+   * One plate geometry per bay, in three draw groups instead of six.
    *
-   * The UVs are the bay's own place in the painting, so the geometry cannot be
-   * shared between bays. A BoxGeometry comes with one group per face, and six
-   * groups times three plates was 18 of the table's 32 draw calls. The index
-   * buffer is rewritten so the four sides come first and the two faces last,
-   * which is two groups — 6 draw calls for all three plates, and the table
-   * fits the spec's 24 at rest.
+   * The top face's UVs are the bay's own place in the painting, so the geometry
+   * cannot be shared between bays. A BoxGeometry comes with one group per face,
+   * and six groups times three plates was 18 of the table's 32 draw calls. The
+   * index buffer is rewritten so the four sides come first, then the top, then
+   * the back — the three textures a plate wears — which is 9 draw calls for all
+   * three plates.
    */
   const plateGeo = (i: number) => {
     const g = new THREE.BoxGeometry(BAY_W, PLATE_T, BAY_D);
     const idx = g.getIndex()!.array;
     // BoxGeometry's faces are +x -x +y -y +z -z, six indices each.
     const sides = [0, 1, 4, 5].flatMap((f) => [...idx.slice(f * 6, f * 6 + 6)]);
-    const faces = [2, 3].flatMap((f) => [...idx.slice(f * 6, f * 6 + 6)]);
-    g.setIndex([...sides, ...faces]);
+    const top = [...idx.slice(2 * 6, 2 * 6 + 6)];
+    const back = [...idx.slice(3 * 6, 3 * 6 + 6)];
+    g.setIndex([...sides, ...top, ...back]);
     g.clearGroups();
     g.addGroup(0, sides.length, 0);
-    g.addGroup(sides.length, faces.length, 1);
-    return own(projectUV(g, { dx: (i - 1) * BAY.pitchX, dz: BAY_Z }));
+    g.addGroup(sides.length, top.length, 1);
+    g.addGroup(sides.length + top.length, back.length, 2);
+    projectUV(g, { dx: (i - 1) * BAY.pitchX, dz: BAY_Z });
+    plateFaceUV(g);
+    return own(g);
   };
   const plateGeos = [0, 1, 2].map(plateGeo);
 
@@ -696,10 +883,8 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
   const bays: Bay[] = [];
 
   for (let i = 0; i < 3; i++) {
-    // Sides first, then both flat faces — the regrouping above. The same face
-    // material goes on the top and the bottom, so turning the panel over
-    // presents another empty slot and the table is immediately playable again.
-    const plate = new THREE.Mesh(plateGeos[i], [edgeMat, faceMat]);
+    // Sides, then the painted top, then the back — the regrouping above.
+    const plate = new THREE.Mesh(plateGeos[i], [edgeMat, faceMat, backMat]);
     // The pivot runs far-to-near through the middle of the bay, so the plate
     // closes sideways — the direction the card closes in the owner's reference
     // clip — rather than tipping toward or away from the player.
@@ -779,7 +964,7 @@ export function mountCabinetTable3D(host: HTMLElement, options: MountOptions = {
     // The baked image behind this canvas is only taken away once there is
     // something to replace it with. Everything here is its texture now, so a
     // frame drawn before that file arrives is a bare grey table.
-    if (!drew && mapReady) {
+    if (!drew && mapsLeft === 0) {
       drew = true;
       options.onFirstFrame?.();
     }
