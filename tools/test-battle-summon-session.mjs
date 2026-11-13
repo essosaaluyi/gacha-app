@@ -311,7 +311,7 @@ test("defeat/replacement replays only the new player instance and a new enemy pr
   assert.equal(flow.canRequestBattleDraw(), true);
 });
 
-test("duplicate round events cannot restart an active or completed summon intro", () => {
+test("duplicate round events cannot restart a summon intro or replay its sound", () => {
   flow.resetBattlePresentationFlow();
   flow.prepareEnemySummon("1:3");
   flow.startEnemySummon();
@@ -319,9 +319,16 @@ test("duplicate round events cannot restart an active or completed summon intro"
   flow.prepareEnemySummon("1:3");
   flow.startEnemySummon();
   assert.equal(flow.getBattlePresentationFlow().summon.enemyStartedAt, startedAt);
+  assert.equal(flow.claimBattleSummonSound("enemy", "1:3"), true);
+  assert.equal(flow.claimBattleSummonSound("enemy", "1:3"), false);
   flow.completeBattleSummon("enemy", "1:3");
   flow.prepareEnemySummon("1:3");
   assert.equal(flow.getBattlePresentationFlow().summon.enemy, "ready");
+  assert.equal(flow.claimBattleSummonSound("player", 1), true);
+  assert.equal(flow.claimBattleSummonSound("player", 1), false);
+  assert.equal(flow.claimBattleSummonSound("player", 2), true);
+  flow.resetBattlePresentationFlow();
+  assert.equal(flow.claimBattleSummonSound("enemy", "1:3"), true);
 });
 
 test("Continue settles existing actors without reopening their intros, while waiting hand stays locked", () => {

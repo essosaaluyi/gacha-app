@@ -19,6 +19,8 @@ export const SFX = {
   buttonPush: "/audio/se/button-push-se.mp3",
   // A card flips to reveal its symbol.
   cardReveal: "/audio/se/card-flip-only.v1.wav",
+  // The original reveal clip accompanies a character's summon.
+  characterSummon: "/audio/se/characard-reveal-se.mp3",
   // Cards are set out to the disk exit gate (first draw press).
   cardSetToDisk: "/audio/se/card-set-to-disk.mp3",
   // A card settles / lands on the table.
@@ -66,7 +68,6 @@ export const SFX = {
   // Temporary BAR CHANCE mix placeholders. Dedicated production clips will
   // replace these paths without changing the reveal choreography.
   barImpact: "/audio/se/vibration.mp3",
-  barFailure: "/audio/se/vibration.mp3",
 } as const;
 
 export type SfxName = keyof typeof SFX;
@@ -87,6 +88,7 @@ const BATTLE_AND_BONUS: BattleMode[] = ["battle", "bonus"];
 const SFX_OWNERS: Partial<Record<SfxName, BattleMode[]>> = {
   attackOnTarget: BATTLE_AND_BONUS,
   cardReveal: BATTLE_AND_BONUS,
+  characterSummon: BATTLE_AND_BONUS,
   cardSetToDisk: BATTLE_AND_BONUS,
   cardPlaced: BATTLE_AND_BONUS,
   chanceCardLand: BATTLE_AND_BONUS,
@@ -105,7 +107,6 @@ const SFX_OWNERS: Partial<Record<SfxName, BattleMode[]>> = {
   textInsertFakeout: ["battle"],
   vibration: ["battle"],
   barImpact: BATTLE_AND_BONUS,
-  barFailure: BATTLE_AND_BONUS,
   // Bonus-only. The openings and the freeze all sound after the machine has
   // already been handed to the bonus, so they belong to that section.
   chestOpenPoint: ["bonus"],

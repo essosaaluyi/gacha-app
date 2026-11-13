@@ -8,7 +8,9 @@ import {
   getBattlePresentationFlow,
   subscribeBattlePresentationFlow,
   completeBattleSummon,
+  claimBattleSummonSound,
 } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
+import { playSfx } from "@/lib/audio/sfxStore";
 import {
   getCurrentEnemy,
   subscribeCurrentEnemy,
@@ -1333,9 +1335,16 @@ function FighterPresentation({
 
   useEffect(() => {
     if (status !== "summoning" || startedAt === null) return;
+    // Claim inside the cancellable frame so Strict Mode cleanup cannot consume the cue.
+    const soundFrame = window.requestAnimationFrame(() => {
+      if (claimBattleSummonSound(side, identity)) playSfx("characterSummon");
+    });
     const remaining = Math.max(0, preset.durationMs - (Date.now() - startedAt));
     const timer = window.setTimeout(() => completeBattleSummon(side, identity), remaining);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.cancelAnimationFrame(soundFrame);
+      window.clearTimeout(timer);
+    };
   }, [identity, preset.durationMs, side, startedAt, status]);
 
   if (status === "waiting" || status === "absent") return null;

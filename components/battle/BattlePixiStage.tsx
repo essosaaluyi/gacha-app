@@ -3675,8 +3675,11 @@ export default function BattlePixiStage({
         const finalizePlacement = () => {
           if (settledSlots[cardIndex]) return;
           settledSlots[cardIndex] = true;
+          const barChance = currentBattleResult.barChance;
+          const symbol = currentBattleResult.cards[cardIndex];
+          const barChanceActive = barChance && getBarChanceState().phase === "active";
           if (cabinetMode) {
-            playSfx("cardPlaced");
+            if (!(barChanceActive && symbol === "Empty")) playSfx("cardPlaced");
             if (result.cards[cardIndex] === "Chance") playSfx("chanceCardLand");
             if (isAttackOnTarget) runAttackTargetInteraction(cardIndex);
             window.dispatchEvent(new CustomEvent("battle:vfx-card-landed", { detail: {
@@ -3686,22 +3689,13 @@ export default function BattlePixiStage({
           }
           setCardPhase("placed", `settle-card-${cardIndex + 1}`);
 
-          const barChance = currentBattleResult.barChance;
-          const symbol = currentBattleResult.cards[cardIndex];
           const revealOrder = revealedCount + 1;
           notifyCabinetProgress(`flip${revealOrder}` as "flip1" | "flip2" | "flip3");
-          const barStateBefore = getBarChanceState();
 
-          if (
-            barChance &&
-            barStateBefore.phase === "active" &&
-            (symbol === "Bar" || symbol === "Empty")
-          ) {
+          if (barChanceActive && (symbol === "Bar" || symbol === "Empty")) {
             const nextBarState = revealBarChanceSymbol(symbol);
 
-            if (symbol === "Empty") {
-              playSfx("barFailure", { volume: 0.55 });
-            } else {
+            if (symbol === "Bar") {
               const successfulThird = nextBarState.phase === "success";
               const intensity = successfulThird
                 ? 1.35
@@ -4093,6 +4087,7 @@ const globalY = cardGroup.y + card.y;
         if(cabinetMode && cardsAreOut && dealPhase==="set") {
           if(presentationBlocked()||dealBusy||!canUseBattleControls())return;
           dealBusy=true;dealPhase="dealing";ejectClock=presentationClock.now();ejectStartedAt=performance.now();playSfx("drawCard");
+          playSfx("discard");
           const root=wrapperRef.current?.closest(".bcab-air-cabinet")?.getBoundingClientRect();
           if(root){const surface=pixiApp.canvas.getBoundingClientRect();
             // The deal aims at where the cards will wait — out in front of the

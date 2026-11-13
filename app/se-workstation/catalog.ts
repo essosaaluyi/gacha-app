@@ -9,7 +9,7 @@ export type Cue = {
   category: Category;
   timing: string;
   detail?: string;
-  status?: "条件付き" | "通常筐体では抑止" | "未使用";
+  status?: "条件付き" | "未使用";
   video?: string;
   reference?: { href: string; label: string };
   volume?: number;
@@ -28,13 +28,14 @@ export const cues: Cue[] = [
   { id: "chanceCardLand", title: "Chanceカードの着地", category: "筐体・カード", timing: "Chanceがテーブルに収まった瞬間。通常のカード着地音と同時。", status: "条件付き" },
   { id: "reply", title: "Reply成立", category: "筐体・カード", timing: "Replyの手で3枚目のめくりを開始した瞬間。", detail: "素材の先頭0.70秒をスキップ。COLLECTIONの追加ピックではモードの制限で発音しない。", status: "条件付き" },
   { id: "coinCard", title: "Coin成立", category: "筐体・カード", timing: "Coinの手で3枚目のめくりを開始した瞬間。", detail: "COLLECTIONの得点カードにも呼び出しはあるが、モードの制限で発音しない。", status: "条件付き" },
-  { id: "discard", title: "古いカードの退場音", category: "筐体・カード", timing: "従来の描画経路で、次の手の前に旧カードを120ms間隔で退場させる時。", detail: "現行の通常筐体はこの処理を通らない。COLLECTIONのハズレもモードの制限で発音しない。", status: "通常筐体では抑止" },
+  { id: "discard", title: "古いカードの退場音", category: "筐体・カード", timing: "2回目のDRAW。セット済みのカードが排出口から浮き上がる間に、排出音と重ねて1回鳴る。", detail: "従来の描画経路では、旧カードの退場時に120ms間隔で鳴る。", reference: cabinet },
   { id: "attackOnTarget", title: "Attack専用の着地音（候補）", category: "筐体・カード", timing: "音源登録のみ。現行のAttack着地では通常のカード着地音が鳴る。", status: "未使用" },
   { id: "oldReveal", title: "旧めくり音ファイル", category: "筐体・カード", timing: "ファイルのみ。現行のめくり音は card-flip-only.v1.wav。", status: "未使用" },
   { id: "battleOpening", title: "バトル開始ムービー", category: "バトル演出", timing: "オープニングが画面に出る時。動画の音声はミュート。", video: "/videos/openings/battle-opening.v2.mp4" },
   { id: "roundInsert", title: "ROUND表示", category: "バトル演出", timing: "ラウンド紹介のバナーが出た瞬間。", detail: "COLLECTION終了にも遅延呼び出しがある。COLLECTIONのモード中は発音しない。", reference: cabinet },
+  { id: "characterSummon", title: "キャラクター召喚", category: "バトル演出", timing: "敵・味方のキャラクター召喚が始まる時に、従来のカードリビールSEを鳴らす。", reference: cabinet },
   { id: "fatalModeInsert", title: "プレイヤー FATAL MODE 開始", category: "バトル演出", timing: "プレイヤー側のFATAL MODE開始の全画面インサートが有効になった時。", reference: { href: "/battle?fatal-preview=safe-clear&player-fatal-mode-opening-insert=once", label: "FATAL MODE開始プレビュー" } },
-  { id: "vibration", title: "敵撃破の振動予告", category: "バトル演出", timing: "敵撃破が決まっているDRAWの抽選確定時に、25%で鳴る。", detail: "BAR CHANCEの衝撃音・失敗音も同じ素材を使用。", status: "条件付き" },
+  { id: "vibration", title: "敵撃破の振動予告", category: "バトル演出", timing: "敵撃破が決まっているDRAWの抽選確定時に、25%で鳴る。", detail: "BAR CHANCEの衝撃音も同じ素材を使用。", status: "条件付き" },
   { id: "chanceUpDraw", title: "Chanceの排出予告", category: "バトル演出", timing: "Chanceを含む手で60%の条件を満たした時。現行筐体では、排出モーション後のカード公開準備に入る時に鳴る。", status: "条件付き" },
   { id: "chanceIcon", title: "CHANCEアイコン・テンパイ表示", category: "バトル演出", timing: "Chance／テンパイのアイコン、または煽り中のCHANCE表示が出た瞬間。", detail: "COLLECTIONの倍率カードではモードの制限で発音しない。", status: "条件付き" },
   { id: "tableShine", title: "テーブルの光の走り", category: "バトル演出", timing: "BAR CHANCE以外で、3枚が同じ図柄またはChanceを含む手が揃った時。演出開始の500ms後に光のスイープと同時。", status: "条件付き" },
@@ -42,7 +43,6 @@ export const cues: Cue[] = [
   { id: "textInsertFakeout", title: "攻撃煽りのセリフ表示", category: "バトル演出", timing: "攻撃煽りの新しいセリフを表示する時。プレイヤー側・敵側の両方。", reference: fakeout },
   { id: "pointsGained", title: "通常バトルのChance報酬", category: "バトル演出", timing: "Chance報酬を得て、ポイントの演出が画面に出る瞬間。", detail: "COLLECTIONのCOLLECTカードではモードの制限で発音しない。" },
   { id: "barImpact", title: "BAR CHANCEの着地衝撃", category: "ボーナス", timing: "BAR CHANCEでEmpty以外が着地して、画面が揺れる瞬間。", detail: "1枚目0.78倍、2枚目0.95倍、成功時の3枚目1.20倍。単体試聴は1枚目。", volume: 0.78, status: "条件付き" },
-  { id: "barFailure", title: "BAR CHANCEの失敗", category: "ボーナス", timing: "BAR CHANCEでEmptyが着地した瞬間。", volume: 0.55, status: "条件付き" },
   { id: "bonusRegularOpen", title: "REGULAR BONUS 開始", category: "ボーナス", timing: "REGULARの開始映像が出た瞬間。SUPER MAXがこの映像から始まる場合も同じ。", video: "/videos/openings/bonus-regular.mp4" },
   { id: "bonusSuperOpen", title: "SUPER BONUS 開始", category: "ボーナス", timing: "SUPERの開始映像が出た瞬間。SUPER MAXがこの映像から始まる場合も同じ。", video: "/videos/openings/bonus-super.mp4" },
   { id: "freeze", title: "ボーナスのフリーズ", category: "ボーナス", timing: "SUPER MAXへの昇格で、開始映像がフリーズ映像に切り替わる時。BAR CHANCE側にも呼び出しがあり、ボーナスモードの時だけ発音する。", video: "/videos/openings/freeze.mp4", status: "条件付き" },

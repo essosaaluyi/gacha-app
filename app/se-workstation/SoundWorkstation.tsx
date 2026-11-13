@@ -12,7 +12,7 @@ import styles from "./workstation.module.css";
 const categories = ["すべて", "筐体・カード", "バトル演出", "ボーナス", "ガチャ"] as const;
 const beats = [
   { label: "DRAW 1", action: "カードをセット", ids: ["buttonPush", "cardSetToDisk"], duration: 850 },
-  { label: "DRAW 2", action: "カードを排出", ids: ["buttonPush", "drawCard"], duration: TWO_STEP_DEAL_MS + 220 },
+  { label: "DRAW 2", action: "カードを排出", ids: ["buttonPush", "drawCard", "discard"], duration: TWO_STEP_DEAL_MS + 220 },
   { label: "めくり", action: "カードをクリック", ids: ["cardReveal"], duration: CABINET_PRESENT_REVEAL_MS },
   { label: "着地", action: "Chanceが台に収まる", ids: ["cardPlaced", "chanceCardLand"], duration: 0 },
 ] as const;

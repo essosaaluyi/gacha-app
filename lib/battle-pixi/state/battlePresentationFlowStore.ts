@@ -29,6 +29,8 @@ function emptySummonState(): BattleSummonState {
     playerIndex: null, player: "absent", playerStartedAt: null };
 }
 
+const summonSounds = new Set<string>();
+
 let state: BattlePresentationFlowState = {
   phase: "round_intro",
   reason: "battle-reset",
@@ -116,6 +118,13 @@ export function completeBattleSummon(side: "enemy" | "player", identity: string 
   notify();
 }
 
+export function claimBattleSummonSound(side: "enemy" | "player", identity: string | number) {
+  const key = `${side}:${identity}`;
+  if (summonSounds.has(key)) return false;
+  summonSounds.add(key);
+  return true;
+}
+
 export function restoreBattleSummons(enemyKey: string, playerIndex: number | null) {
   state = { ...state, summon: { enemyKey, enemy: "ready", enemyStartedAt: null,
     playerIndex, player: playerIndex === null ? "absent" : "ready", playerStartedAt: null } };
@@ -127,6 +136,7 @@ export function isBattlePresentationLocked() {
 }
 
 export function resetBattlePresentationFlow() {
+  summonSounds.clear();
   state = { ...state, summon: emptySummonState() };
   setBattlePresentationPhase("round_intro", "battle-reset");
 }
