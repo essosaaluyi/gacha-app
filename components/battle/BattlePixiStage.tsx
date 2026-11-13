@@ -3787,11 +3787,14 @@ export default function BattlePixiStage({
           present: cabinetMode && card instanceof PerspectiveMesh ? (swapFace, complete) => {
             const { verticalProjection, clipTop } = revealFrame();
             stage.addChild(card);
+            const summonLight = new Graphics();
+            summonLight.blendMode = "add";
+            stage.addChild(summonLight);
             let finished = false, cancel = () => {};
             // The card is already waiting out in front, so this is only the
             // second half of the old motion: turn, then come down. fromPresent
             // leads the turn, which is what the reference clip does.
-            cancel = animateCabinetManualReveal({ rest: cardQuad, verticalProjection, clipTop, fromPresent: true,
+            const stop = animateCabinetManualReveal({ rest: cardQuad, verticalProjection, clipTop, fromPresent: true,
               now: () => presentationClock.now(), blocked: presentationBlocked, alive,
               schedule: callback => window.requestAnimationFrame(callback), cancelFrame: id => window.cancelAnimationFrame(id),
               onFrame: sample => {
@@ -3799,10 +3802,31 @@ export default function BattlePixiStage({
                 setMeshQuad(card, toLocalQuad([...sample.quad] as Quad, landingOrigin.x, landingOrigin.y, L.CARD_SCALE));
                 hoverShadows[cardIndex].visible = sample.raised > 0.001;
                 hoverShadows[cardIndex].alpha = sample.raised * 0.55;
+                summonLight.clear();
+                if (sample.flash > 0) {
+                  summonLight.poly([...sample.quad], true).fill({ color: 0xe4ffff, alpha: sample.flash })
+                    .stroke({ width: 5, color: 0xbaffec, alpha: sample.flash });
+                }
+                if (sample.rays > 0) {
+                  for (let ray = 0; ray < 5; ray++) {
+                    const t = (ray + 1) / 6;
+                    const [x0, y0, x1, y1, x2, y2, x3, y3] = sample.quad;
+                    const x = x3 + (x2 - x3) * t;
+                    const y = y3 + (y2 - y3) * t;
+                    const height = y - (y0 + (y1 - y0) * t);
+                    const length = height * (0.85 + 0.15 * (ray % 3));
+                    const width = 3 + ray % 3;
+                    summonLight.poly([x - width, y, x - 1, y - length, x + 1, y - length, x + width, y], true)
+                      .fill({ color: 0xadffe8, alpha: sample.rays * 0.72 });
+                  }
+                  summonLight.poly([...sample.quad], true)
+                    .stroke({ width: 4, color: 0xa7ffec, alpha: sample.rays * 0.8 });
+                }
               },
               onFace: swapFace,
-              onComplete: () => { finished = true; revealMotions.delete(cancel); hoverShadows[cardIndex].visible = false; complete(); },
+              onComplete: () => { finished = true; summonLight.destroy(); revealMotions.delete(cancel); hoverShadows[cardIndex].visible = false; complete(); },
             });
+            cancel = () => { stop(); summonLight.destroy(); };
             if (!finished) revealMotions.add(cancel);
           } : undefined,
           onRevealComplete: () => {

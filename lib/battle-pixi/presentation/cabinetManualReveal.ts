@@ -20,8 +20,8 @@ const PRESENT_FOLD_OUT_MS = 140;
 const PRESENT_DESCEND_FROM_MS = 140;
 const PRESENT_DESCEND_MS = 520;
 const PRESENT_FLIP_END_MS = PRESENT_FACE_MS + PRESENT_FOLD_OUT_MS;
-const PRESENT_CONTACT_MS = 510;
-const PRESENT_SETTLE_MS = 140;
+const PRESENT_DROP_MS = 510;
+const PRESENT_CONTACT_MS = 610;
 
 const ease = (value:number) => {const t=Math.max(0,Math.min(1,value));return t*t*(3-2*t);};
 
@@ -50,17 +50,14 @@ export function sampleCabinetManualReveal(rest:CardQuad,time:number,verticalProj
   let raised=fromPresent
     ? 1-ease((time-PRESENT_DESCEND_FROM_MS)/PRESENT_DESCEND_MS)
     : (time<640 ? ease(time/180) : 1-ease((time-640)/340));
-  let pitch = 0;
-  let approach = 0;
+  let flash = 0;
+  let rays = 0;
   if (fromPresent && time >= PRESENT_FLIP_END_MS) {
     const takeoff = 1 - ease((PRESENT_FLIP_END_MS - PRESENT_DESCEND_FROM_MS) / PRESENT_DESCEND_MS);
-    const drop = Math.min(1, (time - PRESENT_FLIP_END_MS) / (PRESENT_CONTACT_MS - PRESENT_FLIP_END_MS));
-    const settle = Math.min(1, Math.max(0, (time - PRESENT_CONTACT_MS) / PRESENT_SETTLE_MS));
-    // Accelerate into the slot. The near edge catches first, then the far
-    // edge closes with a short, damped recoil.
-    raised = takeoff * (1 - drop * drop);
-    approach = Math.sin(Math.PI * drop) * (1 - drop);
-    pitch = 28 * drop ** 3 * (1 - settle) ** 2 * Math.cos(settle * Math.PI * 1.5) ** 2;
+    const drop = ease((time - PRESENT_DROP_MS) / (PRESENT_CONTACT_MS - PRESENT_DROP_MS));
+    raised = takeoff * (1 - drop);
+    flash = 0.72 * ease((time - PRESENT_FLIP_END_MS) / 85) * (1 - 0.6 * ease((time - 405) / 105)) * (1 - drop);
+    rays = ease((time - 545) / 65) * (1 - ease((time - PRESENT_CONTACT_MS) / 90));
   }
   const q=interpolateCardQuad(rest,peak,raised);
   const faceAt=fromPresent?PRESENT_FACE_MS:CABINET_MANUAL_FACE_MS;
@@ -71,14 +68,8 @@ export function sampleCabinetManualReveal(rest:CardQuad,time:number,verticalProj
       : ease((time-faceAt)/PRESENT_FOLD_OUT_MS))
     : (time<100 ? 1 : time<250 ? 1-ease((time-100)/150) : ease((time-250)/170));
   const c=cardQuadCenter(q),factor=.018+.982*fold;
-  // The face comes briefly toward the viewer, then snaps down into perspective.
-  // The far edge lifts at impact while the near edge stays anchored.
-  const quad=q.map((value,i)=> {
-    if (i % 2 === 0) return c.x + (value - c.x) * factor * (1 + 0.32 * approach);
-    const y = value + ((value - c.y) * 0.32 - 22) * approach;
-    return i < 4 ? y - pitch : y;
-  }) as unknown as CardQuad;
-  return {quad,raised,face:time>=faceAt,done:time>=(fromPresent?CABINET_PRESENT_REVEAL_MS:CABINET_MANUAL_REVEAL_MS)};
+  const quad=q.map((value,i)=>i%2?value:c.x+(value-c.x)*factor) as unknown as CardQuad;
+  return {quad,raised,flash,rays,face:time>=faceAt,done:time>=(fromPresent?CABINET_PRESENT_REVEAL_MS:CABINET_MANUAL_REVEAL_MS)};
 }
 export function animateCabinetManualReveal(options:{rest:CardQuad;verticalProjection:number;clipTop:number;now:()=>number;blocked:()=>boolean;alive:()=>boolean;fromPresent?:boolean;
   schedule:(callback:()=>void)=>number;cancelFrame:(id:number)=>void;onFrame:(sample:ReturnType<typeof sampleCabinetManualReveal>)=>void;onFace:()=>void;onComplete:()=>void}) {
