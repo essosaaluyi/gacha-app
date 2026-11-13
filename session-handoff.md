@@ -2,6 +2,9 @@
 
 新しい記録は一番上に追加すること。
 
+### 【完了】左下パネルに重なるテーブルの影を除去 ／ Codex
+- `app/globals.css` の `.bcab-card-table` から黒い外側の影を削除。差分チェック通過。実画面での縦線消失は未確認。
+
 ### 【完了・調査】「DRAWが押せなくなって止まる」の原因 ／ Claude ／ 2026-11-13 ／ ブランチ：main
 - **不具合ではなかった**。テーブルに出たカードは**プレイヤーが1枚ずつクリックしてめくる**仕様で、3枚めくり終わるまで DRAW は閉じたまま。実際に3枚クリックしたら `phase` が `draw_reveal/automatic-eject` → `next_round_ready/reveal-complete` に進み、DRAW が即開いた。
 - 状態を読むために `components/battle/BattleScreen.tsx` に開発時のみの QA フック `window.__drawLock()` を追加（`cabinetDrawLocked` の各項目を返す）。止まっている状態は `dealPhase:"ready"` / `phase:"draw_reveal"` / `reason:"automatic-eject"` / `drawLocked:true`、他は正常。`drawLocked` の式（BattleScreen.tsx:720）がそのまま効いている。
