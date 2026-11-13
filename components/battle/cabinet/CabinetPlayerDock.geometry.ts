@@ -1,10 +1,40 @@
 /** Unscaled 1920x1080 stage pixels; shared by the dock and Kai's deal motion. */
 export const CABINET_PLAYER_DOCK_OUTLET = { x: 40, y: 604, width: 256, height: 100, border: 6 } as const;
-export const CABINET_PLAYER_DOCK_BACK_RECTS = [
-  { x: 84, y: 650, width: 168, height: 120 },
-  { x: 84, y: 670, width: 168, height: 120 },
-  { x: 84, y: 690, width: 168, height: 120 },
-] as const;
+
+/**
+ * The slot a card actually comes out of, in the same stage pixels.
+ *
+ * Read off .throat and .lip in CabinetPlayerDock.module.css, both of which are
+ * laid out against the outlet's padding box (the 6px border is transparent but
+ * still there): the throat is the opening you can see into, and the lip is the
+ * bar a card crosses on its way out. Anything of a card above y1 is inside the
+ * machine and only shows through the x0..x1 column.
+ */
+export const CABINET_PLAYER_DOCK_MOUTH = { x0: 66, x1: 270, y0: 625, y1: 700 } as const;
+
+/**
+ * A card back at its own proportions.
+ *
+ * The art is 132x198, so a card is 2:3 and nothing may change that. It used to
+ * be 168x120 here — a box sized to sit inside a 100px-tall mouth — which made
+ * every dealt card start at 1.32:1 and stretch back to 0.67:1 over the whole
+ * flight. The card is the right shape now and the mouth hides it instead.
+ */
+export const CABINET_PLAYER_DOCK_CARD = { width: 168, height: 252 } as const;
+
+/**
+ * Where the three waiting cards sit: inside the dispenser, stacked 20px deeper
+ * each, with the first one's bottom edge at the lip. Only the slot shows any
+ * of them, so the player sees three card edges in the mouth rather than three
+ * flattened cards hanging off it.
+ */
+export const CABINET_PLAYER_DOCK_BACK_RECTS = [0, 1, 2].map((index) => ({
+  x: 84,
+  y: CABINET_PLAYER_DOCK_MOUTH.y1 - CABINET_PLAYER_DOCK_CARD.height - index * 20,
+  width: CABINET_PLAYER_DOCK_CARD.width,
+  height: CABINET_PLAYER_DOCK_CARD.height,
+})) as readonly { x: number; y: number; width: number; height: number }[];
+
 /** Natural card art pitched out of the mouth, centred below the player dock.
  * The same projected corners are used by DRAW1 and the first DRAW2 frame. */
 export const CABINET_PLAYER_DOCK_BACK_QUADS = CABINET_PLAYER_DOCK_BACK_RECTS.map(rect =>
