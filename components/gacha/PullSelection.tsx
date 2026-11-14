@@ -1,4 +1,6 @@
 "use client";
+
+import CroppedCardImage from "@/components/gacha/CroppedCardImage";
 import { useState } from "react";
 import Image from "next/image";
 import { getPlayerCharacterName } from "@/lib/battle-pixi/config/characterNames";
@@ -11,7 +13,7 @@ export default function PullSelection({askPullConfirm,costs,fiveUnavailableReaso
  return <section className={styles.root} aria-label="Five-card pack">
   <header className={styles.heading}><p>DESTINY LEGENDS</p><h1>One pack. Five discoveries.</h1><span>5 cards in every pack</span></header>
   <div className={styles.showcase}>
-   <div className={styles.strip} aria-label="Cards available in this pack">{cards.map(card=><Image key={card.name} src={card.image} alt={getPlayerCharacterName(card).label} width={100} height={150} unoptimized />)}</div>
+   <div className={styles.strip} aria-label="Cards available in this pack">{cards.map(card=><div className={styles.stripCard} key={card.name}><CroppedCardImage src={card.image} alt={getPlayerCharacterName(card).label} /></div>)}</div>
    <div className={styles.pack}><Image src="/images/pack-isolated-legends-v1-r01.png" alt="Destiny Wars — Isolated Legends Volume 1 card pack" width={480} height={640} unoptimized priority /></div>
   </div>
   <div className={styles.actions}><div className={styles.price}><strong>{costs.five.toLocaleString()}</strong><span>points / pack · 5 cards</span></div>

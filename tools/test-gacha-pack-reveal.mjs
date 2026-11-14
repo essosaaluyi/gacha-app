@@ -207,8 +207,11 @@ test("all 15 fronts share cropped image/root/contour geometry and retain native 
     assert.equal(buttons[i].props.style.aspectRatio, frame.aspectRatio);
     assert.equal(viewports[i].props.style.aspectRatio, frame.aspectRatio);
     assert.equal(viewports[i].props.style.clipPath, frame.clipPath);
-    assert.equal(contours[i].props.d, frame.outlinePath);
+    if (results[i].rarity !== "R") {
+      assert.equal(contours.shift().props.d, frame.outlinePath);
+    }
   }
+  assert.equal(contours.length, 0);
   assert.equal(page.crop("/images/other.webp"), null);
   assert.equal(JSON.stringify(results), before);
 });

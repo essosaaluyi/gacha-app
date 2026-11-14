@@ -1,5 +1,7 @@
 "use client";
 
+import CroppedCardImage from "@/components/gacha/CroppedCardImage";
+
 import CabinetTwoStepCards, { type TwoStepCardsHandle } from "@/components/battle/cabinet/CabinetTwoStepCards";
 import type { CabinetEject3DGeometry } from "@/components/battle/cabinet/CabinetEjectCards3D";
 import CabinetPlayerDock from "@/components/battle/cabinet/CabinetPlayerDock";
@@ -1140,7 +1142,7 @@ export default function BattleScreen() {
             {!summonPending && <div className="bcab-hand" aria-hidden="true">
               {handCards.map((card, index) => (
                 <div className="bcab-hcard" key={`${index}-${card.name}`}>
-                  <img className="bcab-hcard-art" src={card.image} alt="" />
+                  <CroppedCardImage src={card.image} alt="" />
                 </div>
               ))}
 

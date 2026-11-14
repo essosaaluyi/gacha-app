@@ -26,7 +26,7 @@ export default function CabinetPlayerDock({ dropTargetRef, activeCard, accepting
       <div ref={dropTargetRef} className={styles.target}>
         <span className={styles.label}>PLAYER CARD</span>
         {activeCard ? <button type="button" className={styles.card} onClick={onInspect} aria-label={`${activeCard.name}のカード概要を開く`}>
-          <CardFrame src={activeCard.image} alt={activeCard.name} rarity={activeCard.rarity} />
+          <CardFrame src={activeCard.image} alt={activeCard.name} rarity={activeCard.rarity} plain />
         </button> : <div className={styles.empty}><span aria-hidden="true">＋</span><strong>{acceptingDrop ? "手札をここへ" : "PLAYER CARD"}</strong>{acceptingDrop && <small>ドラッグして召喚</small>}</div>}
       </div>
     </section>

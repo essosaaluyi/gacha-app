@@ -1,5 +1,7 @@
 "use client";
 
+import CroppedCardImage from "@/components/gacha/CroppedCardImage";
+
 /* eslint-disable @next/next/no-img-element -- Preserve the existing card artwork and frame. */
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -74,7 +76,7 @@ function OverviewContent({ data, onClose, onConfirm, disabled = false }: Props &
       <section ref={panel} className={styles.dialog} data-card-overview-dialog="true"
         role="dialog" aria-modal="true" aria-labelledby={`${id}-name`}>
         <button ref={closeButton} type="button" className={styles.close} onClick={onClose} aria-label="カード概要を閉じる">×</button>
-        <div className={styles.art}><img src={data.image} alt={`${data.name}のカード`} draggable={false} /></div>
+        <div className={styles.art}><CroppedCardImage src={data.image} alt={`${data.name}のカード`} /></div>
         <div className={styles.information}>
           <p className={styles.eyebrow}>{confirmation ? "召喚しますか？" : "カード概要"}</p>
           <h2 id={`${id}-name`}>{data.name}</h2>

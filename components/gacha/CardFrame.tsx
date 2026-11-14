@@ -11,6 +11,7 @@ type Props = {
   rarity: string;
   inspection?: boolean;
   fill?: boolean;
+  plain?: boolean;
 };
 
 const RARITY_EDGE: Record<string, { colors: readonly string[]; bloom: string; glint: string }> = {
@@ -22,7 +23,7 @@ const RARITY_EDGE: Record<string, { colors: readonly string[]; bloom: string; gl
 
 
 /** Presentation only: existing owner retains clicks, selection, order and state. */
-export default function CardFrame({ src, alt, rarity, inspection = false, fill = false }: Props) {
+export default function CardFrame({ src, alt, rarity, inspection = false, fill = false, plain = false }: Props) {
   const gradientId = useId().replace(/:/g, "");
   const frame = getCardDisplayFrame(src);
   const edge = RARITY_EDGE[rarity] ?? RARITY_EDGE.R;
@@ -33,7 +34,7 @@ export default function CardFrame({ src, alt, rarity, inspection = false, fill =
       height: inspection ? "auto" : "100%", margin: "0 auto",
     }}>
       <CroppedCardImage src={src} alt={alt} />
-          <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none" style={{ filter: `drop-shadow(0 0 3px ${edge.bloom})` }}>
+          {!plain && rarity !== "R" && <svg aria-hidden="true" viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none" style={{ filter: `drop-shadow(0 0 3px ${edge.bloom})` }}>
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
                 {edge.colors.map((color, stop) => <stop key={stop} offset={`${stop / 3 * 100}%`} stopColor={color} />)}
@@ -43,7 +44,7 @@ export default function CardFrame({ src, alt, rarity, inspection = false, fill =
             <path d={frame.outlinePath} pathLength="100" fill="none" stroke={edge.glint} strokeWidth="3.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeDasharray="5 28.333333" className={styles.travelHalo} />
             <path d={frame.outlinePath} pathLength="100" fill="none" stroke={edge.glint} strokeWidth="2.4" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeDasharray="5 28.333333" className={styles.travel} />
             <path d={frame.outlinePath} pathLength="100" fill="none" stroke={`color-mix(in srgb, ${edge.glint} 62%, white)`} strokeWidth="2.5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeDasharray="0.12 33.213333" className={styles.sparkle} />
-          </svg>
+          </svg>}
     </span>
   );
   return inspection || fill ? body : (

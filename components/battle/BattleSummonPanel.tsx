@@ -1,5 +1,7 @@
 "use client";
 
+import CroppedCardImage from "@/components/gacha/CroppedCardImage";
+
 /* eslint-disable @next/next/no-img-element -- Local cabinet card artwork already includes its frame. */
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, PointerEvent, RefObject } from "react";
@@ -223,8 +225,8 @@ function SummonHand({ enemy, cards, selectedIndex, onSelect, onSummon, disabled 
                 suppressPointerClick.current = false;
               }}
             >
-              <img src={choice.card.image} alt="" draggable={false} />
-              <span>{name.displayName || name.code}</span>
+              <div className={styles.handArt}><CroppedCardImage src={choice.card.image} alt="" /></div>
+              <span className={styles.cardName}>{name.displayName || name.code}</span>
             </button>;
           })}
         </div>
@@ -236,7 +238,7 @@ function SummonHand({ enemy, cards, selectedIndex, onSelect, onSummon, disabled 
         <p className={styles.srOnly}>EnterまたはSpaceで概要、Shift+Enterで召喚を確認。Escapeで閉じます。</p>
       </section>
       {ghost && <div className={styles.ghost} style={{ left: ghost.x, top: ghost.y }} aria-hidden="true" data-valid={ghost.inField}>
-        <img src={ghost.choice.card.image} alt="" draggable={false} />
+        <div className={styles.ghostArt}><CroppedCardImage src={ghost.choice.card.image} alt="" /></div>
         <span>{ghost.inField ? "離して召喚を確認" : dropTargetRef ? "左上の召喚ドックへ" : "フィールドへ"}</span>
       </div>}
       <CardOverviewDialog data={overview} onClose={cancelConfirmation} disabled={!canConfirm}
