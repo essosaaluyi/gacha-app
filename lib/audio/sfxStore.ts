@@ -272,11 +272,13 @@ type PlayOptions = {
    * from gameplay code — it is exactly the bleed the gating exists to stop.
    */
   force?: boolean;
+  /** Aborting it fades the cue out over ~150 ms and stops it (e.g. a skipped battle opening). */
+  signal?: AbortSignal;
 };
 
 function start(clip: LoadedClip, name: SfxName, options: PlayOptions) {
   const ctx = getContext();
-  if (!ctx || !runtime.masterGain || muted) return;
+  if (!ctx || !runtime.masterGain || muted || options.signal?.aborted) return;
 
   const source = ctx.createBufferSource();
   source.buffer = clip.buffer;
@@ -290,7 +292,17 @@ function start(clip: LoadedClip, name: SfxName, options: PlayOptions) {
 
   const offset = SFX_START_OFFSET_S[name] ?? 0;
   source.start(0, Math.min(offset, clip.buffer.duration));
+  const signal = options.signal;
+  const fadeOut = () => {
+    const now = ctx.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.15);
+    try { source.stop(now + 0.16); } catch { /* already stopped */ }
+  };
+  signal?.addEventListener("abort", fadeOut, { once: true });
   source.onended = () => {
+    signal?.removeEventListener("abort", fadeOut);
     source.disconnect();
     gain.disconnect();
   };

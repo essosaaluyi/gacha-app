@@ -481,6 +481,21 @@ export default function BattleScreen() {
     }, BATTLE_OPENING_FADE_MS);
   }, []);
 
+  // The opening's sound is a separate cue (the video itself is muted), so a skip
+  // has to stop it too; it fades out with the overlay.
+  const openingSfxRef = useRef<AbortController | null>(null);
+  const skipBattleOpening = useCallback(() => {
+    openingSfxRef.current?.abort();
+    finishBattleOpening();
+  }, [finishBattleOpening]);
+
+  useEffect(() => {
+    if (!openingActive) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") skipBattleOpening(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openingActive, skipBattleOpening]);
+
   // Which scene owns the cabinet screen is read from the collection store
   // itself, not from the presentation phase: resetBattleRun resets the phase
   // on every entry into /battle but leaves the store alone, so a phase check
@@ -672,7 +687,8 @@ export default function BattleScreen() {
       localStorage.removeItem("battle_opening_pending");
       setOpeningActive(true);
       setOpeningChecked(true);
-      playSfx("battleOpening");
+      openingSfxRef.current = new AbortController();
+      playSfx("battleOpening", { signal: openingSfxRef.current.signal });
 
       // Backstop only. The video's own end drives the hand-off; this just
       // guarantees the opening can never strand the player on a black screen.
@@ -1226,6 +1242,11 @@ export default function BattleScreen() {
                 onEnded={finishBattleOpening}
                 onError={finishBattleOpening}
               />
+              {!openingFading && (
+                <button type="button" className="battle-opening-skip" onClick={skipBattleOpening} aria-label="Skip opening movie">
+                  SKIP <span aria-hidden="true">▶▶</span>
+                </button>
+              )}
             </div>
           )}
 

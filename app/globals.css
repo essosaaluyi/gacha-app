@@ -3164,6 +3164,29 @@ body.page-video-active .trust-page {
   display: block;
 }
 
+/* Skip button over the opening movie: bottom-right, fades in after a beat so it
+   does not compete with the first frames. Esc also skips. */
+.battle-opening-skip {
+  position: absolute;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  /* Sized for the 1920-wide stage it lives in (the stage is scaled to fit the window). */
+  padding: 16px 34px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  opacity: 0;
+  animation: battleOpeningSkipIn 400ms ease-out 600ms forwards;
+}
+.battle-opening-skip:hover { background: rgba(0, 0, 0, 0.75); border-color: #fff; }
+.battle-opening-skip:focus-visible { outline: 3px solid #83f2ff; outline-offset: 3px; }
+@keyframes battleOpeningSkipIn { to { opacity: 1; } }
+
 /* Character layer: an opaque mp4, so it sits underneath as a real video
    element and is hardware-decoded rather than blitted frame by frame. */
 .chance-points-reveal-video {
