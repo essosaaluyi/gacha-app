@@ -20,8 +20,7 @@ const PRESENT_FOLD_OUT_MS = 140;
 const PRESENT_DESCEND_FROM_MS = 140;
 const PRESENT_DESCEND_MS = 520;
 const PRESENT_FLIP_END_MS = PRESENT_FACE_MS + PRESENT_FOLD_OUT_MS;
-const PRESENT_DROP_MS = 510;
-const PRESENT_CONTACT_MS = 610;
+export const DEFAULT_LANDING = { floatMs: 140, dropMs: 150, settleMs: 90, lift: 14, pitch: 22 };
 
 const ease = (value:number) => {const t=Math.max(0,Math.min(1,value));return t*t*(3-2*t);};
 
@@ -43,21 +42,24 @@ function legacyRevealQuad(rest:CardQuad,verticalProjection:number,clipTop:number
   return raisedQuad(rest, verticalProjection, clipTop, width, 46);
 }
 
-export function sampleCabinetManualReveal(rest:CardQuad,time:number,verticalProjection=1,clipTop=0,fromPresent=false) {
+export function sampleCabinetManualReveal(rest:CardQuad,time:number,verticalProjection=1,clipTop=0,fromPresent=false,landing=DEFAULT_LANDING) {
   const peak=fromPresent ? cabinetPresentQuad(rest,verticalProjection,clipTop) : legacyRevealQuad(rest,verticalProjection,clipTop);
   // Waiting out front: start raised and come down. Starting at the bay: rise,
   // hold, then settle back.
   let raised=fromPresent
     ? 1-ease((time-PRESENT_DESCEND_FROM_MS)/PRESENT_DESCEND_MS)
     : (time<640 ? ease(time/180) : 1-ease((time-640)/340));
-  let flash = 0;
-  let rays = 0;
+  let lift = 0;
+  let pitch = 0;
+  const duration = PRESENT_FLIP_END_MS + landing.floatMs + landing.dropMs + landing.settleMs;
   if (fromPresent && time >= PRESENT_FLIP_END_MS) {
     const takeoff = 1 - ease((PRESENT_FLIP_END_MS - PRESENT_DESCEND_FROM_MS) / PRESENT_DESCEND_MS);
-    const drop = ease((time - PRESENT_DROP_MS) / (PRESENT_CONTACT_MS - PRESENT_DROP_MS));
-    raised = takeoff * (1 - drop);
-    flash = 0.72 * ease((time - PRESENT_FLIP_END_MS) / 85) * (1 - 0.6 * ease((time - 405) / 105)) * (1 - drop);
-    rays = ease((time - 545) / 65) * (1 - ease((time - PRESENT_CONTACT_MS) / 90));
+    const afterFlip = time - PRESENT_FLIP_END_MS;
+    const drop = Math.max(0, Math.min(1, (afterFlip - landing.floatMs) / landing.dropMs));
+    const settle = ease((time - duration + landing.settleMs) / landing.settleMs);
+    raised = takeoff * (1 - drop ** 2);
+    lift = landing.lift * ease(afterFlip / Math.max(1, landing.floatMs)) * (1 - drop);
+    pitch = landing.pitch * drop ** 3 * (1 - settle);
   }
   const q=interpolateCardQuad(rest,peak,raised);
   const faceAt=fromPresent?PRESENT_FACE_MS:CABINET_MANUAL_FACE_MS;
@@ -68,8 +70,8 @@ export function sampleCabinetManualReveal(rest:CardQuad,time:number,verticalProj
       : ease((time-faceAt)/PRESENT_FOLD_OUT_MS))
     : (time<100 ? 1 : time<250 ? 1-ease((time-100)/150) : ease((time-250)/170));
   const c=cardQuadCenter(q),factor=.018+.982*fold;
-  const quad=q.map((value,i)=>i%2?value:c.x+(value-c.x)*factor) as unknown as CardQuad;
-  return {quad,raised,flash,rays,face:time>=faceAt,done:time>=(fromPresent?CABINET_PRESENT_REVEAL_MS:CABINET_MANUAL_REVEAL_MS)};
+  const quad=q.map((value,i)=>i%2 ? value - lift - (i < 4 ? pitch : 0) : c.x+(value-c.x)*factor) as unknown as CardQuad;
+  return {quad,raised,face:time>=faceAt,done:time>=(fromPresent?duration:CABINET_MANUAL_REVEAL_MS)};
 }
 export function animateCabinetManualReveal(options:{rest:CardQuad;verticalProjection:number;clipTop:number;now:()=>number;blocked:()=>boolean;alive:()=>boolean;fromPresent?:boolean;
   schedule:(callback:()=>void)=>number;cancelFrame:(id:number)=>void;onFrame:(sample:ReturnType<typeof sampleCabinetManualReveal>)=>void;onFace:()=>void;onComplete:()=>void}) {
