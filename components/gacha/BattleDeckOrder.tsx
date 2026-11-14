@@ -9,45 +9,10 @@ type Props = {
   cards: Card[];
 };
 
-function shuffleCards(cards: Card[]) {
-  const next = [...cards];
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-  }
-
-  return next;
-}
-
 export default function BattleDeckOrder({ cards }: Props) {
   const router = useRouter();
-  const [orderedCards, setOrderedCards] = useState(cards);
-  const [shuffleUsed, setShuffleUsed] = useState(false);
-  const [shuffling, setShuffling] = useState(false);
-
-  const orderLabel = useMemo(
-    () => (orderedCards.length === 1 ? "1" : `1-${orderedCards.length}`),
-    [orderedCards.length]
-  );
-
-  const shuffleOnce = () => {
-    if (shuffleUsed || shuffling || orderedCards.length <= 1) return;
-
-    setShuffling(true);
-    const audio = new Audio("/audio/card-flip-se.wav");
-    audio.volume = 0.85;
-    void audio.play().catch(() => undefined);
-
-    window.setTimeout(() => {
-      setOrderedCards(shuffleCards(orderedCards));
-      setShuffleUsed(true);
-      setShuffling(false);
-    }, 520);
-  };
-
   const beginBattle = () => {
-    localStorage.setItem("battle_player_cards", JSON.stringify(orderedCards));
+    localStorage.setItem("battle_player_cards", JSON.stringify(cards));
     localStorage.removeItem("pending_battle_cards");
     localStorage.removeItem("battle_resume_requested");
     localStorage.setItem("battle_opening_pending", "true");
@@ -60,25 +25,14 @@ export default function BattleDeckOrder({ cards }: Props) {
         <div>
           <h3 className="text-2xl font-bold">Battle Hand</h3>
           <p className="text-sm text-zinc-300">
-            Hand cards {orderLabel}. See the enemy, then choose a card to summon.
+            {cards.length} cards in your hand. See the enemy, then choose a card to summon.
           </p>
         </div>
 
-        <button
-          onClick={shuffleOnce}
-          disabled={shuffleUsed || shuffling || orderedCards.length <= 1}
-          className={`px-5 py-3 rounded-xl font-bold ${
-            shuffleUsed || shuffling || orderedCards.length <= 1
-              ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-              : "bg-yellow-600 hover:bg-yellow-500 text-white"
-          }`}
-        >
-          {shuffling ? "Shuffling..." : shuffleUsed ? "Shuffle Used" : "Shuffle?(1)"}
-        </button>
       </div>
 
-      <div className={`grid grid-cols-5 gap-2 md:gap-4 mb-6 ${shuffling ? "battle-order-shuffling" : ""}`}>
-        {orderedCards.map((card, index) => (
+      <div className="grid grid-cols-5 gap-2 md:gap-4 mb-6">
+        {cards.map((card, index) => (
           <button
             key={`${card.name}-${card.image}-${index}`}
             onClick={() => undefined}
@@ -97,17 +51,11 @@ export default function BattleDeckOrder({ cards }: Props) {
         ))}
       </div>
 
-      <button
-        onClick={beginBattle}
-        aria-label="Begin battle"
-        className="group animate-battleGlow hover:scale-105 active:scale-95 transition-transform duration-200 w-full flex justify-center"
-      >
-        <img
-          src="/images/beginbattle.webp"
-          alt=""
-          className="w-full max-w-[800px] object-contain drop-shadow-[0_0_25px_rgba(59,130,246,0.7)] group-hover:drop-shadow-[0_0_40px_rgba(96,165,250,1)] transition-all duration-300"
-        />
-      </button>
+      <div className="flex justify-center">
+        <button type="button" onClick={beginBattle} className="site-primary w-full sm:max-w-xs">
+          Begin battle <span aria-hidden="true">→</span>
+        </button>
+      </div>
 
       {/* This screen used to be forward-only: once you arrived, browser-back was
           the sole way out, and the pulled cards are already banked by then. */}

@@ -9,6 +9,7 @@ const ease = (n: number) => { const t = THREE.MathUtils.clamp(n, 0, 1); return t
 export async function createRevealScene(host: HTMLDivElement, cards: readonly RevealCard[], packImage: string, reduced: boolean, onReady: () => void, onFailure: () => void, signal: AbortSignal): Promise<RevealScene> {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.localClippingEnabled = true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x000000, 0);
   host.appendChild(renderer.domElement);
@@ -133,18 +134,21 @@ export async function createRevealScene(host: HTMLDivElement, cards: readonly Re
     ]);
     if (destroyed) throw new Error("Reveal disposed");
     const faceGeometry = geometry(new THREE.PlaneGeometry(2, 3));
-    const stockGeometry = geometry(new THREE.BoxGeometry(2.01, 3.01, 0.035));
-    const edge = material(new THREE.MeshStandardMaterial({ color: 0xc5bc99, roughness: 0.48, metalness: 0.25 }));
+    const packMouth = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.6);
+    const clippingPlanes = [packMouth];
+    const glossMeshes: THREE.Mesh[] = [];
+    const stockGeometry = geometry(new THREE.BoxGeometry(2.002, 3.002, 0.007));
+    const edge = material(new THREE.MeshStandardMaterial({ color: 0xc5bc99, clippingPlanes, roughness: 0.48, metalness: 0.25 }));
     art.forEach(({ front, back }, i) => {
       const card = new THREE.Group();
       // Equal physical height; preserve the cropped front's native proportions.
       const frontImage = front.image as HTMLCanvasElement;
       card.scale.x = (frontImage.width / frontImage.height) / (2 / 3);
       card.add(new THREE.Mesh(stockGeometry, edge));
-      const a = new THREE.Mesh(faceGeometry, material(new THREE.MeshBasicMaterial({ map: front, transparent: true, alphaTest: 0.08 })));
-      a.position.z = 0.019;
-      const b = new THREE.Mesh(faceGeometry, material(new THREE.MeshBasicMaterial({ map: back, transparent: true, alphaTest: 0.08 })));
-      b.position.z = -0.019;
+      const a = new THREE.Mesh(faceGeometry, material(new THREE.MeshBasicMaterial({ map: front, transparent: true, alphaTest: 0.08, clippingPlanes })));
+      a.position.z = 0.004;
+      const b = new THREE.Mesh(faceGeometry, material(new THREE.MeshBasicMaterial({ map: back, transparent: true, alphaTest: 0.08, clippingPlanes })));
+      b.position.z = -0.004;
       b.rotation.y = Math.PI;
       card.add(a, b);
       const rarity = cards[i].rarity;
@@ -163,10 +167,12 @@ export async function createRevealScene(host: HTMLDivElement, cards: readonly Re
             }`,
         }));
         const gloss = new THREE.Mesh(faceGeometry, sheen);
-        gloss.position.z = 0.021;
+        gloss.position.z = 0.005;
+        gloss.visible = false;
+        glossMeshes.push(gloss);
         card.add(gloss);
       }
-      card.position.set(i * 0.008, -i * 0.012, -i * 0.055);
+      card.position.set(i * 0.008, -i * 0.012, -i * 0.012);
       stack.add(card);
       cardGroups.push(card);
     });
@@ -246,8 +252,10 @@ export async function createRevealScene(host: HTMLDivElement, cards: readonly Re
         stack.position.y = -0.85 + rise * 1.5 - flip * 0.65;
         stack.rotation.y = Math.PI * (1 - flip);
         stack.rotation.z = (1 - flip) * -0.055;
+        // Reveal only the part of each card above the open foil mouth.
+        packMouth.constant = -pack.position.y - (packHeight / 2 - capHeight);
         stack.visible = t > 0.26;
-        if (t >= 1) { ready = true; pack.visible = false; stack.visible = true; onReady(); }
+        if (t >= 1) { packMouth.constant = 100; glossMeshes.forEach(mesh => { mesh.visible = true; }); ready = true; pack.visible = false; stack.visible = true; onReady(); }
       } else {
         const damping = 1 - Math.exp(-dt * 18);
         stack.rotation.y = THREE.MathUtils.lerp(stack.rotation.y, tiltX * 0.95, damping);

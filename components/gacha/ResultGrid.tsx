@@ -43,7 +43,7 @@ export default function ResultGrid({ results, setSelectedImage }: Props) {
   if (results.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8" data-testid="gacha-result-grid">
+    <div className="mx-auto grid w-full max-w-[660px] grid-cols-3 gap-3 mb-6 sm:grid-cols-5 sm:gap-4" data-testid="gacha-result-grid">
       {results.map((card, index) => {
         const frame = getCardDisplayFrame(card.image);
         return (

@@ -276,9 +276,12 @@ export default function GachaPage() {
     setPackFinished(true);
   };
 
-  const continueToBattleOrder = () => {
-    localStorage.setItem("pending_battle_cards", JSON.stringify(results));
-    router.push("/battle-order");
+  const beginBattle = () => {
+    localStorage.setItem("battle_player_cards", JSON.stringify(results));
+    localStorage.removeItem("pending_battle_cards");
+    localStorage.removeItem("battle_resume_requested");
+    localStorage.setItem("battle_opening_pending", "true");
+    router.push("/battle");
   };
 
   return (
@@ -340,19 +343,11 @@ export default function GachaPage() {
   setSelectedImage={setSelectedImage}
 />
 
-            <button
-              onClick={continueToBattleOrder}
-              className="group mt-8 animate-battleGlow hover:scale-105 active:scale-95 transition-transform duration-200 w-full flex flex-col items-center gap-2"
-            >
-              <span className="text-sm font-black tracking-[0.3em] text-blue-200">
-                CONTINUE TO BATTLE
-              </span>
-              <img
-                src="/images/beginbattle.webp"
-                alt="Continue to Battle"
-                className="w-full max-w-[760px] object-contain drop-shadow-[0_0_25px_rgba(59,130,246,0.7)] group-hover:drop-shadow-[0_0_42px_rgba(96,165,250,1)] transition-all duration-300"
-              />
-            </button>
+            <div className="mx-auto mb-6 flex w-full max-w-[660px] justify-center">
+              <button type="button" onClick={beginBattle} className="site-primary w-full sm:max-w-xs">
+                Begin battle <SiteIcon name="arrow" />
+              </button>
+            </div>
 
             <ResultActions
   resetPull={() => {
