@@ -78,9 +78,9 @@ test("a click turns the card first, then sets it down", () => {
   const natural = width(rest) + (width(present) - width(rest)) * turned.raised;
   assert.ok(width(turned.quad) / natural > 0.99, "flat again by 320ms");
   assert.ok(turned.raised > 0.4, "still most of the way up when the turn finishes");
-  const floating = sampleCabinetManualReveal(rest, 460, 1.787, 61, true);
+  const floating = sampleCabinetManualReveal(rest, 617, 1.787, 61, true);
   assert.ok(floating.quad[1] < turned.quad[1]);
-  const contact = sampleCabinetManualReveal(rest, 610, 1.787, 61, true);
+  const contact = sampleCabinetManualReveal(rest, 721, 1.787, 61, true);
   assert.deepEqual(contact.quad.slice(4), rest.slice(4));
   assert.ok(contact.quad[1] < rest[1]);
   console.log(`    turn done at 320ms with the card still ${(turned.raised * 100).toFixed(0)}% up`);

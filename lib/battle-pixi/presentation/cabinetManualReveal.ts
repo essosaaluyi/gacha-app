@@ -13,14 +13,14 @@ export const CABINET_MANUAL_FACE_MS = 250;
  * the owner's reference clip does — the card is already face up by the time it
  * starts moving down to the board.
  */
-export const CABINET_PRESENT_REVEAL_MS = 700;
 const PRESENT_FACE_MS = 180;
 const PRESENT_FOLD_IN_MS = 60;
 const PRESENT_FOLD_OUT_MS = 140;
 const PRESENT_DESCEND_FROM_MS = 140;
 const PRESENT_DESCEND_MS = 520;
 const PRESENT_FLIP_END_MS = PRESENT_FACE_MS + PRESENT_FOLD_OUT_MS;
-export const DEFAULT_LANDING = { floatMs: 140, dropMs: 150, settleMs: 90, lift: 14, pitch: 22 };
+export const DEFAULT_LANDING = { floatMs: 297, dropMs: 104, settleMs: 90, lift: 10, pitch: 36 };
+export const CABINET_PRESENT_REVEAL_MS = PRESENT_FLIP_END_MS + DEFAULT_LANDING.floatMs + DEFAULT_LANDING.dropMs + DEFAULT_LANDING.settleMs;
 
 const ease = (value:number) => {const t=Math.max(0,Math.min(1,value));return t*t*(3-2*t);};
 
