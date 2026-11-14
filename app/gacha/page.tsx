@@ -289,21 +289,23 @@ export default function GachaPage() {
       <TopBar />
 
       <div className="max-w-5xl mx-auto px-6">
-        <img
-          src="/images/widebanner.webp"
-          alt="Gacha Banner"
-          className="w-full max-w-5xl mx-auto object-contain rounded-2xl mb-6"
-        />
-
         {!revealPreparing && !isRevealing && !packActive && results.length === 0 && (
-  <>
-    <PullSelection
-      askPullConfirm={askPullConfirm}
-      costs={{ five: fivePullCost }}
-      fiveUnavailableReason={!isGuest ? "5 Pull is currently available in guest mode." : undefined}
-    />
-  </>
-)}
+          <div className="grid items-center gap-4 pt-4 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)] md:gap-8">
+            <figure className="mx-auto w-full max-w-[256px] text-center md:max-w-[300px]">
+              {/* The viewport-sized WebP is served directly from public. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/pack-to-battle.portrait.v1.webp" alt="Open a pack, get cards, and battle to defeat the enemy." width={800} height={1000} className="block h-auto w-full rounded-2xl" />
+              <figcaption className="mt-3 text-sm">Use these five cards in your next battle.</figcaption>
+            </figure>
+            <div className="min-w-0">
+              <PullSelection
+                askPullConfirm={askPullConfirm}
+                costs={{ five: fivePullCost }}
+                fiveUnavailableReason={!isGuest ? "5 Pull is currently available in guest mode." : undefined}
+              />
+            </div>
+          </div>
+        )}
 
         {message && <p className="text-zinc-300 mb-6 text-center">{message}</p>}
 

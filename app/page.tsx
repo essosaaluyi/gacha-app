@@ -54,9 +54,16 @@ export default function HomePage() {
         <Link href="/" className="site-landing-brand" aria-label="Destiny Wars home"><Image src="/images/team-c-title.webp" alt="Destiny Wars" width={160} height={89} unoptimized /></Link>
         <div className="site-landing-tools"><Link href="/how-to-play" className="site-secondary" aria-label="How to play"><SiteIcon name="help" /><span>How to play</span></Link><BGMPlayer /></div>
       </header>
-      <section className="site-landing-grid">
-        <div className="site-landing-copy"><p className="site-eyebrow">A LITTLE LUCK. A NEW DESTINY.</p><h1>Your next card.<br />Your next <span>adventure.</span></h1><p className="site-landing-description">Collect extraordinary characters. Build your hand.<br />Make the decisive draw in Destiny Wars.</p><div className="site-landing-actions"><button type="button" className="site-primary" onClick={handleStart}>Play now<SiteIcon name="arrow" /></button>{canResume && <button type="button" className="site-secondary" onClick={handleResumeBattle}>Continue battle<SiteIcon name="history" /></button>}</div><div className="site-landing-tags">Free to play<span />Gacha card game<span />Instant battles</div></div>
-        <div className="site-landing-art" aria-label="Discover the Destiny Wars card collection"><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/SR2/card.webp" alt="SR character card" /><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/SSR2/card.webp" alt="SSR character card" /><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/UR1/card.webp" alt="UR character card" /><div className="site-landing-art-caption"><SiteIcon name="cards" />A world of characters to discover</div></div>
+      <section className="mx-auto grid w-full max-w-[1160px] justify-items-center gap-5 py-6 sm:gap-7 sm:py-9" aria-labelledby="home-battle-heading">
+        <h1 id="home-battle-heading" className="text-center text-3xl font-semibold tracking-tight sm:text-5xl">Open a pack. <span className="text-[#18745f]">Enter battle.</span></h1>
+        <picture className="block w-full max-w-[360px] overflow-hidden rounded-2xl shadow-lg sm:max-w-none">
+          <source media="(max-width: 639px)" srcSet="/images/pack-to-battle.portrait.v1.webp" width={800} height={1000} />
+          <Image unoptimized fetchPriority="high" loading="eager" width={1800} height={600} className="block h-auto w-full" src="/images/pack-to-battle.wide.v1.webp" alt="Open a pack, get five cards, and use them in battle to defeat the enemy." />
+        </picture>
+        <div className="site-landing-actions justify-center">
+          <button type="button" className="site-primary" onClick={handleStart}>Start your first battle<SiteIcon name="arrow" /></button>
+          {canResume && <button type="button" className="site-secondary" onClick={handleResumeBattle}>Continue battle<SiteIcon name="history" /></button>}
+        </div>
       </section>
       <div className="site-landing-bottom"><div className="site-development-note"><strong>In development</strong><p>This game is still growing. Some features are unfinished, and progress may be reset while we keep building.</p></div><TitleNewsPanel /></div>
       <LegalFooter compact />
