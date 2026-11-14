@@ -50,7 +50,7 @@ for (const count of [5]) test(`${count} cards: video -> pack -> simultaneous fro
   assert.equal(page.guestSaves[0], page.pulled);
   assert.equal(page.draws, 1);
   assert.equal(page.charges.length, 1);
-  const battle = visitElements(page.render(), el => el.type === "button" && text(el).includes("Begin battle"))[0];
+  const battle = visitElements(page.render(), el => el.type === "button" && el.props["aria-label"] === "Begin battle")[0];
   battle.props.onClick();
   assert.equal(page.storage.get("battle_player_cards"), JSON.stringify(page.pulled));
   assert.deepEqual(page.routes, ["/battle"]);

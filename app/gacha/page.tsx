@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import TopBar from "@/components/TopBar";
 import SoftDialog from "@/components/site/SoftDialog";
 import SiteIcon from "@/components/site/SiteIcon";
+import resultBattle from "./ResultBattle.module.css";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -290,21 +291,11 @@ export default function GachaPage() {
 
       <div className="max-w-5xl mx-auto px-6">
         {!revealPreparing && !isRevealing && !packActive && results.length === 0 && (
-          <div className="grid items-center gap-4 pt-4 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)] md:gap-8">
-            <figure className="mx-auto w-full max-w-[256px] text-center md:max-w-[300px]">
-              {/* The viewport-sized WebP is served directly from public. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/pack-to-battle.portrait.v1.webp" alt="Open a pack, get cards, and battle to defeat the enemy." width={800} height={1000} className="block h-auto w-full rounded-2xl" />
-              <figcaption className="mt-3 text-sm">Use these five cards in your next battle.</figcaption>
-            </figure>
-            <div className="min-w-0">
-              <PullSelection
-                askPullConfirm={askPullConfirm}
-                costs={{ five: fivePullCost }}
-                fiveUnavailableReason={!isGuest ? "5 Pull is currently available in guest mode." : undefined}
-              />
-            </div>
-          </div>
+          <PullSelection
+            askPullConfirm={askPullConfirm}
+            costs={{ five: fivePullCost }}
+            fiveUnavailableReason={!isGuest ? "5 Pull is currently available in guest mode." : undefined}
+          />
         )}
 
         {message && <p className="text-zinc-300 mb-6 text-center">{message}</p>}
@@ -340,14 +331,25 @@ export default function GachaPage() {
           <>
             <h2 className="text-2xl font-bold mb-4">Pull Results</h2>
 
-            <ResultGrid
-  results={results}
-  setSelectedImage={setSelectedImage}
-/>
-
-            <div className="mx-auto mb-6 flex w-full max-w-[660px] justify-center">
-              <button type="button" onClick={beginBattle} className="site-primary w-full sm:max-w-xs">
-                Begin battle <SiteIcon name="arrow" />
+            <div className={resultBattle.table}>
+              <ResultGrid results={results} setSelectedImage={setSelectedImage} />
+              <p className={resultBattle.hint}>Take these cards into battle</p>
+              <span className={resultBattle.down} aria-hidden="true">↓</span>
+              <button type="button" onClick={beginBattle} className={resultBattle.banner} aria-label="Begin battle">
+                <span className={resultBattle.label}>
+                  UP NEXT <strong>BATTLE</strong>
+                  <svg className={resultBattle.lightning} viewBox="0 0 150 70" preserveAspectRatio="none" aria-hidden="true">
+                    {[
+                      "M6 18l5-4 5 1 4-4", "M28 9l6 1 4-5 5 2", "M57 7l5-3 4 3 5-2",
+                      "M93 5l5 4 5-1 5 3", "M126 12l4 4 6-1 4 5", "M142 25l-4 4 6 5-3 5",
+                      "M139 49l-6 4 1 4-8 3", "M113 61l-5 4-6-2-4 4", "M81 66l-6-3-5 3-6-2",
+                      "M46 65l-5-5-6 2-5-5", "M20 57l-4-5-6 1-3-6", "M8 36l-4-5 6-4-3-4",
+                    ].map((segment, index) => (
+                      <path key={segment} d={segment} style={{ animationDelay: `${((index * 7) % 12) * 105}ms` }} />
+                    ))}
+                  </svg>
+                </span>
+                <span className={resultBattle.trail} aria-hidden="true"><i /><i /><i /></span>
               </button>
             </div>
 
