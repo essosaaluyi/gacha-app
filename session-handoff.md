@@ -1,7 +1,7 @@
 # Session Handoff
 
-### 【作業中】ホームの遊び方3コマとスターバースト ／ Codex ／ 2026-11-14
-- 対象：app/page.tsx、app/HomeGuide.module.css、public/images/home-guide.*.webp。承認済みホーム案を実装する。
+### 【完了・実画面未確認】ホームの遊び方3コマとスターバースト ／ Codex ／ 2026-11-14
+- 変更：app/page.tsx、app/HomeGuide.module.css、public/images/home-guide.*.webp 3枚。カード背後のぼかし、矢印なしの遊び方、横／縦切替、切り出した素材から広げた背景を追加。型・差分確認、対象 lint は既存警告1件。共有プレビュー接続不可のため実画面未確認。次：PC・スマホで表示確認。
 
 ### 【完了・要目視確認】カード着地ワークステーション ／ Codex ／ 2026-11-14
 - 着地の発光を外し、フリップ後に浮いて手前の縁から接地する動きに変更。/card-landing-workstation で同じ動きの5項目を調整可能。

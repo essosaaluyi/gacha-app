@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import guide from "./HomeGuide.module.css";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -56,7 +57,30 @@ export default function HomePage() {
       </header>
       <section className="site-landing-grid">
         <div className="site-landing-copy"><p className="site-eyebrow">A LITTLE LUCK. A NEW DESTINY.</p><h1>Your next card.<br />Your next <span>adventure.</span></h1><p className="site-landing-description">Collect extraordinary characters. Build your hand.<br />Make the decisive draw in Destiny Wars.</p><div className="site-landing-actions"><button type="button" className="site-primary" onClick={handleStart}>Play now<SiteIcon name="arrow" /></button>{canResume && <button type="button" className="site-secondary" onClick={handleResumeBattle}>Continue battle<SiteIcon name="history" /></button>}</div><div className="site-landing-tags">Free to play<span />Gacha card game<span />Instant battles</div></div>
-        <div className="site-landing-art" aria-label="Discover the Destiny Wars card collection"><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/SR2/card.webp" alt="SR character card" /><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/SSR2/card.webp" alt="SSR character card" /><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/UR1/card.webp" alt="UR character card" /><div className="site-landing-art-caption"><SiteIcon name="cards" />A world of characters to discover</div></div>
+        <div className={`site-landing-art ${guide.burst}`} aria-label="Discover the Destiny Wars card collection"><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/SR2/card.webp" alt="SR character card" /><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/SSR2/card.webp" alt="SSR character card" /><Image unoptimized width={400} height={600} className="site-landing-card" src="/images/cards/player/UR1/card.webp" alt="UR character card" /><div className="site-landing-art-caption"><SiteIcon name="cards" />A world of characters to discover</div></div>
+      </section>
+      <section className={guide.guide} aria-labelledby="home-guide-title">
+        <h2 id="home-guide-title">How to play</h2>
+        <ol className={guide.steps} role="list">
+          <li>
+            <div className={`${guide.art} ${guide.pack}`}>
+              <Image src="/images/home-guide.pack.v1.webp" alt="" width={447} height={451} unoptimized />
+            </div>
+            <span>Open pack</span>
+          </li>
+          <li>
+            <div className={`${guide.art} ${guide.cards}`}>
+              <Image src="/images/home-guide.cards.v1.webp" alt="" width={497} height={429} unoptimized />
+            </div>
+            <span>Get 5 cards</span>
+          </li>
+          <li>
+            <div className={`${guide.art} ${guide.battle}`}>
+              <Image src="/images/home-guide.battle.v1.webp" alt="" width={720} height={420} unoptimized />
+            </div>
+            <span>Battle <small>Defeat the enemy</small></span>
+          </li>
+        </ol>
       </section>
       <div className="site-landing-bottom"><div className="site-development-note"><strong>In development</strong><p>This game is still growing. Some features are unfinished, and progress may be reset while we keep building.</p></div><TitleNewsPanel /></div>
       <LegalFooter compact />

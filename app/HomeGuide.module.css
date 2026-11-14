@@ -1,0 +1,59 @@
+.burst:global(.site-landing-art) {
+  isolation: isolate;
+  background: none;
+}
+
+.burst:global(.site-landing-art)::before,
+.burst:global(.site-landing-art)::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -8% 0;
+  border: 0;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse closest-side, #000 40%, transparent 100%);
+}
+
+.burst:global(.site-landing-art)::before {
+  background: repeating-conic-gradient(from 8deg at 50% 49%, transparent 0deg 13deg, #9e43c9b0 15deg, #d590ee62 17deg, transparent 22deg 31deg);
+  filter: blur(8px);
+}
+
+.burst:global(.site-landing-art)::after {
+  background:
+    radial-gradient(ellipse at 50% 43%, #d472ecb5, transparent 40%),
+    radial-gradient(ellipse at 30% 57%, #29aa7ab4, transparent 41%),
+    radial-gradient(ellipse at 70% 53%, #e35884b0, transparent 40%);
+  filter: blur(13px);
+}
+
+.guide { width: min(1160px, 100%); margin: 0 auto 28px; }
+.guide h2 { margin-bottom: 8px; color: #173f33; font-size: 17px; font-weight: 650; }
+.steps { display: grid; grid-template-columns: 1fr 1fr 1.28fr; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.steps li { min-width: 0; padding: 5px 5px 8px; border-radius: 10px; background: #e5efe7; color: #183a30; text-align: center; font-weight: 700; }
+.steps small { display: block; font-size: 12px; font-weight: 500; }
+.art {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  height: clamp(86px, 13vw, 150px);
+  margin-bottom: 4px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #101f1a;
+}
+
+/* Fill the full width with a soft continuation of the scene behind the artwork. */
+.art::before { content: ""; position: absolute; z-index: -1; inset: -24px; background: var(--scene) center / cover no-repeat; filter: blur(22px) brightness(.73); opacity: .8; }
+.art img { display: block; width: auto; height: 100%; max-width: 100%; min-height: 0; object-fit: contain; }
+.pack { --scene: url("/images/home-guide.pack.v1.webp"); }
+.cards { --scene: url("/images/home-guide.cards.v1.webp"); }
+.pack img, .cards img { mask-image: linear-gradient(90deg, transparent, #000 3% 97%, transparent); }
+.battle img { width: 100%; object-fit: cover; object-position: center 40%; }
+
+@media (max-width: 580px) {
+  .steps { grid-template-columns: 1fr; gap: 8px; }
+  .steps li { display: grid; grid-template-columns: minmax(76px, 39%) 1fr; align-items: center; gap: 10px; padding: 6px; text-align: left; }
+  .art { height: 68px; margin: 0; }
+}
