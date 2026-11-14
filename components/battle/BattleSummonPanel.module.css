@@ -1,14 +1,15 @@
 .overlay { position: absolute; inset: 0; z-index: 150; pointer-events: none; color: #fff1d4; font-family: inherit; overflow: hidden; }
 .overlay *, .overlay *::before, .overlay *::after { box-sizing: border-box; }
 /* Hand held as a fan at the right edge; the lower ~20% of each card runs off the bottom of the screen. */
-.hand { --card-w: 168px; --card-h: 252px; position: absolute; right: 0; bottom: 0; width: 460px; height: calc(var(--card-h) * 0.8 + 120px); }
+/* Owner 2026-11-14: hand cards at 1.3× (168×252 → 218×328); fan spacing and panel width scale with them. */
+.hand { --hand-scale: 1.3; --card-w: calc(168px * var(--hand-scale)); --card-h: calc(252px * var(--hand-scale)); position: absolute; right: 0; bottom: 0; width: calc(460px * var(--hand-scale)); height: calc(var(--card-h) * 0.8 + 120px); }
 .cards { position: absolute; inset: 0; pointer-events: none; }
 .card {
   /* Front card on the left (highest), the rest fanned behind it toward the right edge. */
-  --gap: min(74px, calc(240px / max(1, var(--n) - 1)));
+  --gap: calc(min(74px, calc(240px / max(1, var(--n) - 1))) * var(--hand-scale));
   --spread: min(10deg, calc(30deg / max(1, var(--n) - 1)));
   --c: calc(var(--i) - (var(--n) - 1) / 2);
-  position: absolute; right: calc(92px + (var(--n) - 1 - var(--i)) * var(--gap)); bottom: calc(var(--card-h) * -0.2);
+  position: absolute; right: calc(92px * var(--hand-scale) + (var(--n) - 1 - var(--i)) * var(--gap)); bottom: calc(var(--card-h) * -0.2);
   width: var(--card-w); height: var(--card-h); z-index: calc(100 - var(--i));
   padding: 0; color: #fff3d1; background: transparent; border: 0; font: inherit;
   transform: rotate(calc(var(--c) * var(--spread))); transform-origin: 50% 210%;

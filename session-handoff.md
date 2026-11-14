@@ -1,8 +1,10 @@
 # Session Handoff
 
-### 【完了・実画面未確認】カード外周の整理と結果画面の試作 ／ Codex（Kiwi） ／ 2026-11-14
-- Rの追加枠をCardFrameで無効化し、ガチャ帯とバトルの手札・概要にも共通画像切り抜きを適用。召喚ドックの追加枠は全レア度で無効化。ローカル試作のボタンを現行の雷と矢印付きバナーへ差し替え。
-- 型・関連27件確認。未確認：共有プレビュー接続不可のためブラウザ上の表示。次：ガチャ・カード一覧・手札を目視。
+### 【完了】カードのドラッグでまとめてめくる・手札を 1.3 倍 ／ Claude ／ 2026-11-14 ／ ブランチ：main
+- ドラッグでめくる（筐体モード）：カードを押してそのまま横へドラッグすると、通ったカードを順にめくる（左→右、右→左のどちらも）。速く動かして真ん中を飛び越えても、間のカードもめくる。実体は各スロットの既存の pointertap をそのまま発火させるだけで、めくれる条件（選べる状態か、チャンス待ち、概要表示中、めくり済み）は従来どおり。普通のタップは今までと同じ。`BattlePixiStage.tsx` の当たり判定（`cardHitProxies`）の直後に追加し、後片付けは `removeCardSweep`。開発環境だけの QA フック `window.__cardSlots()` を追加した。
+- 手札 1.3 倍：`BattleSummonPanel.module.css` に `--hand-scale: 1.3` を追加。カード 168×252 → 218×328。扇の間隔・右の余白・パネル幅も同じ倍率で広げた。
+- 確認（ヘッドレス Edge で実際にマウスをドラッグ）：左→右で 3 枚とも、右→左で 3 枚とも、めくれた。真ん中のタップは真ん中だけ（[false,true,false]）。手札のカードは CSS で 218.4×327.6px。型チェックのエラー 0、lint エラー 0。
+- 未確認：スマートフォンのタッチでのドラッグ、筐体以外のモード（そちらにはドラッグめくりを入れていない）。手札は大きくなった分、右端のカードが少し多めに画面外に出る。
 
 ### 【完了】カード着地の承認値を反映 ／ Codex ／ 2026-11-14
 - バトルとワークステーション共通の初期値を浮き297ms、落下104ms、伏せ90ms、高さ10、奥側36に更新。フリップ込み811ms。
@@ -56,8 +58,14 @@
 - 絵コンテ用にBlender（5.3）でカメラ位置・カメラワークの下組みを作成。ゲーム本体のコードは変更なし。
 - 開いていたBlender（未保存、筐体テスト入り）に新シーン `R1_Cut02` を追加。既存の `Scene` は触っていない。同シーンだけを `outputs/storyboard/r1-cut02/r1-cut02-layout.blend` に書き出し、同フォルダに構図PNG5枚（f001/024/048/072/096）。`outputs/` はGit管理外。
 - 内容：球と円錐の仮モデル3匹（左赤・中央緑・右青は識別用の仮色）、敵は+X方向。24fps・96フレーム。立ち上がり、左→中央→右の順のお腹の膨らみ、最後の踏ん張りを簡易キー。カメラ `Cam_R1C02` は35mm・高さ0.16mの見上げ、並びに沿って左→右へ0.9m平行移動。
-- 未確認：参照画像2枚（`r1-cut02-visual-shot-list.png`、`01-r1-character-sheet.png`）はPC内で見つからず未参照。8コマとの照合、キャラの体型・色・結晶・模様は未反映。震えは未作成。
-- 次の担当への依頼：オーナーが参照画像の場所を指定 → ショットリストに合わせて構図とカメラを詰める。
+- **改訂（同日）**：オーナー指定の参照画像2枚（`C:\Users\essos\.codex\visualizations\2026\11\11\01a1cae8-…\` 内）を読み、作り直した。上の「35mm・0.9m平行移動・96フレーム・16:9」は旧版。
+  - 仮モデル：頭の高さが全身の約4割、頭が胴より幅広のずんぐり体型に変更。クリーム色の体、シアンの結晶（頭頂・背中）、オレンジの頬ひれ、琥珀の目。羽は参照に無いので削除。中央だけ1.06倍。間隔0.44mで重なる。
+  - タイミング：8コマの秒数どおり f1/9/18/27/45/63/79/97（24fps、終了97）。マーカー8個。吸気は左f22・中央f40・右f58から各10フレーム、f84以降は1フレームごとの小さな震え。
+  - カメラ：35mm、仰角13°固定、高さ0.09〜0.20m。f1–18は3匹全身の引き、f18–27で左の子へ寄り、f27–63で並びに沿って右へ平行移動、以後ほぼ停止。画面比はショットリストのコマに合わせ 1380×1080（仮）。
+  - 書き出し：`layout_p1_f001.png`〜`layout_p8_f097.png` と `layout_8panel_sheet.png`（旧 `layout_f0xx.png` 5枚は自分の旧書き出しのため削除）。
+- **追記（同日・色分けと番号）**：オーナーがBlenderファイルを編集し `C:\Users\essos\Downloads\testo.blend` として保存（EEVEE、1920×1080、50mm、カメラは顔の寄りから f68 で引きへ。動画出力設定）。この編集は変更していない。同ファイルに、背景と区別するための色分け（左=1 赤、中央=2 緑、右=3 青。お腹は淡い同系色、結晶とひれは濃い同系色）と、頭上の番号 1・2・3（カメラに常に正対、書き出しに写る）を追加して上書き保存。目は白＋黒に変更。確認：f63以降の引きのコマでは番号が写る。f1〜54の寄りのコマでは番号は画面外（色で判別）。`outputs/` 側の .blend と PNG は旧版のまま。
+- 未確認・未対応：口の開閉、前足の位置、模様は未作成。7・8コマ目は参照より右側の余白が広い。地面の明暗の境目が水平線として正しく出ていない可能性あり（未調査）。最終の画面比はオーナー未決定。
+- 次の担当への依頼：オーナーが8コマの構図を確認し、寄り具合・画面比の修正点を指定。
 
 ### 【完了・要目視確認】フリップ後の召喚発光と着地 ／ Codex
 - 参考動画の30fps連続コマを確認。cabinetManualReveal.tsとBattlePixiStage.tsxで、表向きの停止と発光、短い降下、着地に重なる縦光を追加。排出テストで時系列を検証。
@@ -1129,4 +1137,13 @@ Context/usage workflow: created the five independent chats registered above, wit
 
 PM: setup and readiness checks are complete. Wait for the owner's next instruction; do not begin persistence fixes or animation production automatically.
 
-For future task handoffs include: owner and allowed files; expected behavior; changed files; decisions; exact checks/results; unresolved findings; next owner/action. Each claim must distinguish implementation, approval and observed QA evidence.
+For future task handoffs include: owner and allowed files; expected behavior; changed files; decisions; exact checks/results; unresolved findings; next owner/action. Each claim must distinguish implementation, approval and observed QA evidence.### 【完了】右上パネルの DRAW ボタンを上向きに 15° 傾け、枠を半分の太さにした ／ Claude ／ 2026-11-14 ／ ブランチ：main
+- 2 回目の指示：15° に変更し、黒い枠のリングを半分の幅にした。`buildDrawButton` に `bezelWidth` を追加し（キャップの大きさは同じ）、`drawBezelRadius()` を export した。変更は `cabinetPanelB3.ts` の `DRAW_TILT_DEG = 15` と `DRAW_BEZEL_WIDTH = 0.5`。
+- 映り込みの修正（3 回目）：傾けたことで DRAW の文字の左側にかかっていた白い光は、2 枚の透明カバーの光沢（specular と clearcoat）が原因だった（個別のライトを消しても消えなかった）。パネルの DRAW だけ、透明カバーを `specularIntensity 0`・`clearcoat 0.1` にした。グレー／スカイ／押した瞬間／消灯で、文字が読めることを撮影で確認した。QA 用に `window.__panelB3Scene`（開発環境のみ）を追加した。
+- オーナー指示：真正面からだと押したアニメーションが分からないので、上向きに約 10° 傾ける。
+- `lib/button-3d/cabinetPanelB3.ts` のみ変更：DRAW を `drawMount` に入れて上向きに 10° 傾けた（`DRAW_TILT_DEG`）。上端が面に沈まないように前へ出し、下端の隙間は暗い台座の円柱で埋めた。
+- 確認：/battle で、押す前と押した瞬間（90ms）を撮影し、キャップが下へずれて見えることを確かめた。型チェックのエラー 0、lint エラー 0。
+- 未確認：実際のクリックでの見え方、傾きが 10° で足りるか（数値 1 か所で変えられる）。
+- 注意：この記録は、Codex の作業中の未コミット変更と同じファイルなので、コミットしていない（コードのみコミット）。
+
+

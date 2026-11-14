@@ -687,6 +687,7 @@ export default function BattlePixiStage({
     let removeExternalAutoControl: (() => void) | null = null;
     let removeRoundIntroControl: (() => void) | null = null;
     let removeBonusConfirmControl: (() => void) | null = null;
+    let removeCardSweep: (() => void) | null = null;
     let removeFlowControl: (() => void) | null = null;
     let removePlayerControl: (() => void) | null = null;
     let removeOverviewControl: (() => void) | null = null;
@@ -1158,6 +1159,60 @@ export default function BattlePixiStage({
             return proxy;
           })
         : [];
+
+      // Sweep to flip (owner 2026-11-14): press on a card and drag across the others — left to right or
+      // right to left — and every card the pointer crosses is flipped, in order, as if each were tapped.
+      // A plain tap is unchanged (the proxy's own pointertap). The sweep only fires a slot's current
+      // pointertap handlers, and only while that slot is pickable, so every guard stays where it was
+      // (normal hand, fatal-continue hand, chance wait, overview open, already revealed).
+      if (cabinetMode) {
+        let sweepFrom = -1;
+        const slotAt = (clientX: number, clientY: number) => {
+          const r = pixiApp.canvas.getBoundingClientRect();
+          if (!r.width || !r.height) return -1;
+          const x = ((clientX - r.left) * STAGE.WIDTH) / r.width;
+          const y = ((clientY - r.top) * STAGE.HEIGHT) / r.height;
+          return cardHitProxies.findIndex((p) => p.eventMode === "static" && (p.hitArea as Rectangle).contains(x, y));
+        };
+        const tapSlot = (index: number) => {
+          const proxy = cardHitProxies[index];
+          if (proxy?.eventMode === "static") proxy.emit("pointertap", undefined as never);
+        };
+        const onDown = (e: PointerEvent) => {
+          sweepFrom = e.button === 0 && e.target === pixiApp.canvas ? slotAt(e.clientX, e.clientY) : -1;
+        };
+        const onMove = (e: PointerEvent) => {
+          if (sweepFrom < 0) return;
+          if (!(e.buttons & 1)) { sweepFrom = -1; return; }
+          const over = slotAt(e.clientX, e.clientY);
+          if (over < 0 || over === sweepFrom) return;
+          // Flip the card being left and everything up to the one entered (covers a fast jump past the middle).
+          const step = over > sweepFrom ? 1 : -1;
+          for (let i = sweepFrom; i !== over + step; i += step) tapSlot(i);
+          sweepFrom = over;
+        };
+        const onUp = () => { sweepFrom = -1; };
+        if (process.env.NODE_ENV !== "production") {
+          // QA hook: each slot's hit box in client pixels, whether it is pickable, and whether it is flipped.
+          (window as unknown as { __cardSlots?: () => unknown }).__cardSlots = () => {
+            const r = pixiApp.canvas.getBoundingClientRect(), k = r.width / STAGE.WIDTH;
+            return cardHitProxies.map((p, i) => {
+              const h = p.hitArea as Rectangle;
+              return { i, pickable: p.eventMode === "static", revealed: revealed[i], cx: Math.round(r.left + (h.x + h.width / 2) * k), cy: Math.round(r.top + (h.y + h.height / 2) * k) };
+            });
+          };
+        }
+        window.addEventListener("pointerdown", onDown, true);
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+        window.addEventListener("pointercancel", onUp);
+        removeCardSweep = () => {
+          window.removeEventListener("pointerdown", onDown, true);
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          window.removeEventListener("pointercancel", onUp);
+        };
+      }
 
       /** Opens or closes picking for one slot. */
       const setCardPickable = (index: number, pickable: boolean) => {
@@ -4438,6 +4493,8 @@ const globalY = cardGroup.y + card.y;
       removeRoundIntroControl = null;
       removeBonusConfirmControl?.();
       removeBonusConfirmControl = null;
+      removeCardSweep?.();
+      removeCardSweep = null;
       removeFlowControl?.();
       removeFlowControl = null;
       removePlayerControl?.();
