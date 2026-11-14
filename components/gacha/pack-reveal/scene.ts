@@ -133,14 +133,40 @@ export async function createRevealScene(host: HTMLDivElement, cards: readonly Re
       Promise.all(cards.map(async card => ({ front: await texture(card.image), back: await texture(resolvePlayerCardBack(card.backImage)) }))),
     ]);
     if (destroyed) throw new Error("Reveal disposed");
-    const faceGeometry = geometry(new THREE.PlaneGeometry(2, 3));
     const packMouth = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.6);
     const clippingPlanes = [packMouth];
     const glossMeshes: THREE.Mesh[] = [];
-    const stockGeometry = geometry(new THREE.BoxGeometry(2.002, 3.002, 0.007));
+    const cardSpacing = 0.046;
     const edge = material(new THREE.MeshStandardMaterial({ color: 0xc5bc99, clippingPlanes, roughness: 0.48, metalness: 0.25 }));
     art.forEach(({ front, back }, i) => {
       const card = new THREE.Group();
+      const chamfered = getCardDisplayFrame(cards[i].image).clipPath.startsWith("polygon");
+      const shape = new THREE.Shape();
+      const cornerX = chamfered ? 0.06 : 0.05;
+      const cornerY = chamfered ? 0.06 : 0.075;
+      shape.moveTo(-1 + cornerX, -1.5);
+      shape.lineTo(1 - cornerX, -1.5);
+      const corner = (x: number, y: number, endX: number, endY: number) => {
+        if (chamfered) shape.lineTo(endX, endY);
+        else shape.quadraticCurveTo(x, y, endX, endY);
+      };
+      corner(1, -1.5, 1, -1.5 + cornerY);
+      shape.lineTo(1, 1.5 - cornerY);
+      corner(1, 1.5, 1 - cornerX, 1.5);
+      shape.lineTo(-1 + cornerX, 1.5);
+      corner(-1, 1.5, -1, 1.5 - cornerY);
+      shape.lineTo(-1, -1.5 + cornerY);
+      corner(-1, -1.5, -1 + cornerX, -1.5);
+      shape.closePath();
+
+      // Stock, face and sheen share the outline so no rectangular corners protrude.
+      const faceGeometry = geometry(new THREE.ShapeGeometry(shape));
+      const uv = faceGeometry.getAttribute("uv");
+      for (let vertex = 0; vertex < uv.count; vertex++) {
+        uv.setXY(vertex, (uv.getX(vertex) + 1) / 2, (uv.getY(vertex) + 1.5) / 3);
+      }
+      const stockGeometry = geometry(new THREE.ExtrudeGeometry(shape, { depth: 0.007, bevelEnabled: false }));
+      stockGeometry.translate(0, 0, -0.0035);
       // Equal physical height; preserve the cropped front's native proportions.
       const frontImage = front.image as HTMLCanvasElement;
       card.scale.x = (frontImage.width / frontImage.height) / (2 / 3);
@@ -172,7 +198,8 @@ export async function createRevealScene(host: HTMLDivElement, cards: readonly Re
         glossMeshes.push(gloss);
         card.add(gloss);
       }
-      card.position.set(i * 0.008, -i * 0.012, -i * 0.012);
+      // Foil stock stays thin. Depth spacing exposes the next printed rim on tilt.
+      card.position.set(i * 0.008, -i * 0.012, -i * cardSpacing);
       stack.add(card);
       cardGroups.push(card);
     });
@@ -265,12 +292,12 @@ export async function createRevealScene(host: HTMLDivElement, cards: readonly Re
         if (slideStart !== null) {
           const t = ease((clock - slideStart) / (reduced ? 0.12 : 0.52));
           const top = cardGroups[current];
-          if (top) { top.position.x = t * 5.8; top.position.y = -t * 0.25; top.rotation.z = -t * 0.18; top.position.z = t * 0.6; }
+          if (top) { top.position.x = t * 5.8; top.position.y = -t * 0.25; top.rotation.z = -t * 0.18; top.position.z = -current * cardSpacing + t * 0.6; }
           if (t >= 1) {
             if (top) top.visible = false;
             current++;
             // Bring the remaining physical stack forward without changing card order.
-            stack.position.z = current * 0.055;
+            stack.position.z = current * cardSpacing;
             slideStart = null;
             const done = slideDone; slideDone = null; done?.();
             if (destroyed) return;
