@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
 
 import {
@@ -1258,6 +1258,80 @@ function CharacterSequence({
   );
 }
 
+/** Centre of a frame's visible (non-transparent) pixels, as fractions of the frame, plus its natural size. */
+type ArtCentre = { cx: number; cy: number; w: number; h: number };
+const artCentreCache = new Map<string, Promise<ArtCentre>>();
+
+function measureArtCentre(src: string): Promise<ArtCentre> {
+  let pending = artCentreCache.get(src);
+  if (!pending) {
+    pending = new Promise<ArtCentre>((resolve) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        const fallback = { cx: 0.5, cy: 0.5, w, h };
+        try {
+          // Downsampled alpha scan: plenty for a centre, cheap enough to run once per character.
+          const k = Math.max(1, Math.ceil(Math.max(w, h) / 256));
+          const cw = Math.ceil(w / k), ch = Math.ceil(h / k);
+          const canvas = document.createElement("canvas");
+          canvas.width = cw; canvas.height = ch;
+          const g = canvas.getContext("2d", { willReadFrequently: true });
+          if (!g) return resolve(fallback);
+          g.drawImage(img, 0, 0, cw, ch);
+          const d = g.getImageData(0, 0, cw, ch).data;
+          let x0 = cw, y0 = ch, x1 = -1, y1 = -1;
+          for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+            if (d[(y * cw + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+          }
+          resolve(x1 < 0 ? fallback : { cx: (x0 + x1 + 1) / 2 / cw, cy: (y0 + y1 + 1) / 2 / ch, w, h });
+        } catch {
+          resolve(fallback);
+        }
+      };
+      img.onerror = () => resolve({ cx: 0.5, cy: 0.5, w: 1, h: 1 });
+      img.src = src;
+    });
+    artCentreCache.set(src, pending);
+  }
+  return pending;
+}
+
+/**
+ * Summon effects come out of the character's centre (owner, 2026-11-14). The light, white burst and
+ * rainbow particles used to be placed by three different systems and drifted apart. This puts one
+ * anchor — the centre of the character's visible pixels as the cabinet will draw it — on the actor as
+ * --battle-spawn-fx-x/y, measured before the effects start and kept in step with resizes. The cabinet
+ * CSS centres every effect on it. A hidden probe slot gives the slot box before the character shows.
+ */
+function useCharacterFxAnchor(preset: RevealPreset, enabled: boolean) {
+  const actorRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const actor = actorRef.current, probe = probeRef.current;
+    if (!enabled || !actor || !probe) return;
+    let cancelled = false, art: ArtCentre | null = null;
+    const place = () => {
+      if (!art || cancelled) return;
+      const W = probe.offsetWidth, H = probe.offsetHeight;
+      if (!W || !H) return;
+      // The cabinet draws the frame with object-fit: contain, object-position: center top.
+      const s = Math.min(W / art.w, H / art.h), dw = art.w * s;
+      const x = probe.offsetLeft + (W - dw) / 2 + art.cx * dw;
+      const y = probe.offsetTop + art.cy * art.h * s;
+      actor.style.setProperty("--battle-spawn-fx-x", `${x.toFixed(1)}px`);
+      actor.style.setProperty("--battle-spawn-fx-y", `${y.toFixed(1)}px`);
+      actor.dataset.fxAnchored = "true";
+    };
+    const src = preset.sequenceVideo ? preset.sequencePoster : preset.standFrameSrc(preset.standStartFrame);
+    if (src) void measureArtCentre(src).then((a) => { art = a; place(); });
+    const ro = new ResizeObserver(place); ro.observe(actor);
+    return () => { cancelled = true; ro.disconnect(); };
+  }, [preset, enabled]);
+  return { actorRef, probeRef };
+}
+
 function SpawnActor({
   side,
   cardImage,
@@ -1273,11 +1347,14 @@ function SpawnActor({
   persistent?: boolean;
   onInspect?: (origin: HTMLElement) => void;
 }) {
+  const { actorRef, probeRef } = useCharacterFxAnchor(preset, !persistent);
   return (
     <div
+      ref={actorRef}
       className={`battle-spawn-actor battle-spawn-actor-${side}`}
       style={getPresetStyle(preset)}
     >
+      {!persistent && <div ref={probeRef} className="battle-spawn-character-slot battle-spawn-fx-probe" aria-hidden="true" />}
       {!persistent && <div className="battle-spawn-ground" />}
 
       {!persistent && <div className="battle-spawn-card" aria-label={`${name} spawn card`}>
