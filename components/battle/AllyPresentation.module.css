@@ -1,0 +1,20 @@
+:global(.battle-cabinet-screen) .actor:global(.battle-spawn-actor-player) :is(:global(.battle-spawn-character-idle), [data-ally-settled]) {
+  left: calc(-21% + var(--ally-idle-x));
+  top: calc(22% + var(--ally-idle-y));
+  transform: scale(var(--ally-idle-scale));
+  transform-origin: 50% 82%;
+}
+
+.actor[data-ally-summoning] :global(.battle-spawn-character) {
+  transform-origin: 50% 82%;
+  animation: allyAppear var(--ally-summon-time) cubic-bezier(.2, .75, .3, 1) both;
+}
+
+@keyframes allyAppear {
+  from { opacity: 0; transform: translateY(var(--ally-summon-rise)) scale(var(--ally-summon-scale)); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actor[data-ally-summoning] :global(.battle-spawn-character) { animation: none; }
+}

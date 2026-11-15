@@ -1,6 +1,0 @@
-:global(.battle-cabinet-screen) .actor:global(.battle-spawn-actor-player) :global(.battle-spawn-character-idle) {
-  left: calc(-21% + var(--r1-idle-x));
-  top: calc(22% + var(--r1-idle-y));
-  transform: scale(var(--r1-idle-scale));
-  transform-origin: 50% 82%;
-}
