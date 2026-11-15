@@ -1136,6 +1136,15 @@ function getPresetStyle(preset: RevealPreset): SpawnStyle {
   };
 }
 
+// Characters whose old stand-up frames no longer match their idle loop. They
+// keep the whole summon (card flip, light, particles, burst) and simply
+// appear in the idle loop at the moment the stand-up used to begin.
+const isIdleOnlyPreset = (preset: RevealPreset) =>
+  preset.id === revealPresets.greenScaleDragon.id ||
+  preset.id === revealPresets.r1TripletsBabyDragon.id ||
+  preset.id === revealPresets.dragonRaider.id ||
+  preset.id === revealPresets.youngKnight.id;
+
 function CharacterSequence({
   name,
   preset,
@@ -1149,7 +1158,7 @@ function CharacterSequence({
 }) {
   const [phase, setPhase] = useState<"hidden" | "stand" | "idle">("hidden");
   const [frameIndex, setFrameIndex] = useState(0);
-  const idleOnly = preset.id === revealPresets.greenScaleDragon.id;
+  const idleOnly = isIdleOnlyPreset(preset);
   const idleEpoch = useRef<number | null>(null);
 
   useEffect(() => {
@@ -1334,7 +1343,7 @@ function useCharacterFxAnchor(preset: RevealPreset, enabled: boolean) {
       actor.style.setProperty("--battle-spawn-fx-y", `${y.toFixed(1)}px`);
       actor.dataset.fxAnchored = "true";
     };
-    const src = preset.id === revealPresets.greenScaleDragon.id ? preset.idleFrameSrc(0)
+    const src = isIdleOnlyPreset(preset) ? preset.idleFrameSrc(0)
       : preset.sequenceVideo ? preset.sequencePoster : preset.standFrameSrc(preset.standStartFrame);
     if (src) void measureArtCentre(src).then((a) => { art = a; place(); });
     const ro = new ResizeObserver(place); ro.observe(actor);
@@ -1443,14 +1452,11 @@ function FighterPresentation({
   onInspect?: (origin: HTMLElement) => void;
 }) {
   const r1 = side === "player" && basePreset === revealPresets.r1TripletsBabyDragon;
-  // R4's old stand-up frames are a different size and framing from its new idle loop, so like
-  // R1 and R3 it goes straight into the idle loop (the summon sound still plays).
-  const skipIntro = r1 || (side === "player" && (basePreset === revealPresets.dragonRaider || basePreset === revealPresets.youngKnight));
   const [preset, setPreset] = useState(() => r1 ? basePreset : loadSavedPreset(basePreset));
   const character = side === "enemy" ? String(enemyId) : basePreset.cardImage.split("/").at(-2) ?? basePreset.id;
   const [placement, setPlacement] = useState(() => readAllyPresentation(character, side));
-  const customSummon = side === "player" && placement?.summonEnabled === true && basePreset !== revealPresets.greenScaleDragon;
-  const duration = customSummon ? placement.summonMs : skipIntro ? 0 : preset.durationMs;
+  const customSummon = side === "player" && placement?.summonEnabled === true && !isIdleOnlyPreset(basePreset);
+  const duration = customSummon ? placement.summonMs : preset.durationMs;
 
   useEffect(() => {
     const sync = () => {
@@ -1486,7 +1492,7 @@ function FighterPresentation({
 
   if (status === "waiting" || status === "absent") return null;
   return <SpawnActor side={side} name={name} cardImage={cardImage}
-    preset={preset} persistent={customSummon || skipIntro || status === "ready"}
+    preset={preset} persistent={customSummon || status === "ready"}
     animateSummon={customSummon && status === "summoning"} onInspect={onInspect} placement={placement} />;
 }
 
