@@ -76,6 +76,8 @@
 
 .panel {
   min-width: 0;
+  /* Clears the site-wide BGM / volume buttons pinned to the top right. */
+  padding-top: 56px;
 }
 
 .panelActions {
