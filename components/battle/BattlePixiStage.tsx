@@ -19,6 +19,7 @@ import { useEffect, useRef } from "react";
 import {
   Application,
   Assets,
+  BlurFilter,
   Sprite,
   PerspectiveMesh,
   Container,
@@ -57,6 +58,7 @@ import {
   readReelTenpai,
 } from "@/lib/battle-pixi/core/reelComboRules";
 import {
+  generateReelRails,
   generateReelTraces,
   seedPointsAroundCard,
   type ReelTrace,
@@ -2530,9 +2532,12 @@ export default function BattlePixiStage({
 
       // Correct-target Attack interaction. The socket follows the table plane,
       // while the sword remains upright to the player like a projected sign.
-      const runAttackTargetInteraction = (cardIndex: number) => {
+      const runAttackTargetInteraction = (
+        cardIndex: number,
+        preview?: { quad: Quad; stillAt?: number }
+      ) => {
         const alive = aliveGuard();
-        const cardQuad = landedCardQuads[cardIndex];
+        const cardQuad = preview?.quad ?? landedCardQuads[cardIndex];
         const center = getQuadCenter(cardQuad);
         const topWidth = Math.hypot(
           cardQuad[2] - cardQuad[0],
@@ -2547,9 +2552,12 @@ export default function BattlePixiStage({
         clearAttackTargetGlow();
         const persistentGlowLayer = new Container();
         persistentGlowLayer.eventMode = "none";
+        const socketHalo = new Graphics();
+        socketHalo.blendMode = "add";
+        socketHalo.filters = [new BlurFilter({ strength: 7, quality: 3 })];
         const socketGlow = new Graphics();
         socketGlow.blendMode = "add";
-        persistentGlowLayer.addChild(socketGlow);
+        persistentGlowLayer.addChild(socketHalo, socketGlow);
         stage.addChild(persistentGlowLayer);
         stage.setChildIndex(
           persistentGlowLayer,
@@ -2567,146 +2575,274 @@ export default function BattlePixiStage({
           return points;
         };
 
-        socketGlow.poly(expandedQuad(1.08), true).stroke({
-          width: 16,
-          color: 0x9e1608,
-          alpha: 0.18,
+        // Socket: a soft crimson halo under a crisp gold line, with bracket
+        // marks on the corners. The halo is blurred rather than stacked from
+        // hard strokes, which is what stops it reading as a drawn outline.
+        socketHalo.poly(expandedQuad(1.07), true).stroke({
+          width: 14,
+          color: 0xd81e08,
+          alpha: 0.85,
         });
         socketGlow.poly(expandedQuad(1.045), true).stroke({
-          width: 6,
-          color: 0xff3a0a,
-          alpha: 0.72,
+          width: 3.2,
+          color: 0xff5a1a,
+          alpha: 0.55,
         });
-        socketGlow.poly(expandedQuad(1.025), true).stroke({
-          width: 2,
-          color: 0xffd06a,
-          alpha: 0.96,
+        socketGlow.poly(expandedQuad(1.03), true).stroke({
+          width: 1.2,
+          color: 0xffe9b0,
+          alpha: 1,
         });
+        const bracket = expandedQuad(1.12);
+        for (let corner = 0; corner < 4; corner += 1) {
+          const at = (index: number) => {
+            const wrapped = ((index % 4) + 4) % 4;
+            return { x: bracket[wrapped * 2], y: bracket[wrapped * 2 + 1] };
+          };
+          const here = at(corner);
+          const before = at(corner - 1);
+          const after = at(corner + 1);
+          socketGlow
+            .moveTo(
+              here.x + (before.x - here.x) * 0.16,
+              here.y + (before.y - here.y) * 0.16
+            )
+            .lineTo(here.x, here.y)
+            .lineTo(
+              here.x + (after.x - here.x) * 0.16,
+              here.y + (after.y - here.y) * 0.16
+            )
+            .stroke({ width: 2, color: 0xfff1c8, alpha: 0.95, join: "miter" });
+        }
 
+        // The strike itself: a blade drops point-first onto the card, lands
+        // with a flash and a shock ring that runs out along the table, holds
+        // while a glint travels down it, then burns away upward into embers.
         const layer = new Container();
         layer.eventMode = "none";
         stage.addChild(layer);
         stage.setChildIndex(layer, stage.children.length - 1);
 
-        const swordGlow = new Graphics();
-        swordGlow.blendMode = "add";
-        const swordCore = new Graphics();
-        swordCore.blendMode = "add";
-        const fragments = new Graphics();
-        fragments.blendMode = "add";
-
-        const sword = new Container();
-        sword.x = center.x;
-        sword.y = center.y - 42;
-        const swordScale = (cardWidth * 1.5) / 110;
-        sword.scale.set(swordScale);
-        sword.addChild(swordGlow, swordCore, fragments);
-        layer.addChild(sword);
-
-        const drawSword = (
-          graphics: Graphics,
-          color: number,
-          alpha: number,
-          expansion = 0
-        ) => {
-          graphics.clear();
-          graphics
-            .poly([
-              -12 - expansion, -62,
-              0, -82 - expansion,
-              12 + expansion, -62,
-              9 + expansion, 4,
-              -9 - expansion, 4,
-            ], true)
-            .fill({ color, alpha });
-          graphics
-            .poly([
-              -55 - expansion, 2,
-              55 + expansion, 2,
-              43 + expansion, 15 + expansion * 0.25,
-              -43 - expansion, 15 + expansion * 0.25,
-            ], true)
-            .fill({ color, alpha });
-          graphics
-            .roundRect(
-              -8 - expansion * 0.2,
-              14,
-              16 + expansion * 0.4,
-              35,
-              4
-            )
-            .fill({ color, alpha });
-          graphics
-            .circle(0, 55, 10 + expansion * 0.35)
-            .fill({ color, alpha });
+        const additive = (blur = 0) => {
+          const graphics = new Graphics();
+          graphics.blendMode = "add";
+          if (blur > 0) {
+            graphics.filters = [new BlurFilter({ strength: blur, quality: 3 })];
+          }
+          return graphics;
         };
 
+        const rings = additive();
+        const pillar = additive(6);
+        const embers = additive();
+        const flash = additive(12);
+        const flashCore = additive();
+        layer.addChild(rings, pillar);
+
+        // The blade lands on the near half of the card, which leaves it the
+        // most headroom, and it may not rise past the far edge of the felt:
+        // above that the cabinet frame covers the stage.
+        const strike = {
+          x: center.x + ((cardQuad[4] + cardQuad[6]) * 0.5 - center.x) * 0.5,
+          y: center.y + ((cardQuad[5] + cardQuad[7]) * 0.5 - center.y) * 0.5,
+        };
+        const feltTop = getTableSurfacePoint(
+          0.5,
+          patchConfig.reelMechanics.flash.trace.minV
+        ).y;
+
+        // Sword space: the point is the origin and the sword stands above it.
+        const sword = new Container();
+        // Sized to the card, but never taller than the room above it: the
+        // stage ends not far over the table, and a sword cut off at the hilt
+        // reads as a mistake.
+        const swordScale = Math.min(
+          (cardWidth * 1.08) / 110,
+          Math.max(0.4, (strike.y - feltTop) / 172)
+        );
+        const swordGlow = additive(7);
+        const swordBody = additive();
+        const glint = additive();
+        sword.addChild(swordGlow, swordBody, glint);
+        sword.x = strike.x;
+        layer.addChild(sword, embers, flash, flashCore);
+
+        const BLADE_TOP = -118;
+        const bladeOutline = [0, 0, -6, -18, -7, BLADE_TOP, 7, BLADE_TOP, 6, -18];
+        const guard = [
+          -36, -116, -27, -125, -9, -122, 0, -127, 9, -122, 27, -125, 36, -116,
+          27, -117.5, 9, -116, 0, -112.5, -9, -116, -27, -117.5,
+        ];
+
+        const drawSword = (alpha: number) => {
+          swordGlow.clear();
+          swordGlow.poly(bladeOutline, true).fill({ color: 0xff2a0a, alpha: alpha * 0.9 });
+          swordGlow.poly(bladeOutline, true).stroke({ width: 9, color: 0xff2a0a, alpha: alpha * 0.8 });
+          swordGlow.poly(guard, true).stroke({ width: 8, color: 0xff3a10, alpha: alpha * 0.7 });
+
+          swordBody.clear();
+          // Two bevels, lit from the left, so the blade has a ridge.
+          swordBody
+            .poly([0, 0, -6, -18, -7, BLADE_TOP, 0, BLADE_TOP], true)
+            .fill({ color: 0xffd58a, alpha: alpha * 0.95 });
+          swordBody
+            .poly([0, 0, 6, -18, 7, BLADE_TOP, 0, BLADE_TOP], true)
+            .fill({ color: 0xd9381c, alpha: alpha * 0.9 });
+          swordBody
+            .moveTo(0, -8)
+            .lineTo(0, BLADE_TOP + 4)
+            .stroke({ width: 1.1, color: 0xffffff, alpha: alpha * 0.9 });
+          swordBody
+            .poly(bladeOutline, true)
+            .stroke({ width: 0.7, color: 0xfff3cf, alpha: alpha * 0.95, join: "miter" });
+          // Crossguard, grip and pommel.
+          swordBody.poly(guard, true).fill({ color: 0xffc04a, alpha: alpha * 0.95 });
+          swordBody
+            .poly(guard, true)
+            .stroke({ width: 0.6, color: 0xfff6dc, alpha: alpha * 0.9 });
+          swordBody
+            .roundRect(-3.2, -154, 6.4, 28, 2)
+            .fill({ color: 0xa81808, alpha: alpha * 0.9 });
+          for (let wrap = 0; wrap < 5; wrap += 1) {
+            const y = -150 + wrap * 5.2;
+            swordBody
+              .moveTo(-3.2, y)
+              .lineTo(3.2, y + 2.4)
+              .stroke({ width: 0.8, color: 0xffcf6a, alpha: alpha * 0.85 });
+          }
+          swordBody
+            .poly([0, -168, 5.5, -160, 0, -152, -5.5, -160], true)
+            .fill({ color: 0xffc04a, alpha: alpha * 0.95 });
+          swordBody.circle(0, -160, 2.1).fill({ color: 0xffffff, alpha });
+        };
+
+        // Embers are seeded once and then only move, so they drift instead of
+        // re-rolling every frame.
+        const emberSeeds = Array.from({ length: 40 }, (_, index) => {
+          const angle = -Math.PI * (0.08 + Math.random() * 0.84);
+          const speed = cardWidth * (0.5 + Math.random() * 1.3);
+          return {
+            x: (Math.random() - 0.5) * cardWidth * 0.5,
+            y: (Math.random() - 0.5) * cardWidth * 0.18,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.45 + Math.random() * 0.55,
+            size: 0.9 + Math.random() * 1.7,
+            color: index % 5 === 0 ? 0xffffff : index % 2 === 0 ? 0xffc85a : 0xff4a14,
+          };
+        });
+
         const startedAt = performance.now();
-        const durationMs = 960;
-        let fragmentFrame = -1;
+        const durationMs = 1250;
+        const IMPACT = 0.16;
+        const DISSOLVE_FROM = 0.64;
 
         const interactionTicker = () => {
-          const progress = Math.min(
+          const progress = preview?.stillAt ?? Math.min(
             1,
             (performance.now() - startedAt) / durationMs
           );
-          const materialize = Math.min(1, progress / 0.18);
-          const dissolve = Math.max(0, (progress - 0.58) / 0.42);
-          const swordAlpha = materialize * (1 - dissolve);
-          const noiseGate =
-            progress < 0.18
-              ? 0.58 + Math.sin(fragmentFrame * 2.7) * 0.22
-              : 1;
-          drawSword(swordGlow, 0x5e0503, swordAlpha * 0.3 * noiseGate, 7);
-          drawSword(swordCore, 0xb51608, swordAlpha * 0.88 * noiseGate, 0.5);
-          swordCore
-            .poly([-3.2, -59, 0, -74, 3.2, -59, 2.5, 0, -2.5, 0], true)
-            .fill({ color: 0xff9d28, alpha: swordAlpha * 0.88 * noiseGate });
-          swordCore
-            .poly([-45, 5, 45, 5, 37, 11, -37, 11], true)
-            .fill({ color: 0xf05a13, alpha: swordAlpha * 0.8 * noiseGate });
-          swordCore
-            .roundRect(-3.2, 16, 6.4, 31, 2)
-            .fill({ color: 0xe85216, alpha: swordAlpha * 0.82 * noiseGate });
-          swordCore
-            .circle(0, 55, 4.5)
-            .fill({ color: 0xffb83e, alpha: swordAlpha * 0.86 * noiseGate });
-          sword.alpha = swordAlpha;
-          sword.scale.set(swordScale * (0.94 + materialize * 0.06));
+          const fall = Math.min(1, progress / IMPACT);
+          const sinceImpact = Math.max(0, (progress - IMPACT) / (1 - IMPACT));
+          const dissolve = Math.max(0, (progress - DISSOLVE_FROM) / (1 - DISSOLVE_FROM));
+          const landed = progress >= IMPACT;
 
-          const nextFragmentFrame = Math.floor(progress * 22);
-          if (nextFragmentFrame !== fragmentFrame) {
-            fragmentFrame = nextFragmentFrame;
-            fragments.clear();
-            const fragmentCount =
-              progress < 0.2 ? 20 : dissolve > 0 ? 30 : 7;
+          // Plunge: accelerating drop, stretched along its travel.
+          const drop = (1 - fall * fall) * -cardWidth * 0.9;
+          sword.y = strike.y + drop - dissolve * cardWidth * 0.14;
+          sword.scale.set(
+            swordScale * (1 - dissolve * 0.35),
+            swordScale * (landed ? 1 : 1.3 - fall * 0.3)
+          );
+          drawSword(Math.min(1, fall * 1.6) * (1 - dissolve) ** 1.5);
 
-            for (let index = 0; index < fragmentCount; index += 1) {
-              const spread =
-                progress < 0.2 ? (1 - materialize) * 38 : 8 + dissolve * 30;
-              const rise = dissolve * (18 + (index % 6) * 5);
-              const x = (Math.random() - 0.5) * (86 + spread);
-              const y = -56 + Math.random() * 112 - rise;
-              const size = 1.2 + Math.random() * 3.2;
-              const fragmentAlpha =
-                progress < 0.2
-                  ? (1 - materialize) * 0.9
-                  : dissolve > 0
-                    ? (1 - dissolve) * 0.95
-                    : 0.16;
-              fragments
-                .poly([
-                  x, y - size,
-                  x + size * 0.7, y,
-                  x, y + size,
-                  x - size * 0.7, y,
-                ], true)
-                .fill({
-                  color: index % 4 === 0 ? 0xffe29a : 0xff3a08,
-                  alpha: fragmentAlpha,
-                });
-            }
+          glint.clear();
+          const sweep = (progress - 0.26) / 0.26;
+          if (sweep > 0 && sweep < 1) {
+            const y = BLADE_TOP + 6 + (-(BLADE_TOP + 12)) * sweep;
+            const strength = Math.sin(sweep * Math.PI);
+            glint
+              .poly([-16, y, 0, y - 1.6, 16, y, 0, y + 1.6], true)
+              .fill({ color: 0xffffff, alpha: strength });
+            glint
+              .poly([-1.2, y - 12, 0, y, 1.2, y - 12, 0, y + 12], true)
+              .fill({ color: 0xffffff, alpha: strength * 0.8 });
           }
+
+          rings.clear();
+          pillar.clear();
+          flash.clear();
+          flashCore.clear();
+          embers.clear();
+
+          if (landed) {
+            // Shock rings travel out along the table plane, in the card's own
+            // perspective.
+            [0, 0.12].forEach((lag, ringIndex) => {
+              const local = Math.min(1, Math.max(0, (sinceImpact - lag) / 0.42));
+              if (local <= 0 || local >= 1) return;
+              const eased = 1 - (1 - local) ** 3;
+              rings.poly(expandedQuad(1.05 + eased * (ringIndex ? 0.75 : 1.25)), true).stroke({
+                width: 0.6 + (1 - eased) * 3.4,
+                color: ringIndex ? 0xff4a14 : 0xffe2a0,
+                alpha: (1 - eased) * 0.95,
+              });
+            });
+
+            const beam = Math.max(0, 1 - sinceImpact / 0.6);
+            if (beam > 0) {
+              const height = cardWidth * 2.3;
+              pillar
+                .rect(strike.x - 3 - beam * 7, strike.y - height, 6 + beam * 14, height)
+                .fill({ color: 0xff4a14, alpha: beam * 0.5 });
+              pillar
+                .rect(strike.x - 1.5, strike.y - height, 3, height)
+                .fill({ color: 0xfff1d0, alpha: beam * 0.8 });
+            }
+
+            const burst = Math.min(1, sinceImpact / 0.22);
+            if (burst < 1) {
+              const fade = (1 - burst) ** 2;
+              flash
+                .circle(strike.x, strike.y, cardWidth * (0.18 + burst * 0.75))
+                .fill({ color: 0xff7a2a, alpha: fade * 0.6 });
+              flashCore
+                .circle(strike.x, strike.y, cardWidth * (0.07 + burst * 0.1))
+                .fill({ color: 0xffffff, alpha: fade });
+              for (let ray = 0; ray < 10; ray += 1) {
+                const angle = (ray / 10) * Math.PI * 2 + 0.3;
+                const reach = cardWidth * (0.35 + burst * 1.05) * (ray % 2 ? 0.62 : 1);
+                // Flattened vertically so the star lies with the table.
+                const tipX = strike.x + Math.cos(angle) * reach;
+                const tipY = strike.y + Math.sin(angle) * reach * 0.42;
+                const nx = -Math.sin(angle) * cardWidth * 0.022;
+                const ny = Math.cos(angle) * cardWidth * 0.022 * 0.42;
+                flashCore
+                  .poly([strike.x + nx, strike.y + ny, tipX, tipY, strike.x - nx, strike.y - ny], true)
+                  .fill({ color: 0xfff1c8, alpha: fade * 0.9 });
+              }
+            }
+
+            emberSeeds.forEach((seed) => {
+              const age = sinceImpact / seed.life;
+              if (age >= 1) return;
+              // Fast out of the strike, then slowing as they rise.
+              const travel = 1 - (1 - age) ** 2;
+              const x = strike.x + seed.x + seed.vx * travel * seed.life;
+              const y = strike.y + seed.y + seed.vy * travel * seed.life - age * cardWidth * 0.25;
+              const length = seed.size * (1.5 + (1 - age) * 3.5);
+              const heading = Math.atan2(seed.vy, seed.vx);
+              const dx = Math.cos(heading) * length;
+              const dy = Math.sin(heading) * length;
+              const wx = -Math.sin(heading) * seed.size * 0.5;
+              const wy = Math.cos(heading) * seed.size * 0.5;
+              embers
+                .poly([x - dx, y - dy, x + wx, y + wy, x + dx * 0.4, y + dy * 0.4, x - wx, y - wy], true)
+                .fill({ color: seed.color, alpha: (1 - age) ** 1.4 });
+            });
+          }
+
+          if (preview?.stillAt !== undefined) return;
 
           if (progress >= 1 || !alive()) {
             pixiApp.ticker.remove(interactionTicker);
@@ -2715,8 +2851,45 @@ export default function BattlePixiStage({
           }
         };
 
+        // Dev still: one frame held on screen, then cleaned up.
+        if (preview?.stillAt !== undefined) {
+          interactionTicker();
+          pixiApp.render();
+          window.setTimeout(() => {
+            if (!layer.destroyed) {
+              if (layer.parent === stage) stage.removeChild(layer);
+              layer.destroy({ children: true });
+            }
+            if (attackTargetGlowLayer === persistentGlowLayer) clearAttackTargetGlow();
+          }, 5000);
+          return;
+        }
+
         pixiApp.ticker.add(interactionTicker);
       };
+
+      // Dev-only: `__attackFxPreview(slot, stillAt)` runs the strike on a card
+      // bay without needing an Attack to land there. `stillAt` (0..1) holds
+      // one frame instead of playing it.
+      if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+        (
+          window as Window & { __attackFxPreview?: (slot?: number, stillAt?: number) => string }
+        ).__attackFxPreview = (slot = 1, stillAt?: number) => {
+          const section = CABINET_TABLE_SECTIONS[slot] ?? CABINET_TABLE_SECTIONS[1];
+          const corner = (u: number, v: number) => {
+            const point = getTableSurfacePoint(u, v);
+            return [point.x, point.y];
+          };
+          const quad = [
+            ...corner(section.leftU, section.topV),
+            ...corner(section.rightU, section.topV),
+            ...corner(section.rightU, section.bottomV),
+            ...corner(section.leftU, section.bottomV),
+          ] as Quad;
+          runAttackTargetInteraction(slot, { quad, stillAt });
+          return `attack fx @ slot ${slot}`;
+        };
+      }
 
       // Triple Defense table response. The hologram is deliberately upright
       // while its base ellipse follows the table plane, matching the physical
@@ -3247,8 +3420,7 @@ export default function BattlePixiStage({
 
       /**
        * Strokes the part of a trace between two arc-length positions, keeping
-       * every right-angle corner in between. `offsetX` shifts the whole stroke
-       * sideways, which is how the red/blue fringe copies are drawn.
+       * every right-angle corner in between.
        */
       const strokeTraceSpan = (
         graphics: Graphics,
@@ -3257,26 +3429,26 @@ export default function BattlePixiStage({
         toDistance: number,
         color: number,
         width: number,
-        alpha: number,
-        offsetX: number
+        alpha: number
       ) => {
         if (toDistance <= fromDistance || alpha <= 0.01) return;
 
         const start = pointAtDistance(trace, fromDistance);
         const end = pointAtDistance(trace, toDistance);
 
-        graphics.moveTo(start.x + offsetX, start.y);
+        graphics.moveTo(start.x, start.y);
 
         for (
           let index = start.segment;
           index < end.segment && index < trace.xs.length;
           index += 1
         ) {
-          graphics.lineTo(trace.xs[index] + offsetX, trace.ys[index]);
+          graphics.lineTo(trace.xs[index], trace.ys[index]);
         }
 
-        graphics.lineTo(end.x + offsetX, end.y);
-        graphics.stroke({ width, color, alpha });
+        graphics.lineTo(end.x, end.y);
+        // Square ends and mitred corners: these are tracks, not brush strokes.
+        graphics.stroke({ width, color, alpha, cap: "square", join: "miter" });
       };
 
       /**
@@ -3284,7 +3456,7 @@ export default function BattlePixiStage({
        * itself outward with a bright travelling head and a fading tail, so the
        * table reads as current spreading out from the three detected cards.
        */
-      const runComboTraceFlash = (intensity = 1) => {
+      const runComboTraceFlash = (intensity = 1, stillAt?: number) => {
         const config = patchConfig.reelMechanics.flash;
         const alive = aliveGuard();
 
@@ -3294,7 +3466,10 @@ export default function BattlePixiStage({
           seedPointsAroundCard(section, config.trace.perCard)
         );
 
-        const traces = generateReelTraces(seeds).map(prepareTrace);
+        const traces = [
+          ...generateReelTraces(seeds),
+          ...generateReelRails(config.trace.rails),
+        ].map(prepareTrace);
 
         const layer = new Graphics();
         layer.blendMode = "add";
@@ -3318,10 +3493,9 @@ export default function BattlePixiStage({
         );
 
         const burstStart = performance.now();
-        const chroma = config.trace.chromaOffsetPx;
 
         const traceTicker = () => {
-          const progress = Math.min(
+          const progress = stillAt ?? Math.min(
             1,
             (performance.now() - burstStart) / config.holdMs
           );
@@ -3345,26 +3519,33 @@ export default function BattlePixiStage({
             const fade = local <= 1 ? 1 : Math.max(0, 1 - (local - 1) * 1.6);
             const alpha = fade * intensity;
 
-            // Chromatic fringe first, so the white core sits on top of it.
+            // Coloured glow underneath, then a white-hot hairline on top.
+            // On the additive layer the two sum, so the line itself stays
+            // thin while reading far brighter than its weight.
             strokeTraceSpan(
               layer, trace, fromDistance, toDistance,
-              0xff3b6b, trace.widthPx, alpha * 0.34, -chroma
+              trace.color, trace.widthPx * config.trace.glowWidth,
+              alpha * config.trace.glowAlpha
             );
             strokeTraceSpan(
               layer, trace, fromDistance, toDistance,
-              0x3bb6ff, trace.widthPx, alpha * 0.34, chroma
+              trace.color, trace.widthPx * 2.4, alpha * 0.6
             );
             strokeTraceSpan(
               layer, trace, fromDistance, toDistance,
-              trace.color, trace.widthPx, alpha * 0.9, 0
+              0xffffff, trace.widthPx, alpha
             );
 
-            // A brighter node at the head sells it as a moving charge.
+            // A hard square node at the head: a charge on a track.
             if (local <= 1) {
               const headPoint = pointAtDistance(trace, toDistance);
+              const half = trace.widthPx * 2.2;
               layer
-                .circle(headPoint.x, headPoint.y, trace.widthPx * 1.5)
-                .fill({ color: 0xffffff, alpha: alpha * 0.85 });
+                .rect(headPoint.x - half * 2.4, headPoint.y - half * 2.4, half * 4.8, half * 4.8)
+                .fill({ color: trace.color, alpha: alpha * 0.35 });
+              layer
+                .rect(headPoint.x - half, headPoint.y - half, half * 2, half * 2)
+                .fill({ color: 0xffffff, alpha });
             }
           });
 
@@ -3375,6 +3556,19 @@ export default function BattlePixiStage({
           }
         };
 
+        // Dev still: one frame of the burst held on screen, for judging the
+        // look where the page is not being animated.
+        if (stillAt !== undefined) {
+          traceTicker();
+          pixiApp.render();
+          window.setTimeout(() => {
+            if (layer.destroyed) return;
+            stage.removeChild(layer);
+            layer.destroy();
+          }, 5000);
+          return;
+        }
+
         pixiApp.ticker.add(traceTicker);
       };
 
@@ -3382,9 +3576,9 @@ export default function BattlePixiStage({
       // density, speed and colour can be tuned without waiting for a hand.
       if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
         (
-          window as Window & { __reelFlashPreview?: (intensity?: number) => string }
-        ).__reelFlashPreview = (intensity = 1) => {
-          runComboTraceFlash(intensity);
+          window as Window & { __reelFlashPreview?: (intensity?: number, stillAt?: number) => string }
+        ).__reelFlashPreview = (intensity = 1, stillAt?: number) => {
+          runComboTraceFlash(intensity, stillAt);
           return `trace flash @ ${intensity}`;
         };
       }

@@ -350,7 +350,7 @@ export const patchConfig = {
       // Chance flashes, brightness scaling with how many landed.
       chance: true,
       // Total run time of the trace burst.
-      holdMs: 1000,
+      holdMs: 1250,
       // Fired this long after the last card settles, so it lands together with
       // the existing shine sweep rather than as a separate beat.
       startDelayMs: 460,
@@ -360,14 +360,28 @@ export const patchConfig = {
         // Read together with widthPx: the burst is meant to look like fine
         // etched circuitry, so it is many hair-thin lines rather than a few
         // heavy ones.
-        perCard: 20,
+        perCard: 22,
         // Right-angle turns per trace (min, max).
-        segments: [3, 7] as [number, number],
+        segments: [5, 10] as [number, number],
         // Step sizes as a fraction of the table, per straight run.
-        stepAcross: [0.04, 0.3] as [number, number],
-        stepToward: [0.05, 0.22] as [number, number],
+        // Long runs, so a trace reaches the far side of the table rather
+        // than knotting up beside its own card.
+        stepAcross: [0.1, 0.46] as [number, number],
+        stepToward: [0.1, 0.4] as [number, number],
         // Line weight in stage px (min, max).
-        widthPx: [0.5, 1.3] as [number, number],
+        // Hairlines: the brightness comes from the glow drawn under each
+        // one, not from the weight of the line itself.
+        widthPx: [0.35, 0.75] as [number, number],
+        // Every corner snaps to this lattice (columns across, rows down the
+        // table), so runs share tracks like a machined board instead of each
+        // wandering on its own.
+        lattice: [40, 22] as [number, number],
+        // Straight pulses that cross the whole table edge to edge along the
+        // lattice, on top of the traces leaving the cards.
+        rails: 16,
+        // Glow under each hairline: width as a multiple of the line, and alpha.
+        glowWidth: 7,
+        glowAlpha: 0.22,
         // Far limit of the trace field, in normalised table space (v=0 is the
         // top of the Pixi plane, which sits ABOVE the table artwork -- the
         // felt does not start until further down). Traces used to be allowed
@@ -376,12 +390,7 @@ export const patchConfig = {
         // a little room above the cards. Raise it if any still escape.
         minV: 0.16,
         // Length of the bright travelling tail, as a fraction of the path.
-        tailFraction: 0.55,
-        // Sideways offset of the red/blue fringe copies, in stage px. This is
-        // what gives the traces the reference's chromatic shimmer.
-        // Scaled down with widthPx: at the old 1.4 the fringe copies were
-        // wider apart than the hairlines themselves and read as three lines.
-        chromaOffsetPx: 0.8,
+        tailFraction: 0.5,
       },
     },
 

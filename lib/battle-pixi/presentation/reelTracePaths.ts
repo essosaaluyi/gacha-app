@@ -44,13 +44,14 @@ export type ReelTrace = {
  * burst reads as data rather than as fire.
  */
 const TRACE_COLORS = [
-  0x7ff0ff, // cyan
-  0xa8ffe8, // pale aqua
-  0xffffff, // white core
-  0x9fd0ff, // ice blue
-  0xff9fe8, // magenta spark
-  0xffd48a, // amber spark
-  0xb9ff9f, // lime spark
+  0x4fe8ff, // cyan
+  0x4fe8ff,
+  0x6fb4ff, // ice blue
+  0x6fb4ff,
+  0x7dffe0, // aqua
+  0xff5fd8, // magenta
+  0xffb84a, // amber
+  0x9dff5f, // lime
 ];
 
 const randomBetween = (min: number, max: number) =>
@@ -79,6 +80,9 @@ const TRACE_U_MAX = 0.985;
 const TRACE_V_MAX = 1.04;
 
 const traceMinV = () => patchConfig.reelMechanics.flash.trace.minV;
+
+/** Snaps a coordinate to the nearest of `cells` lattice lines across 0..1. */
+const snap = (value: number, cells: number) => Math.round(value * cells) / cells;
 
 /**
  * Builds one right-angle path walking away from `origin`.
@@ -140,14 +144,15 @@ function buildTracePath(seed: ReelTraceSeed): ReelTracePoint[] {
       } else if (u > TRACE_U_MAX) {
         u = TRACE_U_MAX - (u - TRACE_U_MAX);
         acrossDirection = -1;
-      } else if (Math.random() < 0.25) {
-        // An occasional reversal keeps the paths from looking combed.
+      } else if (Math.random() < 0.08) {
+        // Reversals are rare: a track that keeps its heading reads as
+        // machined, one that keeps doubling back reads as scribble.
         acrossDirection *= -1;
       }
 
       // A step wider than the table itself could reflect straight past the
       // opposite edge, so pin it inside as a backstop.
-      u = Math.min(TRACE_U_MAX, Math.max(TRACE_U_MIN, u));
+      u = Math.min(TRACE_U_MAX, Math.max(TRACE_U_MIN, snap(u, config.lattice[0])));
     } else {
       v += towardDirection * randomBetween(
         config.stepToward[0],
@@ -161,11 +166,11 @@ function buildTracePath(seed: ReelTraceSeed): ReelTracePoint[] {
         // into, so the track turns and runs back down the board.
         v = minV + (minV - v);
         towardDirection = 1;
-      } else if (Math.random() < 0.2) {
+      } else if (Math.random() < 0.08) {
         towardDirection *= -1;
       }
 
-      v = Math.min(TRACE_V_MAX, Math.max(minV, v));
+      v = Math.min(TRACE_V_MAX, Math.max(minV, snap(v, config.lattice[1])));
     }
 
     points.push({ u, v });
@@ -190,9 +195,41 @@ export function generateReelTraces(
     widthPx: randomBetween(config.widthPx[0], config.widthPx[1]),
     // Staggered starts, all finishing well before the burst ends so the table
     // is never left with a half-drawn trace hanging on it.
-    delay: Math.random() * 0.34,
-    duration: randomBetween(0.4, 0.62),
+    delay: Math.random() * 0.3,
+    duration: randomBetween(0.4, 0.6),
   }));
+}
+
+/**
+ * Straight pulses along the lattice that cross the whole table, alternating
+ * across and up-and-down. They are what carries the flash out to the corners
+ * the card traces do not reach.
+ */
+export function generateReelRails(count: number): ReelTrace[] {
+  const config = patchConfig.reelMechanics.flash.trace;
+  const minV = traceMinV();
+
+  return Array.from({ length: count }, (_, index) => {
+    const reversed = Math.random() < 0.5;
+    let points: ReelTracePoint[];
+
+    if (index % 2 === 0) {
+      const v = Math.min(1, Math.max(minV, snap(randomBetween(minV, 1), config.lattice[1])));
+      points = [{ u: TRACE_U_MIN, v }, { u: TRACE_U_MAX, v }];
+    } else {
+      const u = Math.min(TRACE_U_MAX, Math.max(TRACE_U_MIN, snap(Math.random(), config.lattice[0])));
+      points = [{ u, v: minV }, { u, v: TRACE_V_MAX }];
+    }
+
+    return {
+      points: reversed ? points.reverse() : points,
+      color: TRACE_COLORS[Math.floor(Math.random() * TRACE_COLORS.length)],
+      widthPx: config.widthPx[0],
+      delay: Math.random() * 0.45,
+      // Rails are quick: a pulse crossing the board, not a line being drawn.
+      duration: randomBetween(0.22, 0.34),
+    };
+  });
 }
 
 /**
