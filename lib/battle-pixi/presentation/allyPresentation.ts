@@ -22,13 +22,15 @@ export function allyPresentationKey(character: string) {
 }
 
 export function defaultAllyPresentation(character: string): AllyPresentation {
+  if (character === "R3") return { ...DEFAULT_ALLY_PRESENTATION, x: 1, y: 28, scale: 138 };
   return character === "R2" ? { ...DEFAULT_ALLY_PRESENTATION, x: -3, scale: 96 } : DEFAULT_ALLY_PRESENTATION;
 }
 
 export function readAllyPresentation(character: string): AllyPresentation {
   const defaults = defaultAllyPresentation(character);
   try {
-    const saved = JSON.parse(window.localStorage.getItem(allyPresentationKey(character)) ?? (character === "R2" ? null : window.localStorage.getItem(ALLY_PRESENTATION_KEY)) ?? "null");
+    const shared = character === "R2" || character === "R3" ? null : window.localStorage.getItem(ALLY_PRESENTATION_KEY);
+    const saved = JSON.parse(window.localStorage.getItem(allyPresentationKey(character)) ?? shared ?? "null");
     const placement = { ...defaults, summonEnabled: saved?.summonEnabled === true };
     for (const { key, min, max } of [...ALLY_IDLE_CONTROLS, ...ALLY_SUMMON_CONTROLS]) {
       const value = saved?.[key];
