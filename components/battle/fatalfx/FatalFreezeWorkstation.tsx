@@ -12,7 +12,7 @@ const STORAGE_KEY = "fatalFreezeWorkstation.v1";
 
 const MOVIES = [
   { label: "R1 1本目", src: "/videos/battle-assets/fatal-attack/r1a1.v1.mp4" },
-  { label: "R1 2本目", src: "/videos/battle-assets/fatal-attack/r1a2.v1.mp4" },
+  { label: "R1 2本目", src: "/videos/battle-assets/fatal-attack/r1a2.v2.mp4" },
 ];
 
 type NumKey = { [K in keyof FreezeSettings]: FreezeSettings[K] extends number ? K : never }[keyof FreezeSettings];

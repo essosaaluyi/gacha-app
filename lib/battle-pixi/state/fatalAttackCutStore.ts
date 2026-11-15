@@ -17,7 +17,7 @@ type CutNumber = 1 | 2;
 const CUTS: Record<string, Partial<Record<CutNumber, string>>> = {
   R1: {
     1: "/videos/battle-assets/fatal-attack/r1a1.v1.mp4",
-    2: "/videos/battle-assets/fatal-attack/r1a2.v1.mp4",
+    2: "/videos/battle-assets/fatal-attack/r1a2.v2.mp4",
   },
 };
 

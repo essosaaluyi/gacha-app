@@ -100,20 +100,20 @@ export type FreezeSettings = {
 };
 
 export const DEFAULT_FREEZE: FreezeSettings = {
-  zoomMin: 1.03,
-  zoomMax: 1.075,
-  zoomMs: 420,
+  zoomMin: 1.01,
+  zoomMax: 1.025,
+  zoomMs: 120,
   shakePx: 0,
-  blurPx: 7,
-  blurInnerPct: 38,
-  linesOpacity: 0.9,
+  blurPx: 22.5,
+  blurInnerPct: 48,
+  linesOpacity: 0.3,
   linesPeriodDeg: 7,
-  linesWidthDeg: 0.5,
-  linesInnerPct: 30,
+  linesWidthDeg: 1.15,
+  linesInnerPct: 35,
   linesColor: "#ffffff",
   linesFlickerMs: 300,
-  vignette: 0.45,
-  fadeMs: 350,
+  vignette: 0.3,
+  fadeMs: 540,
 };
 
 export type FatalFxSettings = { cutIn: CutInSettings; band: BandSettings };

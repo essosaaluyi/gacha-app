@@ -16,7 +16,7 @@ import { DEFAULT_FREEZE } from "./fatalFxSettings";
 
 const PREVIEW_SOURCES: Record<string, string> = {
   "1": "/videos/battle-assets/fatal-attack/r1a1.v1.mp4",
-  "2": "/videos/battle-assets/fatal-attack/r1a2.v1.mp4",
+  "2": "/videos/battle-assets/fatal-attack/r1a2.v2.mp4",
 };
 
 const previewParam = () =>
