@@ -721,9 +721,9 @@ const revealPresets = {
     storageKey: "dragon-raider-layer-workstation-timeline-v1",
     cardImage: "/images/cards/player/R3/card.webp",
     standFrameCount: 83,
-    idleFrameCount: 69,
+    idleFrameCount: 66,
     standFrameMs: 36,
-    idleFrameMs: 40,
+    idleFrameMs: 1000 / 24,
     standStartFrame: 0,
     idleStartFrame: 0,
     standTransformOrigin: "50% 82%",
@@ -736,9 +736,9 @@ const revealPresets = {
         .toString()
         .padStart(3, "0")}.webp`,
     idleFrameSrc: (index: number) =>
-      `/images/battle-characters/dragon-raider/idle/${index
+      `/images/battle-characters/dragon-raider/idle.v2/${index
         .toString()
-        .padStart(3, "0")}.webp`,
+        .padStart(4, "0")}.webp`,
   },
   youngKnight: {
     id: "young-knight",
@@ -1413,6 +1413,7 @@ function FighterPresentation({
   onInspect?: (origin: HTMLElement) => void;
 }) {
   const r1 = side === "player" && basePreset === revealPresets.r1TripletsBabyDragon;
+  const skipIntro = r1 || (side === "player" && basePreset === revealPresets.dragonRaider);
   const [preset, setPreset] = useState(() => r1 ? basePreset : loadSavedPreset(basePreset));
   const [placement, setPlacement] = useState(() => r1 ? readR1IdlePlacement() : undefined);
 
@@ -1437,20 +1438,20 @@ function FighterPresentation({
     // Claim inside the cancellable frame so Strict Mode cleanup cannot consume the cue.
     const soundFrame = window.requestAnimationFrame(() => {
       if (claimBattleSummonSound(side, identity)) playSfx("characterSummon");
-      if (r1) completeBattleSummon(side, identity);
+      if (skipIntro) completeBattleSummon(side, identity);
     });
-    if (r1) return () => window.cancelAnimationFrame(soundFrame);
+    if (skipIntro) return () => window.cancelAnimationFrame(soundFrame);
     const remaining = Math.max(0, preset.durationMs - (Date.now() - startedAt));
     const timer = window.setTimeout(() => completeBattleSummon(side, identity), remaining);
     return () => {
       window.cancelAnimationFrame(soundFrame);
       window.clearTimeout(timer);
     };
-  }, [identity, preset.durationMs, r1, side, startedAt, status]);
+  }, [identity, preset.durationMs, skipIntro, side, startedAt, status]);
 
   if (status === "waiting" || status === "absent") return null;
   return <SpawnActor side={side} name={name} cardImage={cardImage}
-    preset={preset} persistent={r1 || status === "ready"} onInspect={onInspect} placement={placement} />;
+    preset={preset} persistent={skipIntro || status === "ready"} onInspect={onInspect} placement={placement} />;
 }
 
 export default function BattleSpawnScene({ onInspect }: { onInspect?: (side: "player" | "enemy", origin: HTMLElement) => void }) {
