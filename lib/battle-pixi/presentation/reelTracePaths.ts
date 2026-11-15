@@ -240,7 +240,7 @@ export function generateReelRails(count: number): ReelTrace[] {
  */
 const EDGE_WEIGHTS: readonly { edge: ReelTraceEdge; weight: number }[] = [
   { edge: "bottom", weight: 3 },
-  { edge: "top", weight: 2 },
+  { edge: "top", weight: 3 },
   { edge: "left", weight: 2 },
   { edge: "right", weight: 2 },
 ];

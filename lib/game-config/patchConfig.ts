@@ -360,7 +360,7 @@ export const patchConfig = {
         // Read together with widthPx: the burst is meant to look like fine
         // etched circuitry, so it is many hair-thin lines rather than a few
         // heavy ones.
-        perCard: 22,
+        perCard: 11,
         // Right-angle turns per trace (min, max).
         segments: [5, 10] as [number, number],
         // Step sizes as a fraction of the table, per straight run.
@@ -371,26 +371,28 @@ export const patchConfig = {
         // Line weight in stage px (min, max).
         // Hairlines: the brightness comes from the glow drawn under each
         // one, not from the weight of the line itself.
-        widthPx: [0.35, 0.75] as [number, number],
+        widthPx: [0.2, 0.42] as [number, number],
         // Every corner snaps to this lattice (columns across, rows down the
         // table), so runs share tracks like a machined board instead of each
         // wandering on its own.
         lattice: [40, 22] as [number, number],
         // Straight pulses that cross the whole table edge to edge along the
         // lattice, on top of the traces leaving the cards.
-        rails: 16,
+        rails: 8,
         // Glow under each hairline: width as a multiple of the line, and alpha.
-        glowWidth: 7,
-        glowAlpha: 0.22,
+        glowWidth: 9,
+        glowAlpha: 0.2,
         // Far limit of the trace field, in normalised table space (v=0 is the
         // top of the Pixi plane, which sits ABOVE the table artwork -- the
         // felt does not start until further down). Traces used to be allowed
         // up to v=0.02 and so ran off the top of the table into the cabinet.
         // Card bays begin at v≈0.22, so this keeps the field on the felt with
         // a little room above the cards. Raise it if any still escape.
-        minV: 0.16,
+        // 0.16 left the strip of felt above the cards dark; 0.09 reaches it.
+        minV: 0.09,
         // Length of the bright travelling tail, as a fraction of the path.
-        tailFraction: 0.5,
+        // Short: a pulse running along its track, not a line left behind it.
+        tailFraction: 0.14,
       },
     },
 
@@ -408,6 +410,11 @@ export const patchConfig = {
   // presentation instead of rolling dialogue/chanceReveal per game.
   debug: {
     forceFakeoutPresentation: null as FakeoutPresentation | null,
+
+    // Development builds only: this share of ordinary draws is replaced by
+    // an Attack card sitting on the target slot, so that presentation can be
+    // reviewed without waiting for it. 0 = off. Never applied in production.
+    devAttackOnTargetRate: 1 / 3,
 
     // Pins a battle outcome to a fixed probability (0-1), overriding the
     // spreadsheet odds. Every other outcome keeps its relative odds and shares

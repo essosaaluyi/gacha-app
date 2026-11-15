@@ -9,10 +9,10 @@ import { useEffect } from "react";
 // the pivot slides one way, the far ground and the horizon the other. Each
 // fighter is slid by the amount the ground under its feet moves, so it stays
 // planted while the two of them move against each other. The travel is kept
-// to a few pixels; more than that reads as the picture wobbling.
+// small; much more than this reads as the picture wobbling.
 
 /** Largest shear either side of rest. */
-const MAX_ANGLE_DEG = 1.6;
+const MAX_ANGLE_DEG = 3.2;
 /** One full left-right-left sweep. */
 const CYCLE_MS = 30000;
 /** Height of the pivot line, as a fraction of the screen from the top. */
@@ -20,7 +20,7 @@ const PIVOT_Y = 0.8;
 /** Where each fighter's feet meet the ground, same units. */
 const FEET_Y = { player: 1, enemy: 0.66 } as const;
 /** Covers the slivers the shear would open at the left and right edges. */
-const COVER_SCALE = 1.03;
+const COVER_SCALE = 1.05;
 
 const SCREEN = ".battle-cabinet-screen .bcab-screen";
 
