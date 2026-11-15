@@ -8,6 +8,7 @@ import CabinetPlayerDock from "@/components/battle/cabinet/CabinetPlayerDock";
 import EnemyFatalTease from "@/components/battle/EnemyFatalTease";
 import FatalAttackPlaceholder from "@/components/battle/FatalAttackPlaceholder";
 import FatalModeBand from "@/components/battle/fatalfx/FatalModeBand";
+import FatalAttackCut from "@/components/battle/fatalfx/FatalAttackCut";
 import { getFatalPresentation, subscribeFatalPresentation, isFatalPresentationResolving } from "@/lib/battle-pixi/state/fatalPresentationStore";
 import { parseFatalPreview } from "@/lib/battle-pixi/core/enemyFatalRoll";
 import { getEnemyCharacterName, getPlayerCharacterName } from "@/lib/battle-pixi/config/characterNames";
@@ -935,6 +936,7 @@ export default function BattleScreen() {
                   {!openingActive && <BattleSpawnScene onInspect={inspectField} />}
                   <BattleHUD />
                   <FatalModeBand />
+                  <FatalAttackCut />
                   <MagicCircleOverlay />
                   <AttackFakeoutInsert />
                   <FakeoutChanceReveal />

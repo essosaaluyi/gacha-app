@@ -147,6 +147,7 @@ import {
   cancelPlayerFatalModeOpening,
   startPlayerFatalModeOpening,
 } from "@/lib/battle-pixi/state/playerFatalModeOpeningStore";
+import { isFatalAttackCutPlaying, onFatalModeDraw } from "@/lib/battle-pixi/state/fatalAttackCutStore";
 import {
   getEnemyFaceoffImage,
   getPlayerFaceoffImage,
@@ -654,7 +655,7 @@ type BattlePixiStageProps = {
 };
 
 function canUseBattleControls() {
-  return !isCardOverviewOpen() && !isFatalPresentationResolving() && getBattleState() === "playing" &&
+  return !isCardOverviewOpen() && !isFatalPresentationResolving() && !isFatalAttackCutPlaying() && getBattleState() === "playing" &&
     (getBattleMode() === "bonus" ||
       (getBattleMode() === "battle" && getCurrentPlayerBattleCard() !== null && areBattleSummonsReady()));
 }
@@ -1653,7 +1654,8 @@ export default function BattlePixiStage({
         // A successful attack-land struggle arms the next game's opening
         // insert. Consume it only on this first draw click, never on release
         // or on a later card flip.
-        startPlayerFatalModeOpening();
+        // The same press starts this draw's Fatal Mode attack movie, if any.
+        onFatalModeDraw(startPlayerFatalModeOpening());
         resetCardsToGroup();
         fatalSequenceBusy = false;
         pendingFakeoutDialogue = null;
