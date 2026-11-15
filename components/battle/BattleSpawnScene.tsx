@@ -3,6 +3,8 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
+import { readR1IdlePlacement, R1_IDLE_PLACEMENT_KEY, type R1IdlePlacement } from "@/lib/battle-pixi/presentation/r1IdlePlacement";
+import r1Styles from "./R1IdlePlacement.module.css";
 
 import {
   getBattlePresentationFlow,
@@ -1339,6 +1341,7 @@ function SpawnActor({
   preset,
   persistent = false,
   onInspect,
+  placement,
 }: {
   side: "player" | "enemy";
   cardImage: string;
@@ -1346,13 +1349,21 @@ function SpawnActor({
   preset: RevealPreset;
   persistent?: boolean;
   onInspect?: (origin: HTMLElement) => void;
+  placement?: R1IdlePlacement;
 }) {
   const { actorRef, probeRef } = useCharacterFxAnchor(preset, !persistent);
   return (
     <div
       ref={actorRef}
-      className={`battle-spawn-actor battle-spawn-actor-${side}`}
-      style={getPresetStyle(preset)}
+      className={`battle-spawn-actor battle-spawn-actor-${side}${placement ? ` ${r1Styles.actor}` : ""}`}
+      style={{
+        ...getPresetStyle(preset),
+        ...(placement && {
+          "--r1-idle-x": `${placement.x}%`,
+          "--r1-idle-y": `${placement.y}%`,
+          "--r1-idle-scale": placement.scale / 100,
+        }),
+      } as CSSProperties}
     >
       {!persistent && <div ref={probeRef} className="battle-spawn-character-slot battle-spawn-fx-probe" aria-hidden="true" />}
       {!persistent && <div className="battle-spawn-ground" />}
@@ -1382,6 +1393,12 @@ function SpawnActor({
   );
 }
 
+export function R1IdlePreview({ placement }: { placement: R1IdlePlacement }) {
+  const preset = revealPresets.r1TripletsBabyDragon;
+  return <SpawnActor side="player" name={preset.name} cardImage={preset.cardImage}
+    preset={preset} persistent placement={placement} />;
+}
+
 function FighterPresentation({
   side, identity, name, cardImage, basePreset, status, startedAt,
   onInspect,
@@ -1395,12 +1412,17 @@ function FighterPresentation({
   startedAt: number | null;
   onInspect?: (origin: HTMLElement) => void;
 }) {
-  const [preset, setPreset] = useState(() => loadSavedPreset(basePreset));
+  const r1 = side === "player" && basePreset === revealPresets.r1TripletsBabyDragon;
+  const [preset, setPreset] = useState(() => r1 ? basePreset : loadSavedPreset(basePreset));
+  const [placement, setPlacement] = useState(() => r1 ? readR1IdlePlacement() : undefined);
 
   useEffect(() => {
-    const sync = () => setPreset(loadSavedPreset(basePreset));
+    const sync = () => {
+      if (r1) setPlacement(readR1IdlePlacement());
+      else setPreset(loadSavedPreset(basePreset));
+    };
     const onStorage = (event: StorageEvent) => {
-      if (event.key === basePreset.storageKey) sync();
+      if (event.key === (r1 ? R1_IDLE_PLACEMENT_KEY : basePreset.storageKey) || event.key === null) sync();
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("focus", sync);
@@ -1408,25 +1430,27 @@ function FighterPresentation({
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("focus", sync);
     };
-  }, [basePreset]);
+  }, [basePreset, r1]);
 
   useEffect(() => {
     if (status !== "summoning" || startedAt === null) return;
     // Claim inside the cancellable frame so Strict Mode cleanup cannot consume the cue.
     const soundFrame = window.requestAnimationFrame(() => {
       if (claimBattleSummonSound(side, identity)) playSfx("characterSummon");
+      if (r1) completeBattleSummon(side, identity);
     });
+    if (r1) return () => window.cancelAnimationFrame(soundFrame);
     const remaining = Math.max(0, preset.durationMs - (Date.now() - startedAt));
     const timer = window.setTimeout(() => completeBattleSummon(side, identity), remaining);
     return () => {
       window.cancelAnimationFrame(soundFrame);
       window.clearTimeout(timer);
     };
-  }, [identity, preset.durationMs, side, startedAt, status]);
+  }, [identity, preset.durationMs, r1, side, startedAt, status]);
 
   if (status === "waiting" || status === "absent") return null;
   return <SpawnActor side={side} name={name} cardImage={cardImage}
-    preset={preset} persistent={status === "ready"} onInspect={onInspect} />;
+    preset={preset} persistent={r1 || status === "ready"} onInspect={onInspect} placement={placement} />;
 }
 
 export default function BattleSpawnScene({ onInspect }: { onInspect?: (side: "player" | "enemy", origin: HTMLElement) => void }) {
