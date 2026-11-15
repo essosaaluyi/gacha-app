@@ -8,7 +8,7 @@
 // the silver shutter comes in.
 
 import { getBattlePresentationFlow, subscribeBattlePresentationFlow } from "./battlePresentationFlowStore";
-import { getPlayerFatalSnapshot, isFatalModeActive, subscribeFatalMode } from "./fatalModeStore";
+import { isFatalModeActive, subscribeFatalMode } from "./fatalModeStore";
 
 let open = false;
 let ended = false;
@@ -25,10 +25,10 @@ const notify = () => listeners.forEach((listener) => listener());
 function sync() {
   const ready = getBattlePresentationFlow().phase === "next_round_ready";
   if (isFatalModeActive()) {
-    // A run resumed part-way through the mode has already had its first draw.
-    const { totalGames, gamesLeft } = getPlayerFatalSnapshot();
-    if (!started && gamesLeft >= totalGames) return;
-    started = true;
+    // Only a draw press opens the window. The press itself spends a game, so
+    // "games already spent" cannot stand in for "the shutter has closed": that
+    // opened the band while the shutter was still coming down.
+    if (!started) return;
     const changed = !open;
     open = true; ended = false; sawBusy = false;
     if (changed) notify();

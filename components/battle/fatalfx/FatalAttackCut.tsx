@@ -86,7 +86,14 @@ export default function FatalAttackCut() {
       video.muted = true;
       video.play().catch(hideFatalAttackCut);
     });
-  }, [showing]);
+    // A video taken off the page keeps playing its sound, so a cut has to
+    // stop it by hand: the next draw cuts the picture and the audio together.
+    return () => {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [showing, cut.key]);
 
   if (!showing || !cut.src) return null;
 
