@@ -1,5 +1,5 @@
 export const R1_IDLE_PLACEMENT_KEY = "gacha-battle:r1-idle-placement";
-export const DEFAULT_R1_IDLE_PLACEMENT = { x: 0, y: 0, scale: 100 };
+export const DEFAULT_R1_IDLE_PLACEMENT = { x: 3, y: 11, scale: 89 };
 export type R1IdlePlacement = typeof DEFAULT_R1_IDLE_PLACEMENT;
 
 export const R1_IDLE_CONTROLS = [
