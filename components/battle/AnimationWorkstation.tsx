@@ -703,20 +703,20 @@ const workstationPresets: Record<string, WorkstationPreset> = {
     storageKey: "enemy-one-layer-workstation-timeline-v3",
     standFrameCount: 121,
     idleFrameCount: 121,
-    standFrameMs: 40,
-    idleFrameMs: 40,
+    standFrameMs: 1000 / 24,
+    idleFrameMs: 1000 / 24,
     standStartFrame: 0,
     idleStartFrame: 0,
     standTransformOrigin: "50% 50%",
     idleTransformOrigin: "50% 50%",
     standFrameSrc: (frame: number) =>
-      `/images/battle-characters/enemy-one/idle/${frame
+      `/images/battle-characters/enemy-one/idle.v2/${frame
         .toString()
-        .padStart(4, "0")}.png`,
+        .padStart(4, "0")}.webp`,
     idleFrameSrc: (frame: number) =>
-      `/images/battle-characters/enemy-one/idle/${frame
+      `/images/battle-characters/enemy-one/idle.v2/${frame
         .toString()
-        .padStart(4, "0")}.png`,
+        .padStart(4, "0")}.webp`,
     defaultLayers: enemyOneDefaultLayers,
     defaultTimeline: {
       cardBack: { startMs: 0, endMs: 1700 },
@@ -965,12 +965,20 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+// The enemy side shows Enemy 7 by default; /animation-workstation?enemy=1 opens Enemy 1 instead.
+function workstationEnemyPreset() {
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("enemy") === "1") {
+    return workstationPresets.enemyOne;
+  }
+  return workstationPresets.enemySeven;
+}
+
 export default function AnimationWorkstation() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [previewSide, setPreviewSide] = useState<PreviewSide>("player");
   const activePreset =
     previewSide === "enemy"
-      ? workstationPresets.enemySeven
+      ? workstationEnemyPreset()
       : workstationPresets.brokenDoll;
   const layerLabels: Record<LayerKey, string> = {
     cardBack: "Card back",
@@ -1173,7 +1181,7 @@ export default function AnimationWorkstation() {
 
     const nextPreset =
       nextSide === "enemy"
-        ? workstationPresets.enemySeven
+        ? workstationEnemyPreset()
         : workstationPresets.brokenDoll;
     const nextState = getInitialState(nextPreset);
 
