@@ -40,7 +40,12 @@ function Strip({ settings, reverse, edge }: { settings: BandSettings; reverse: b
       ref={stripRef}
       className={styles.strip}
       data-edge={edge}
-      style={{ [edge]: `${settings.insetPct}%` } as CSSProperties}
+      style={{
+        [edge]: `${settings.insetPct}%`,
+        "--fb-tilt": `${edge === "top" ? settings.tiltDeg : settings.bottomTiltDeg}deg`,
+        "--fb-depth": `${edge === "top" ? settings.depthDeg : settings.bottomDepthDeg}deg`,
+        "--fb-pitch": `${edge === "top" ? settings.pitchDeg : settings.bottomPitchDeg}deg`,
+      } as CSSProperties}
     >
       <div
         className={styles.track}
@@ -67,9 +72,6 @@ export default function FatalBand({ settings }: { settings: BandSettings }) {
     "--fb-opacity": settings.opacity,
     "--fb-glow-strength": settings.glow,
     "--fb-skew": `${settings.skewDeg}deg`,
-    "--fb-tilt": `${settings.tiltDeg}deg`,
-    "--fb-depth": `${settings.depthDeg}deg`,
-    "--fb-pitch": `${settings.pitchDeg}deg`,
     "--fb-perspective": `${100 / Math.max(settings.perspective, 0.1)}cqw`,
   } as CSSProperties;
 

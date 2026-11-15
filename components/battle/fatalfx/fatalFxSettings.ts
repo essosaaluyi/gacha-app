@@ -69,6 +69,10 @@ export type BandSettings = {
   depthDeg: number;
   /** Depth: tips the band around its own length (top edge toward/away). */
   pitchDeg: number;
+  /** The same three angles for the bottom band. */
+  bottomTiltDeg: number;
+  bottomDepthDeg: number;
+  bottomPitchDeg: number;
   /** Strength of the perspective. Higher = more exaggerated depth. */
   perspective: number;
 };
@@ -131,6 +135,9 @@ export const DEFAULT_FATAL_FX: FatalFxSettings = {
     tiltDeg: 0,
     depthDeg: 0,
     pitchDeg: 0,
+    bottomTiltDeg: 0,
+    bottomDepthDeg: 0,
+    bottomPitchDeg: 0,
     perspective: 1,
   },
 };
@@ -149,6 +156,13 @@ export function mergeFatalFx(input: unknown): FatalFxSettings {
   if (saved?.gold?.main === "#e6a100" && saved.gold.glow === "#ffe06a") colors.gold = { ...d.cutIn.colors.gold };
   return {
     cutIn: { ...d.cutIn, ...(s.cutIn ?? {}), colors },
-    band: { ...d.band, ...(s.band ?? {}) },
+    band: {
+      ...d.band,
+      ...(s.band ?? {}),
+      // Settings saved before the bands were split: the bottom follows the top.
+      bottomTiltDeg: s.band?.bottomTiltDeg ?? s.band?.tiltDeg ?? d.band.bottomTiltDeg,
+      bottomDepthDeg: s.band?.bottomDepthDeg ?? s.band?.depthDeg ?? d.band.bottomDepthDeg,
+      bottomPitchDeg: s.band?.bottomPitchDeg ?? s.band?.pitchDeg ?? d.band.bottomPitchDeg,
+    },
   };
 }
