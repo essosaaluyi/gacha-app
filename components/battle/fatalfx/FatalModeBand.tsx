@@ -17,5 +17,6 @@ export default function FatalModeBand() {
   const active = useSyncExternalStore(subscribeFatalMode, isFatalModeActive, () => false);
   const preview = useSyncExternalStore(noopSubscribe, getPreview, () => false);
   if (!active && !preview) return null;
-  return <FatalBand settings={DEFAULT_FATAL_FX.band} />;
+  // Over the attack movie (9995), behind the silver shutter insert (9997).
+  return <FatalBand settings={DEFAULT_FATAL_FX.band} zIndex={9996} />;
 }

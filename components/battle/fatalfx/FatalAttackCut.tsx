@@ -10,18 +10,29 @@ import {
   subscribeFatalAttackCut,
 } from "@/lib/battle-pixi/state/fatalAttackCutStore";
 import { isFatalModeActive, subscribeFatalMode } from "@/lib/battle-pixi/state/fatalModeStore";
+import styles from "./FatalAttackCut.module.css";
 
 const PREVIEW_SOURCES: Record<string, string> = {
   "1": "/videos/battle-assets/fatal-attack/r1a1.v1.mp4",
   "2": "/videos/battle-assets/fatal-attack/r1a2.v1.mp4",
 };
 
-/** Full-screen attack movie for the player's Fatal Mode draws. */
+const previewParam = () =>
+  process.env.NODE_ENV === "production" ? null : new URLSearchParams(window.location.search).get("fatalAttackCut");
+
+/**
+ * Full-screen attack movie for the player's Fatal Mode draws.
+ *
+ * The cabinet stays playable underneath: the next draw cuts to the next scene.
+ * If the movie runs out first it holds on its last frame, with soft-focus
+ * edges, concentration lines and a small breathing zoom, until that draw.
+ */
 export default function FatalAttackCut() {
   const cut = useSyncExternalStore(subscribeFatalAttackCut, getFatalAttackCutState, getFatalAttackCutState);
   const fatalActive = useSyncExternalStore(subscribeFatalMode, isFatalModeActive, () => false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [visibleKey, setVisibleKey] = useState(0);
+  const [frozenKey, setFrozenKey] = useState(0);
 
   // Buffer the movies as soon as Fatal Mode begins, so the first frame is
   // ready by the time a draw asks for it.
@@ -40,12 +51,16 @@ export default function FatalAttackCut() {
 
   // Dev-only preview: /battle?fatalAttackCut=1 (or 2) plays the movie once.
   useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    const src = PREVIEW_SOURCES[new URLSearchParams(window.location.search).get("fatalAttackCut") ?? ""];
+    const src = PREVIEW_SOURCES[previewParam() ?? ""];
     if (!src) return;
     const timer = window.setTimeout(() => playFatalAttackCut(src), 2500);
     return () => window.clearTimeout(timer);
   }, []);
+
+  // Fatal Mode over: nothing of it stays on screen.
+  useEffect(() => {
+    if (!fatalActive && !previewParam()) hideFatalAttackCut();
+  }, [fatalActive]);
 
   // The shutter lead: the movie appears only once its delay has run out.
   useEffect(() => {
@@ -72,26 +87,20 @@ export default function FatalAttackCut() {
   if (!showing || !cut.src) return null;
 
   return (
-    <video
-      key={cut.key}
-      ref={videoRef}
-      src={cut.src}
-      playsInline
-      preload="auto"
-      aria-label="Fatal Mode attack movie"
-      onEnded={hideFatalAttackCut}
-      onError={hideFatalAttackCut}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        // Just under the silver shutter insert (9997), above everything else.
-        zIndex: 9996,
-        pointerEvents: "none",
-        background: "#000",
-      }}
-    />
+    <div key={cut.key} className={styles.root} data-frozen={frozenKey === cut.key}>
+      <video
+        ref={videoRef}
+        className={styles.video}
+        src={cut.src}
+        playsInline
+        preload="auto"
+        aria-label="Fatal Mode attack movie"
+        onEnded={() => setFrozenKey(cut.key)}
+        onError={hideFatalAttackCut}
+      />
+      <div className={styles.blur} aria-hidden="true" />
+      <div className={styles.lines} aria-hidden="true" />
+      <div className={styles.vignette} aria-hidden="true" />
+    </div>
   );
 }

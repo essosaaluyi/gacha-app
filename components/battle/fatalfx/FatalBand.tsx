@@ -59,7 +59,7 @@ function Strip({ settings, reverse, edge }: { settings: BandSettings; reverse: b
 }
 
 /** Top and bottom announcement bands that scroll for the whole Fatal Mode. */
-export default function FatalBand({ settings }: { settings: BandSettings }) {
+export default function FatalBand({ settings, zIndex }: { settings: BandSettings; zIndex?: number }) {
   if (!settings.show) return null;
   const vars = {
     "--fb-height": `${settings.heightPct}cqh`,
@@ -72,6 +72,7 @@ export default function FatalBand({ settings }: { settings: BandSettings }) {
     "--fb-opacity": settings.opacity,
     "--fb-glow-strength": settings.glow,
     "--fb-skew": `${settings.skewDeg}deg`,
+    zIndex,
     "--fb-perspective": `${100 / Math.max(settings.perspective, 0.1)}cqw`,
   } as CSSProperties;
 

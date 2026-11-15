@@ -3,6 +3,10 @@
 // Draw 1 plays cut 1 (as the silver opening shutter comes in), draw 2 plays
 // cut 2. Draws 3 and 4 have their own presentations still to be authored.
 // Presentation only: nothing here touches the roll or the outcome.
+//
+// Slot-machine rule: the cabinet stays playable while a movie runs. A movie
+// never locks the draw; the next draw simply cuts to the next scene, and a
+// movie that runs out first holds on its last frame until that draw comes.
 
 import { getPlayerFatalSnapshot, isFatalModeActive } from "./fatalModeStore";
 import { getCurrentPlayerBattleCard } from "./playerBattleCardStore";
@@ -19,8 +23,6 @@ const CUTS: Record<string, Partial<Record<CutNumber, string>>> = {
 
 /** How long the shutter runs before cut 1 starts underneath it. */
 const SHUTTER_LEAD_MS = 700;
-/** Longest a cut may hold the screen and the draw lock, whatever happens. */
-const MAX_HOLD_MS = 12000;
 
 export type FatalAttackCutState = {
   active: boolean;
@@ -31,7 +33,6 @@ export type FatalAttackCutState = {
 
 let state: FatalAttackCutState = { active: false, key: 0, src: null, delayMs: 0 };
 let lastPlayed = "";
-let safetyTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((listener) => listener());
 
@@ -48,15 +49,11 @@ export function getFatalAttackCutSources(): string[] {
 }
 
 export function playFatalAttackCut(src: string, delayMs = 0) {
-  if (safetyTimer) clearTimeout(safetyTimer);
   state = { active: true, key: state.key + 1, src, delayMs };
-  // A movie that never reports "ended" must not hold the draw lock forever.
-  safetyTimer = setTimeout(hideFatalAttackCut, delayMs + MAX_HOLD_MS);
   notify();
 }
 
 export function hideFatalAttackCut() {
-  if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
   if (!state.active) return;
   state = { ...state, active: false };
   notify();
@@ -67,20 +64,20 @@ export function hideFatalAttackCut() {
  * that press also fired the silver shutter insert.
  */
 export function onFatalModeDraw(openingStarted: boolean) {
-  if (!isFatalModeActive()) { lastPlayed = ""; return; }
+  // Outside Fatal Mode, and on draws with no movie of their own, the draw
+  // cuts whatever was still on screen.
+  if (!isFatalModeActive()) { lastPlayed = ""; hideFatalAttackCut(); return; }
   const { totalGames, gamesLeft } = getPlayerFatalSnapshot();
   const turn = totalGames - gamesLeft + 1;
-  if (turn !== 1 && turn !== 2) return;
   const tag = `${totalGames}:${turn}`;
   if (tag === lastPlayed) return;
   const key = characterKey();
-  const src = key ? CUTS[key]?.[turn] : undefined;
-  if (!src) return;
+  const src = key && (turn === 1 || turn === 2) ? CUTS[key]?.[turn] : undefined;
   lastPlayed = tag;
+  if (!src) { hideFatalAttackCut(); return; }
   playFatalAttackCut(src, turn === 1 && openingStarted ? SHUTTER_LEAD_MS : 0);
 }
 
-export function isFatalAttackCutPlaying() { return state.active; }
 export function getFatalAttackCutState() { return state; }
 export function subscribeFatalAttackCut(listener: () => void) {
   listeners.add(listener);

@@ -147,7 +147,7 @@ import {
   cancelPlayerFatalModeOpening,
   startPlayerFatalModeOpening,
 } from "@/lib/battle-pixi/state/playerFatalModeOpeningStore";
-import { isFatalAttackCutPlaying, onFatalModeDraw } from "@/lib/battle-pixi/state/fatalAttackCutStore";
+import { onFatalModeDraw } from "@/lib/battle-pixi/state/fatalAttackCutStore";
 import {
   getEnemyFaceoffImage,
   getPlayerFaceoffImage,
@@ -655,7 +655,7 @@ type BattlePixiStageProps = {
 };
 
 function canUseBattleControls() {
-  return !isCardOverviewOpen() && !isFatalPresentationResolving() && !isFatalAttackCutPlaying() && getBattleState() === "playing" &&
+  return !isCardOverviewOpen() && !isFatalPresentationResolving() && getBattleState() === "playing" &&
     (getBattleMode() === "bonus" ||
       (getBattleMode() === "battle" && getCurrentPlayerBattleCard() !== null && areBattleSummonsReady()));
 }
