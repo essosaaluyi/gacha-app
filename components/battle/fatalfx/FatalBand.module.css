@@ -8,9 +8,11 @@
 
 .strip {
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Wider than the screen so a tilted band still reaches both sides. */
+  left: -20%;
+  right: -20%;
   height: var(--fb-height);
+  transform: rotate(var(--fb-tilt));
   overflow: hidden;
   opacity: var(--fb-opacity);
   background:

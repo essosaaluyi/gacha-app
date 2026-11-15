@@ -46,7 +46,9 @@ const CUTIN_GROUPS: { title: string; sliders: Slider<CutInSettings>[] }[] = [
   {
     title: "雷",
     sliders: [
-      { key: "boltCount", label: "縁を走る本数", min: 0, max: 12, step: 1 },
+      { key: "boltCount", label: "縁を走る本数", min: 0, max: 40, step: 1 },
+      { key: "boltLength", label: "1本の長さ", min: 40, max: 1200, step: 10 },
+      { key: "boltSpread", label: "縁からの広がり", min: 0, max: 80, step: 1 },
       { key: "boltCrossCount", label: "横切る本数", min: 0, max: 8, step: 1 },
       { key: "boltJag", label: "ギザギザの強さ", min: 0.05, max: 1.2, step: 0.05 },
       { key: "boltWidth", label: "太さ", min: 0.5, max: 8, step: 0.1 },
@@ -81,6 +83,7 @@ const BAND_SLIDERS: Slider<BandSettings>[] = [
   { key: "fontPct", label: "文字の大きさ（%）", min: 30, max: 95, step: 1 },
   { key: "speedPct", label: "流れる速さ", min: 1, max: 40, step: 0.5 },
   { key: "gapEm", label: "文字の間隔", min: 0.2, max: 5, step: 0.1 },
+  { key: "tiltDeg", label: "帯の傾き（度）", min: -20, max: 20, step: 0.5 },
   { key: "skewDeg", label: "文字の傾き（度）", min: -30, max: 30, step: 1 },
   { key: "opacity", label: "帯の濃さ", min: 0.2, max: 1, step: 0.02 },
   { key: "glow", label: "光り方", min: 0, max: 2, step: 0.05 },
@@ -93,7 +96,7 @@ const BAND_COLORS: { key: "bgColor" | "edgeColor" | "textColor" | "glowColor"; l
   { key: "glowColor", label: "光" },
 ];
 
-const TIER_COLOR_FIELDS: { key: keyof TierColors; label: string }[] = [
+const TIER_COLOR_FIELDS: { key: "main" | "glow" | "bolt"; label: string }[] = [
   { key: "main", label: "地の色" },
   { key: "glow", label: "光" },
   { key: "bolt", label: "雷の芯" },
@@ -155,7 +158,7 @@ export default function FatalFxWorkstation() {
     setFx((prev) => ({ ...prev, cutIn: { ...prev.cutIn, [key]: value } }));
   const setBand = <K extends keyof BandSettings>(key: K, value: BandSettings[K]) =>
     setFx((prev) => ({ ...prev, band: { ...prev.band, [key]: value } }));
-  const setTierColor = (key: keyof TierColors, value: string) =>
+  const setTierColor = <K extends keyof TierColors>(key: K, value: TierColors[K]) =>
     setFx((prev) => ({
       ...prev,
       cutIn: { ...prev.cutIn, colors: { ...prev.cutIn.colors, [tier]: { ...prev.cutIn.colors[tier], [key]: value } } },
@@ -275,6 +278,11 @@ export default function FatalFxWorkstation() {
               </label>
             ))}
           </div>
+          <SliderRow
+            slider={{ key: "shine", label: "金属のテカり", min: 0, max: 1, step: 0.05 } as Slider<TierColors>}
+            value={fx.cutIn.colors[tier].shine}
+            onChange={(value) => setTierColor("shine", value)}
+          />
         </details>
 
         {CUTIN_GROUPS.map((group) => (

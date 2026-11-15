@@ -67,6 +67,7 @@ export default function FatalBand({ settings }: { settings: BandSettings }) {
     "--fb-opacity": settings.opacity,
     "--fb-glow-strength": settings.glow,
     "--fb-skew": `${settings.skewDeg}deg`,
+    "--fb-tilt": `${settings.tiltDeg}deg`,
   } as CSSProperties;
 
   return (

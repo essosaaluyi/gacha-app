@@ -10,6 +10,8 @@ export type TierColors = {
   glow: string;
   /** Hot core of the lightning. */
   bolt: string;
+  /** 0-1: metallic sheen (banded highlights plus a moving glint). */
+  shine: number;
 };
 
 export type CutInSettings = {
@@ -30,6 +32,10 @@ export type CutInSettings = {
   imageUpright: boolean;
   boltCount: number;
   boltCrossCount: number;
+  /** Length of each edge bolt, in screen px (1250 wide). */
+  boltLength: number;
+  /** How far bolts may stray from the edge line, in px. */
+  boltSpread: number;
   boltJag: number;
   boltWidth: number;
   boltGlow: number;
@@ -57,6 +63,8 @@ export type BandSettings = {
   opacity: number;
   glow: number;
   skewDeg: number;
+  /** Tilt of the whole band, in degrees. */
+  tiltDeg: number;
 };
 
 export type FatalFxSettings = { cutIn: CutInSettings; band: BandSettings };
@@ -66,9 +74,9 @@ export const TIER_LABEL: Record<FatalTier, string> = { blue: "青", red: "赤", 
 export const DEFAULT_FATAL_FX: FatalFxSettings = {
   cutIn: {
     colors: {
-      blue: { main: "#1f5cff", glow: "#6fc8ff", bolt: "#eaf7ff" },
-      red: { main: "#e3122c", glow: "#ff7048", bolt: "#fff1e8" },
-      gold: { main: "#e6a100", glow: "#ffe06a", bolt: "#fffbe2" },
+      blue: { main: "#1f5cff", glow: "#6fc8ff", bolt: "#eaf7ff", shine: 0 },
+      red: { main: "#e3122c", glow: "#ff7048", bolt: "#fff1e8", shine: 0 },
+      gold: { main: "#b87400", glow: "#ffb81f", bolt: "#fff4c2", shine: 0.9 },
     },
     tiltDeg: -9,
     heightPct: 34,
@@ -84,8 +92,10 @@ export const DEFAULT_FATAL_FX: FatalFxSettings = {
     imageDrift: 6,
     imageTint: 0.45,
     imageUpright: true,
-    boltCount: 4,
-    boltCrossCount: 2,
+    boltCount: 10,
+    boltCrossCount: 0,
+    boltLength: 300,
+    boltSpread: 12,
     boltJag: 0.5,
     boltWidth: 2.4,
     boltGlow: 18,
@@ -112,14 +122,22 @@ export const DEFAULT_FATAL_FX: FatalFxSettings = {
     opacity: 0.92,
     glow: 0.8,
     skewDeg: -12,
+    tiltDeg: 0,
   },
 };
 
 /** Fill in anything a stored/older settings object is missing. */
-export function mergeFatalFx(saved: unknown): FatalFxSettings {
-  const s = (saved ?? {}) as Partial<FatalFxSettings>;
+export function mergeFatalFx(input: unknown): FatalFxSettings {
+  const s = (input ?? {}) as Partial<FatalFxSettings>;
   const d = DEFAULT_FATAL_FX;
-  const colors = { ...d.cutIn.colors, ...(s.cutIn?.colors ?? {}) };
+  const saved = s.cutIn?.colors;
+  const colors = {
+    blue: { ...d.cutIn.colors.blue, ...(saved?.blue ?? {}) },
+    red: { ...d.cutIn.colors.red, ...(saved?.red ?? {}) },
+    gold: { ...d.cutIn.colors.gold, ...(saved?.gold ?? {}) },
+  };
+  // The first gold preset read as yellow; move untouched copies to the new one.
+  if (saved?.gold?.main === "#e6a100" && saved.gold.glow === "#ffe06a") colors.gold = { ...d.cutIn.colors.gold };
   return {
     cutIn: { ...d.cutIn, ...(s.cutIn ?? {}), colors },
     band: { ...d.band, ...(s.band ?? {}) },

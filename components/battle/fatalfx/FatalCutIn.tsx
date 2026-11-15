@@ -33,35 +33,38 @@ function jagged(a: Pt, b: Pt, disp: number, depth: number, out: Pt[]) {
   jagged(mid, b, disp / 2, depth - 1, out);
 }
 
-function makeBolt(a: Pt, b: Pt, jag: number, width: number): Bolt {
+function makeBolt(a: Pt, b: Pt, disp: number, width: number): Bolt {
   const pts = [a];
-  jagged(a, b, Math.hypot(b.x - a.x, b.y - a.y) * jag * 0.5, 5, pts);
+  jagged(a, b, disp, 5, pts);
   return { pts, width };
 }
 
 function makeBolts(s: CutInSettings, half: number): Bolt[] {
   const bolts: Bolt[] = [];
-  const add = (a: Pt, b: Pt, width: number) => {
-    const bolt = makeBolt(a, b, s.boltJag, width);
+  const add = (a: Pt, b: Pt, disp: number, width: number) => {
+    const bolt = makeBolt(a, b, disp, width);
     bolts.push(bolt);
     if (Math.random() < s.boltBranch) {
       const from = bolt.pts[Math.floor(rand(0.25, 0.75) * bolt.pts.length)];
       const reach = Math.hypot(b.x - a.x, b.y - a.y) * rand(0.18, 0.35);
       const angle = Math.atan2(b.y - a.y, b.x - a.x) + rand(0.4, 1.1) * (Math.random() < 0.5 ? -1 : 1);
-      bolts.push(makeBolt(from, { x: from.x + Math.cos(angle) * reach, y: from.y + Math.sin(angle) * reach }, s.boltJag, width * 0.55));
+      bolts.push(makeBolt(from, { x: from.x + Math.cos(angle) * reach, y: from.y + Math.sin(angle) * reach }, reach * s.boltJag * 0.5, width * 0.55));
     }
   };
-  // Along the two edges of the band.
+  // Hugging the two edge lines of the band, crackling around them.
   for (let i = 0; i < Math.round(s.boltCount); i += 1) {
     const side = i % 2 === 0 ? -1 : 1;
-    const x = rand(-W * 0.6, W * 0.3);
+    const len = s.boltLength * rand(0.6, 1.2);
+    const x = rand(-W * 0.62, Math.max(-W * 0.62, W * 0.62 - len));
     const y = side * half;
-    add({ x, y: y + rand(-6, 6) }, { x: x + rand(220, 620), y: y + rand(-half * 0.25, half * 0.25) }, s.boltWidth);
+    const disp = s.boltSpread * 4 * s.boltJag + len * s.boltJag * 0.1;
+    add({ x, y: y + rand(-s.boltSpread, s.boltSpread) }, { x: x + len, y: y + rand(-s.boltSpread, s.boltSpread) }, disp, s.boltWidth);
   }
   // Across the picture, edge to edge.
   for (let i = 0; i < Math.round(s.boltCrossCount); i += 1) {
     const x = rand(-W * 0.5, W * 0.5);
-    add({ x, y: -half }, { x: x + rand(-260, 260), y: half }, s.boltWidth * 0.8);
+    const end = { x: x + rand(-260, 260), y: half };
+    add({ x, y: -half }, end, Math.hypot(end.x - x, half * 2) * s.boltJag * 0.5, s.boltWidth * 0.8);
   }
   return bolts;
 }
@@ -206,6 +209,39 @@ export default function FatalCutIn({ settings, tier, playKey, hold = false, onDo
         ctx.fillStyle = c.main;
         ctx.fillRect(-W, -half, 2 * W, bandH);
         ctx.globalAlpha = 1;
+
+        // Metallic sheen: banded highlights, then a glint sweeping along the band.
+        if (c.shine > 0.01) {
+          ctx.globalCompositeOperation = "color";
+          ctx.globalAlpha = c.shine * 0.45;
+          ctx.fillRect(-W, -half, 2 * W, bandH);
+          ctx.globalCompositeOperation = "overlay";
+          ctx.globalAlpha = c.shine;
+          const metal = ctx.createLinearGradient(0, -half, 0, half);
+          metal.addColorStop(0, "#3a2200");
+          metal.addColorStop(0.18, "#fff3b0");
+          metal.addColorStop(0.36, "#8a5a00");
+          metal.addColorStop(0.55, "#ffe9a0");
+          metal.addColorStop(0.74, "#6e4500");
+          metal.addColorStop(0.9, "#ffd870");
+          metal.addColorStop(1, "#3a2200");
+          ctx.fillStyle = metal;
+          ctx.fillRect(-W, -half, 2 * W, bandH);
+
+          ctx.globalCompositeOperation = "lighter";
+          const sweep = ((now / 1100) % 1) * (2.6 * W) - 1.3 * W;
+          const glintW = 220;
+          ctx.save();
+          ctx.transform(1, 0, -0.6, 1, 0, 0);
+          const glint = ctx.createLinearGradient(sweep - glintW, 0, sweep + glintW, 0);
+          glint.addColorStop(0, "rgba(255,255,255,0)");
+          glint.addColorStop(0.5, `rgba(255,250,220,${0.75 * c.shine})`);
+          glint.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.fillStyle = glint;
+          ctx.fillRect(sweep - glintW, -half, glintW * 2, bandH);
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        }
 
         // Speed lines streaking along the band.
         if (lines.length !== Math.round(s.lineCount)) lines = makeLines(s.lineCount);
