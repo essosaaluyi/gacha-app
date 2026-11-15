@@ -1,0 +1,185 @@
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  min-height: 100vh;
+  padding: 20px;
+  background: #0c0e14;
+  color: #e7e9f0;
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.stageColumn {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  min-width: 0;
+}
+
+.header h1 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.header p {
+  margin: 0 0 14px;
+  color: #9aa1b5;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #2a2f40;
+  border-radius: 6px;
+  background: #000;
+}
+
+.stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  overflow: hidden;
+}
+
+.transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 14px;
+}
+
+.playButton {
+  padding: 9px 18px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.playButton[data-tier="blue"] { background: #1f4fd6; }
+.playButton[data-tier="red"] { background: #c4142a; }
+.playButton[data-tier="gold"] { background: #b98200; }
+.playButton[data-active="true"] { border-color: #fff; }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.panel {
+  min-width: 0;
+}
+
+.panelActions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.panelActions button,
+.tierTabs button {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid #353b50;
+  border-radius: 6px;
+  background: #1a1e2b;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tierTabs {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.tierTabs button[data-active="true"] {
+  border-color: #8fb4ff;
+  background: #24304d;
+}
+
+.group {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid #232838;
+  border-radius: 8px;
+  background: #131621;
+}
+
+.group summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  align-items: center;
+  gap: 2px 8px;
+  margin-top: 8px;
+}
+
+.rowLabel {
+  grid-column: 1 / -1;
+  color: #aab1c5;
+}
+
+.row input[type="range"] {
+  width: 100%;
+}
+
+.rowValue {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.textRow {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  color: #aab1c5;
+}
+
+.textRow input,
+.check select {
+  padding: 6px 8px;
+  border: 1px solid #353b50;
+  border-radius: 6px;
+  background: #0c0e14;
+  color: #e7e9f0;
+}
+
+.colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 8px 0 2px;
+}
+
+.colors label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.colors input[type="color"] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #353b50;
+  border-radius: 4px;
+  background: none;
+}
+
+@media (max-width: 900px) {
+  .page { grid-template-columns: 1fr; }
+  .stageColumn { position: static; }
+}
