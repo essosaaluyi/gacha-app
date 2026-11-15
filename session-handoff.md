@@ -1,5 +1,10 @@
 # Session Handoff
 
+### 【完了】Seedance向け Enemy 1 待機ポーズの仮配置 ／ Codex（シン） ／ 2026-11-15 ／ ブランチ main
+- 確認用PNG1枚（1776×888、Git管理外）：`outputs/enemy-one-seedance/enemy-one-idle-reference-v1.png`。現行背景 `stage-day-field-cabinet.v3.webp` とR1の `idle.v2/0000.webp` を使用し、Enemy 1（Mourning Talon – Elias）は現行の待機素材とカードを参照して画像生成。
+- 目視確認：左手前のR1に向けたEnemy 1の斜め正面、翼・剣を含む全身、巣の底と両足の接地。R1は筐体の構図を基準に巣の底まで入るよう縮小し、足元に接地影を追加した。
+- 未確認：Seedanceでの動画化。ゲーム組み込みなし。次はオーナーが待機ポーズの角度を確認する。
+
 ### 【完了】R3の待機配置確定 ／ Codex
 - allyPresentation.tsで右1%、下28%、サイズ138%を設定。R2とR3の初期値読み込みを確認。実画面は未確認。
 
@@ -943,6 +948,8 @@ Latest files: `components/battle/cabinet/CabinetPlayerDock{.geometry.ts,.tsx,.mo
 **Next action:** (DONE 2026-11-09 — owner approved card appearance/motion/SE as "問題なし"; see Claude takeover paragraph below.) Original: owner reviews latest card appearance/motion and listens to restored SE, then specifies corrections. Free/save-isolated review route `/battle?fatal-preview=safe-clear&dock-preview=true`; wallet175/BET0/G0 in that fixture do NOT prove real payment/save behavior. Real phone/GPU, paid/live saves, exhaustive modes and subjective sound remain unverified. No active task from this transfer; latest マイニガ chat is idle/completed. Do not infer all independent project chats are idle; coordinate before shared-file edits.
 
 **Round-trip protocol (Claude AND Codex):** before edits inspect targeted Git diff/status and record the task's starting state so existing changes are not attributed to you. At each completed task update THIS restart section/current brief in place with: goal/status; files actually changed; confirmed decisions; checks with pass/fail and skipped scope; unresolved issues; next action/owner. Keep it short; detailed evidence belongs in the existing dated `outputs/ui-review/...` task folder. Put durable product decisions in `PROJECT_BIBLE.md`, role/rule changes in the existing agent instructions, not parallel master docs. Never erase historical records. Explicitly label reported vs independently verified and approved vs proposed. On returning to Codex, ask it to read this section and inspect the actual diff before continuing. Do not rely on chat memory or auto-commit everything.
+
+**Enemy 1の待機ポーズ確認（2026-11-15、シン、完了）:** 現行背景・R1待機素材・生成したEliasの斜め正面を1枚に合成。全身と接地を目視確認。画像と確認範囲は冒頭の同名記録を参照。Seedanceでの動画化は未確認。次はオーナーの角度確認。
 
 **SE試聴（2026-11-13、OD）:** `/se-workstation` を追加。`app/se-workstation/` に場面別30項目と簡易DRAW・演出動画、`lib/audio/sfxStore.ts` にゲームと同じ音量補正・頭出しの試聴口。開発ブラウザーの操作と型・Lint・音源参照は確認。実ゲーム全条件の発音とSafari実機は未確認。調整対象が決まったらODへ。
 
