@@ -151,6 +151,8 @@ const DRAW_BUTTON_3D = process.env.NODE_ENV !== "production";
 // as it is behind it. The insert is the part that has to turn over and take a
 // leaving card under the table. Development only while the motion is settled.
 const CARD_TABLE_3D = process.env.NODE_ENV !== "production";
+/** Cards shown in the summon hand at once; a 5-card pack keeps the other two in reserve. */
+const BATTLE_HAND_SIZE = 3;
 const BATTLE_OPENING_MAX_MS = 30_000;
 const BATTLE_OPENING_FADE_MS = 700;
 
@@ -1152,7 +1154,9 @@ export default function BattleScreen() {
           {audioReady && handSelectionVisible && !collectionActive && !openingActive && (
             <BattleSummonPanel
               enemy={enemy}
-              cards={availableCards}
+              // Hand of 3 (owner, 2026-11-15): the next three unused cards in deck order; the rest of the
+              // deck stays in reserve and moves into the hand as cards are used.
+              cards={availableCards.slice(0, BATTLE_HAND_SIZE)}
               selectedIndex={selectedCardIndex}
               onSelect={handleHandSelect}
               onSummon={handleSummon}
