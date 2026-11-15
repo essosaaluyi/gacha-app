@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
-import { readAllyPresentation, ALLY_PRESENTATION_KEY, type AllyPresentation } from "@/lib/battle-pixi/presentation/allyPresentation";
+import { readAllyPresentation, allyPresentationKey, ALLY_PRESENTATION_KEY, type AllyPresentation } from "@/lib/battle-pixi/presentation/allyPresentation";
 import allyStyles from "./AllyPresentation.module.css";
 
 import {
@@ -1438,17 +1438,18 @@ function FighterPresentation({
   const r1 = side === "player" && basePreset === revealPresets.r1TripletsBabyDragon;
   const skipIntro = r1 || (side === "player" && basePreset === revealPresets.dragonRaider);
   const [preset, setPreset] = useState(() => r1 ? basePreset : loadSavedPreset(basePreset));
-  const [placement, setPlacement] = useState(() => side === "player" ? readAllyPresentation() : undefined);
+  const character = basePreset.cardImage.split("/").at(-2) ?? basePreset.id;
+  const [placement, setPlacement] = useState(() => side === "player" ? readAllyPresentation(character) : undefined);
   const customSummon = placement?.summonEnabled === true && basePreset !== revealPresets.greenScaleDragon;
   const duration = customSummon ? placement.summonMs : skipIntro ? 0 : preset.durationMs;
 
   useEffect(() => {
     const sync = () => {
-      if (side === "player") setPlacement(readAllyPresentation());
+      if (side === "player") setPlacement(readAllyPresentation(character));
       if (!r1) setPreset(loadSavedPreset(basePreset));
     };
     const onStorage = (event: StorageEvent) => {
-      if (event.key === ALLY_PRESENTATION_KEY || event.key === basePreset.storageKey || event.key === null) sync();
+      if (event.key === allyPresentationKey(character) || event.key === ALLY_PRESENTATION_KEY || event.key === basePreset.storageKey || event.key === null) sync();
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("focus", sync);
@@ -1456,7 +1457,7 @@ function FighterPresentation({
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("focus", sync);
     };
-  }, [basePreset, r1, side]);
+  }, [basePreset, character, r1, side]);
 
   useEffect(() => {
     if (status !== "summoning" || startedAt === null) return;

@@ -3,28 +3,28 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ALLY_PREVIEW_CHARACTERS, AllyPresentationPreview } from "@/components/battle/BattleSpawnScene";
 import {
-  DEFAULT_ALLY_PRESENTATION,
+  defaultAllyPresentation,
   ALLY_IDLE_CONTROLS,
-  ALLY_PRESENTATION_KEY,
+  allyPresentationKey,
   ALLY_SUMMON_CONTROLS,
   readAllyPresentation,
 } from "@/lib/battle-pixi/presentation/allyPresentation";
 
 export default function AllyPresentationWorkstation() {
-  const [placement, setPlacement] = useState(DEFAULT_ALLY_PRESENTATION);
-  const [character, setCharacter] = useState("R1");
+  const [placement, setPlacement] = useState(() => defaultAllyPresentation("R3"));
+  const [character, setCharacter] = useState("R3");
   const [preview, setPreview] = useState({ take: 0, animate: false });
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setPlacement(readAllyPresentation()));
+    const frame = requestAnimationFrame(() => setPlacement(readAllyPresentation("R3")));
     return () => cancelAnimationFrame(frame);
   }, []);
 
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      window.localStorage.setItem(ALLY_PRESENTATION_KEY, JSON.stringify(placement));
+      window.localStorage.setItem(allyPresentationKey(character), JSON.stringify(placement));
       setMessage("保存しました。同じブラウザのバトル画面に反映されます。");
     } catch {
       setMessage("保存できませんでした。画面の調整値を控えてください。");
@@ -37,6 +37,8 @@ export default function AllyPresentationWorkstation() {
       <label style={{ display: "block", marginBlock: 12 }}>プレビューするキャラ　
         <select style={{ color: "CanvasText", background: "Canvas" }} value={character} onChange={event => {
           setCharacter(event.target.value);
+          setPlacement(readAllyPresentation(event.target.value));
+          setMessage("");
           setPreview(previous => ({ ...previous, animate: false }));
         }}>
           {ALLY_PREVIEW_CHARACTERS.map(({ id, name }) => <option key={id} value={id}>{id} · {name}</option>)}
@@ -88,7 +90,7 @@ export default function AllyPresentationWorkstation() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 18 }}>
           <button type="submit">このブラウザのバトルに適用</button>
           <button type="button" onClick={() => {
-            setPlacement(DEFAULT_ALLY_PRESENTATION);
+            setPlacement(defaultAllyPresentation(character));
             setPreview(previous => ({ ...previous, animate: false }));
             setMessage("");
           }}>初期値に戻す</button>
