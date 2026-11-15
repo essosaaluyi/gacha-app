@@ -65,6 +65,12 @@ export type BandSettings = {
   skewDeg: number;
   /** Tilt of the whole band, in degrees. */
   tiltDeg: number;
+  /** Depth: turns the band around the vertical axis so one end recedes. */
+  depthDeg: number;
+  /** Depth: tips the band around its own length (top edge toward/away). */
+  pitchDeg: number;
+  /** Strength of the perspective. Higher = more exaggerated depth. */
+  perspective: number;
 };
 
 export type FatalFxSettings = { cutIn: CutInSettings; band: BandSettings };
@@ -123,6 +129,9 @@ export const DEFAULT_FATAL_FX: FatalFxSettings = {
     glow: 0.8,
     skewDeg: -12,
     tiltDeg: 0,
+    depthDeg: 0,
+    pitchDeg: 0,
+    perspective: 1,
   },
 };
 

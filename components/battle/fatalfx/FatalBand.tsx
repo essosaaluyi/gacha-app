@@ -18,7 +18,7 @@ function Strip({ settings, reverse, edge }: { settings: BandSettings; reverse: b
     const half = halfRef.current;
     if (!strip || !half) return;
     const measure = () => {
-      const pxPerSecond = (strip.offsetWidth * Math.max(settings.speedPct, 0.5)) / 100;
+      const pxPerSecond = ((strip.offsetWidth / 2) * Math.max(settings.speedPct, 0.5)) / 100;
       if (pxPerSecond > 0 && half.offsetWidth > 0) setSeconds(half.offsetWidth / pxPerSecond);
     };
     measure();
@@ -68,6 +68,9 @@ export default function FatalBand({ settings }: { settings: BandSettings }) {
     "--fb-glow-strength": settings.glow,
     "--fb-skew": `${settings.skewDeg}deg`,
     "--fb-tilt": `${settings.tiltDeg}deg`,
+    "--fb-depth": `${settings.depthDeg}deg`,
+    "--fb-pitch": `${settings.pitchDeg}deg`,
+    "--fb-perspective": `${100 / Math.max(settings.perspective, 0.1)}cqw`,
   } as CSSProperties;
 
   return (

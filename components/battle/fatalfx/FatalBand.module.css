@@ -8,11 +8,15 @@
 
 .strip {
   position: absolute;
-  /* Wider than the screen so a tilted band still reaches both sides. */
-  left: -20%;
-  right: -20%;
+  /* Twice the screen width so a tilted or receding band still reaches both sides. */
+  left: -50%;
+  right: -50%;
   height: var(--fb-height);
-  transform: rotate(var(--fb-tilt));
+  transform:
+    perspective(var(--fb-perspective))
+    rotate(var(--fb-tilt))
+    rotateY(var(--fb-depth))
+    rotateX(var(--fb-pitch));
   overflow: hidden;
   opacity: var(--fb-opacity);
   background:
