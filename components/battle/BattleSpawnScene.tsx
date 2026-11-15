@@ -696,9 +696,9 @@ const revealPresets = {
     storageKey: "green-scale-dragon-layer-workstation-timeline-v3",
     cardImage: "/images/cards/player/R2/card.webp",
     standFrameCount: 90,
-    idleFrameCount: 138,
+    idleFrameCount: 120,
     standFrameMs: 33,
-    idleFrameMs: 40,
+    idleFrameMs: 1000 / 24,
     standStartFrame: 0,
     idleStartFrame: 0,
     standTransformOrigin: "50% 82%",
@@ -711,7 +711,7 @@ const revealPresets = {
         .toString()
         .padStart(3, "0")}.webp`,
     idleFrameSrc: (index: number) =>
-      `/images/battle-characters/green-scale-dragon/idle/${index
+      `/images/battle-characters/green-scale-dragon/idle.v2/${index
         .toString()
         .padStart(4, "0")}.webp`,
   },
@@ -1149,6 +1149,8 @@ function CharacterSequence({
 }) {
   const [phase, setPhase] = useState<"hidden" | "stand" | "idle">("hidden");
   const [frameIndex, setFrameIndex] = useState(0);
+  const idleOnly = preset.id === revealPresets.greenScaleDragon.id;
+  const idleEpoch = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1158,10 +1160,15 @@ function CharacterSequence({
     const tick = () => {
       if (cancelled) return;
 
-      const elapsed = performance.now() - startTime;
+      const now = performance.now();
+      const elapsed = now - startTime;
       const standOnly = preset.layers.stand.visible && !preset.layers.idle.visible;
 
-      if (elapsed < preset.timeline.stand.startMs) {
+      if (idleOnly && (persistent || elapsed >= preset.timeline.stand.startMs)) {
+        idleEpoch.current ??= now;
+        setPhase("idle");
+        setFrameIndex(Math.floor((now - idleEpoch.current) / preset.idleFrameMs) % preset.idleFrameCount);
+      } else if (elapsed < preset.timeline.stand.startMs) {
         setPhase("hidden");
         setFrameIndex(0);
       } else if (preset.sequenceVideo) {
@@ -1203,7 +1210,7 @@ function CharacterSequence({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [preset, persistent]);
+  }, [preset, persistent, idleOnly]);
 
   if (phase === "hidden") {
     return null;
@@ -1327,7 +1334,8 @@ function useCharacterFxAnchor(preset: RevealPreset, enabled: boolean) {
       actor.style.setProperty("--battle-spawn-fx-y", `${y.toFixed(1)}px`);
       actor.dataset.fxAnchored = "true";
     };
-    const src = preset.sequenceVideo ? preset.sequencePoster : preset.standFrameSrc(preset.standStartFrame);
+    const src = preset.id === revealPresets.greenScaleDragon.id ? preset.idleFrameSrc(0)
+      : preset.sequenceVideo ? preset.sequencePoster : preset.standFrameSrc(preset.standStartFrame);
     if (src) void measureArtCentre(src).then((a) => { art = a; place(); });
     const ro = new ResizeObserver(place); ro.observe(actor);
     return () => { cancelled = true; ro.disconnect(); };
@@ -1431,7 +1439,7 @@ function FighterPresentation({
   const skipIntro = r1 || (side === "player" && basePreset === revealPresets.dragonRaider);
   const [preset, setPreset] = useState(() => r1 ? basePreset : loadSavedPreset(basePreset));
   const [placement, setPlacement] = useState(() => side === "player" ? readAllyPresentation() : undefined);
-  const customSummon = placement?.summonEnabled === true;
+  const customSummon = placement?.summonEnabled === true && basePreset !== revealPresets.greenScaleDragon;
   const duration = customSummon ? placement.summonMs : skipIntro ? 0 : preset.durationMs;
 
   useEffect(() => {
