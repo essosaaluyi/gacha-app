@@ -1,5 +1,10 @@
 # Session Handoff
 
+### 【作業中】R3待機ループ差し替え ／ Codex ／ 2026-11-15
+- 対象：BattleSpawnScene、Dragon Raider の idle.v2 WebP連番。
+
+### 【完了】手札の初期枚数を 5 枚から 3 枚に ／ Claude ／ 2026-11-15 ／ ブランチ：main
+- 原因：召喚の手札（`BattleSummonPanel`）に、山札の未使用カードを全部渡していた。パックは 5 枚なので 5 枚スタートになっていた。
 ### 【完了・実画面未確認】R1待機ループ差し替え ／ Codex ／ 2026-11-15
 - 対象：components/battle/BattleSpawnScene.tsx、R1 idle.v2 WebP連番。
 - 確認：AE透過PNG 94枚をWebP化。24fpsで約3.92秒。型チェック通過。
