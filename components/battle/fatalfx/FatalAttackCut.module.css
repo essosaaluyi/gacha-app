@@ -1,4 +1,5 @@
-/* Just under the Fatal Mode band (9996) and the silver shutter insert (9997). */
+/* Just under the Fatal Mode band (9996) and the silver shutter insert (9997).
+   Every --fz-* value comes from FreezeSettings (see FatalMovieFrame.tsx). */
 .root {
   position: absolute;
   inset: 0;
@@ -19,7 +20,7 @@
 
 /* Held last frame: the camera breathes in and out in small, quick pushes. */
 .root[data-frozen="true"] .video {
-  animation: fatalFreezeZoom 0.42s ease-in-out infinite alternate;
+  animation: fatalFreezeZoom var(--fz-zoom-ms) ease-in-out infinite alternate;
 }
 
 .blur,
@@ -28,21 +29,19 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.35s ease-out;
+  transition: opacity var(--fz-fade-ms) ease-out;
 }
 
-.root[data-frozen="true"] .blur,
-.root[data-frozen="true"] .lines,
-.root[data-frozen="true"] .vignette {
-  opacity: 1;
-}
+.root[data-frozen="true"] .blur { opacity: 1; }
+.root[data-frozen="true"] .lines { opacity: var(--fz-lines-opacity); }
+.root[data-frozen="true"] .vignette { opacity: var(--fz-vignette); }
 
 /* Soft focus toward the edges; the centre stays sharp. */
 .blur {
-  -webkit-backdrop-filter: blur(7px);
-  backdrop-filter: blur(7px);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, transparent 38%, #000 82%);
-  mask-image: radial-gradient(ellipse at 50% 50%, transparent 38%, #000 82%);
+  -webkit-backdrop-filter: blur(var(--fz-blur));
+  backdrop-filter: blur(var(--fz-blur));
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, transparent var(--fz-blur-inner), #000 calc(var(--fz-blur-inner) + 45%));
+  mask-image: radial-gradient(ellipse at 50% 50%, transparent var(--fz-blur-inner), #000 calc(var(--fz-blur-inner) + 45%));
 }
 
 /* Concentration lines: two uneven fans of thin wedges, re-dealt a few times
@@ -50,24 +49,34 @@
 .lines {
   inset: -30%;
   background:
-    repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 2.2deg, rgb(255 255 255 / 0.85) 2.2deg 2.7deg, transparent 2.7deg 7deg),
-    repeating-conic-gradient(from 3deg at 50% 50%, transparent 0 4.5deg, rgb(255 255 255 / 0.6) 4.5deg 4.8deg, transparent 4.8deg 11deg);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, transparent 30%, rgb(0 0 0 / 0.5) 52%, #000 74%);
-  mask-image: radial-gradient(ellipse at 50% 50%, transparent 30%, rgb(0 0 0 / 0.5) 52%, #000 74%);
+    repeating-conic-gradient(
+      from 0deg at 50% 50%,
+      transparent 0 calc(var(--fz-lines-period) * 0.3),
+      var(--fz-lines-color) calc(var(--fz-lines-period) * 0.3) calc(var(--fz-lines-period) * 0.3 + var(--fz-lines-width)),
+      transparent calc(var(--fz-lines-period) * 0.3 + var(--fz-lines-width)) var(--fz-lines-period)
+    ),
+    repeating-conic-gradient(
+      from 3deg at 50% 50%,
+      transparent 0 calc(var(--fz-lines-period) * 0.64),
+      var(--fz-lines-color) calc(var(--fz-lines-period) * 0.64) calc(var(--fz-lines-period) * 0.64 + var(--fz-lines-width) * 0.6),
+      transparent calc(var(--fz-lines-period) * 0.64 + var(--fz-lines-width) * 0.6) calc(var(--fz-lines-period) * 1.57)
+    );
+  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, transparent var(--fz-lines-inner), rgb(0 0 0 / 0.5) calc(var(--fz-lines-inner) + 22%), #000 calc(var(--fz-lines-inner) + 44%));
+  mask-image: radial-gradient(ellipse at 50% 50%, transparent var(--fz-lines-inner), rgb(0 0 0 / 0.5) calc(var(--fz-lines-inner) + 22%), #000 calc(var(--fz-lines-inner) + 44%));
   mix-blend-mode: screen;
 }
 
 .root[data-frozen="true"] .lines {
-  animation: fatalFreezeLines 0.3s steps(1) infinite;
+  animation: fatalFreezeLines var(--fz-flicker-ms) steps(1) infinite;
 }
 
 .vignette {
-  background: radial-gradient(ellipse at 50% 50%, transparent 50%, rgb(0 0 0 / 0.45) 100%);
+  background: radial-gradient(ellipse at 50% 50%, transparent 50%, #000 100%);
 }
 
 @keyframes fatalFreezeZoom {
-  from { transform: scale(1.03); }
-  to { transform: scale(1.075); }
+  from { transform: translate(calc(var(--fz-shake) * -1), calc(var(--fz-shake) * 0.5)) scale(var(--fz-zoom-min)); }
+  to { transform: translate(var(--fz-shake), calc(var(--fz-shake) * -0.5)) scale(var(--fz-zoom-max)); }
 }
 
 @keyframes fatalFreezeLines {

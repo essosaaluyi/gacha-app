@@ -77,6 +77,45 @@ export type BandSettings = {
   perspective: number;
 };
 
+/** The held last frame of a Fatal Mode movie. */
+export type FreezeSettings = {
+  zoomMin: number;
+  zoomMax: number;
+  /** One push in or out, in ms. */
+  zoomMs: number;
+  shakePx: number;
+  blurPx: number;
+  /** Radius (%) of the sharp centre. */
+  blurInnerPct: number;
+  linesOpacity: number;
+  /** Spacing of the lines, in degrees. Smaller = more lines. */
+  linesPeriodDeg: number;
+  linesWidthDeg: number;
+  /** Radius (%) of the centre kept clear of lines. */
+  linesInnerPct: number;
+  linesColor: string;
+  linesFlickerMs: number;
+  vignette: number;
+  fadeMs: number;
+};
+
+export const DEFAULT_FREEZE: FreezeSettings = {
+  zoomMin: 1.03,
+  zoomMax: 1.075,
+  zoomMs: 420,
+  shakePx: 0,
+  blurPx: 7,
+  blurInnerPct: 38,
+  linesOpacity: 0.9,
+  linesPeriodDeg: 7,
+  linesWidthDeg: 0.5,
+  linesInnerPct: 30,
+  linesColor: "#ffffff",
+  linesFlickerMs: 300,
+  vignette: 0.45,
+  fadeMs: 350,
+};
+
 export type FatalFxSettings = { cutIn: CutInSettings; band: BandSettings };
 
 export const TIER_LABEL: Record<FatalTier, string> = { blue: "青", red: "赤", gold: "金" };

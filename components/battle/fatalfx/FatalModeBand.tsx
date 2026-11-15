@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { isFatalModeActive, subscribeFatalMode } from "@/lib/battle-pixi/state/fatalModeStore";
+import { isFatalModeWindowOpen, subscribeFatalModeWindow } from "@/lib/battle-pixi/state/fatalModeWindowStore";
 import FatalBand from "./FatalBand";
 import { DEFAULT_FATAL_FX } from "./fatalFxSettings";
 
@@ -12,9 +12,12 @@ const getPreview = () =>
   process.env.NODE_ENV !== "production" &&
   new URLSearchParams(window.location.search).get("fatalBand") === "1";
 
-/** The announcement band, shown for as long as the player's Fatal Mode lasts. */
+/**
+ * The announcement band. It runs for the whole of the player's Fatal Mode and
+ * stays through the final draw until that hand's result has been shown.
+ */
 export default function FatalModeBand() {
-  const active = useSyncExternalStore(subscribeFatalMode, isFatalModeActive, () => false);
+  const active = useSyncExternalStore(subscribeFatalModeWindow, isFatalModeWindowOpen, () => false);
   const preview = useSyncExternalStore(noopSubscribe, getPreview, () => false);
   if (!active && !preview) return null;
   // Over the attack movie (9995), behind the silver shutter insert (9997).
