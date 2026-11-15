@@ -22,7 +22,7 @@ export function allyPresentationKey(character: string, side: "player" | "enemy" 
 }
 
 export function defaultAllyPresentation(character: string, side: "player" | "enemy" = "player"): AllyPresentation {
-  if (side === "enemy") return { ...DEFAULT_ALLY_PRESENTATION, x: 0, y: 0, scale: 100 };
+  if (side === "enemy") return { ...DEFAULT_ALLY_PRESENTATION, x: 0, y: 0, scale: character === "1" ? 118 : 100 };
   if (character === "R3") return { ...DEFAULT_ALLY_PRESENTATION, x: 1, y: 28, scale: 138 };
   return character === "R2" ? { ...DEFAULT_ALLY_PRESENTATION, x: -3, scale: 96 } : DEFAULT_ALLY_PRESENTATION;
 }
