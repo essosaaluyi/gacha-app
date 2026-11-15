@@ -696,7 +696,7 @@ const revealPresets = {
     storageKey: "green-scale-dragon-layer-workstation-timeline-v3",
     cardImage: "/images/cards/player/R2/card.webp",
     standFrameCount: 90,
-    idleFrameCount: 120,
+    idleFrameCount: 94,
     standFrameMs: 33,
     idleFrameMs: 1000 / 24,
     standStartFrame: 0,
@@ -711,7 +711,7 @@ const revealPresets = {
         .toString()
         .padStart(3, "0")}.webp`,
     idleFrameSrc: (index: number) =>
-      `/images/battle-characters/green-scale-dragon/idle.v2/${index
+      `/images/battle-characters/green-scale-dragon/idle.v3/${index
         .toString()
         .padStart(4, "0")}.webp`,
   },
