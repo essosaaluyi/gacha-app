@@ -116,7 +116,10 @@ import {
   selectPlayerBattleCard,
   summonSelectedPlayerBattleCard,
   subscribePlayerBattleCard,
+  restorePlayerBattleHand,
 } from "@/lib/battle-pixi/state/playerBattleCardStore";
+import { startFatalMode } from "@/lib/battle-pixi/state/fatalModeStore";
+import { armPlayerFatalModeOpening } from "@/lib/battle-pixi/state/playerFatalModeOpeningStore";
 import { getCurrentEnemy, subscribeCurrentEnemy } from "@/lib/battle-pixi/state/currentEnemyStore";
 import { getBattleMode, setBattleMode, subscribeBattleMode } from "@/lib/battle-pixi/state/battleModeStore";
 import { getPlayerWinRateForRound, resetPlayerWinRate } from "@/lib/battle-pixi/state/playerWinRateStore";
@@ -296,6 +299,11 @@ export default function BattleScreen() {
   const startCollectionPreview =
     process.env.NODE_ENV !== "production" &&
     searchParams.get("start") === "collection";
+  // Dev entry point: ?start=fatal summons R1 and opens on the first draw of
+  // the player's Fatal Mode, shutter insert armed.
+  const startFatalModePreview =
+    process.env.NODE_ENV !== "production" &&
+    searchParams.get("start") === "fatal";
   const previewSuperMax = startBonusRound && searchParams.get("bonus-preview") === "superMax";
   const attackLandPreview =
     process.env.NODE_ENV !== "production" ? searchParams.get("preview") : null;
@@ -630,7 +638,7 @@ export default function BattleScreen() {
       // Check for a saved session to resume. The "resume" flag is set by the
       // menu page's Continue button; without it a direct /battle visit always
       // starts fresh (the old behaviour).
-      const resumeRequested = !fatalPreview &&
+      const resumeRequested = !fatalPreview && !startFatalModePreview &&
         localStorage.getItem("battle_resume_requested") === "true";
       const savedSession = resumeRequested ? loadBattleSession() : null;
 
@@ -647,8 +655,14 @@ export default function BattleScreen() {
       }
 
       resetBattleRun({ preview: fatalPreview !== null });
+      if (startFatalModePreview) {
+        restorePlayerBattleHand({
+          cards: ["R1", "R2", "R3"].map((name) => ({ name, rarity: "R", image: `/images/cards/player/${name}/card.webp` })),
+          summonedIndices: [], activeIndex: null, selectedIndex: null,
+        });
+      }
       // Development mode entries keep their existing direct-to-mode behavior.
-      if (startBonusRound || startCollectionPreview || (fatalPreview && searchParams.get("dock-preview")!=="true")) {
+      if (startBonusRound || startCollectionPreview || startFatalModePreview || (fatalPreview && searchParams.get("dock-preview")!=="true")) {
         const first = getAvailablePlayerBattleCards()[0];
         if (first) {
           selectPlayerBattleCard(first.index);
@@ -664,7 +678,12 @@ export default function BattleScreen() {
       if (!getCurrentPlayerBattleCard() && getRemainingPlayerBattleCards() === 0) {
         setBattleState("gameOver");
       }
-      if (!fatalPreview) startAutoSave();
+      if (startFatalModePreview) {
+        startFatalMode();
+        armPlayerFatalModeOpening();
+      }
+      // The Fatal Mode preview must not overwrite the player's saved run.
+      if (!fatalPreview && !startFatalModePreview) startAutoSave();
 
       if (fatalPreview) {
         setOpeningChecked(true);
@@ -716,7 +735,7 @@ export default function BattleScreen() {
       // has left the battle.
       stopAutoSave();
     };
-  }, [audioReady, startBonusRound, startCollectionPreview, previewSuperMax, fatalPreview, finishBattleOpening]);
+  }, [audioReady, startBonusRound, startCollectionPreview, previewSuperMax, fatalPreview, startFatalModePreview, finishBattleOpening]);
 
   const toggleBgm = async () => {
     if (bgmPlaying) {
