@@ -14,7 +14,7 @@ export type BattleEnemyProgressionSnapshot = {
   normalRounds: NormalBattleRounds;
   pickedEnemyIds: EnemyId[];
 };
-const FIXED_TEST_ENEMY_ID: EnemyId | null = null;
+const FIXED_TEST_ENEMY_ID: EnemyId | null = 1;
 
 let listeners: (() => void)[] = [];
 

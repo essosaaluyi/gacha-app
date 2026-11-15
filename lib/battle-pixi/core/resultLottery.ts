@@ -336,6 +336,22 @@ export function drawBattleResult(
     }
   }
 
+  if (
+    // Browser play of the main battle only: the headless odds tools and
+    // the bonus draws must keep measuring the real table.
+    typeof window !== "undefined" &&
+    process.env.NODE_ENV !== "production" &&
+    options.barChance !== "none" &&
+    Math.random() < patchConfig.debug.devAttackOnTargetRate
+  ) {
+    const cards = generateCardsFromResult("Attack");
+    return {
+      result: "Attack",
+      cards,
+      targetSlot: Math.max(0, cards.indexOf("Attack")) as 0 | 1 | 2,
+    };
+  }
+
   const barOutcome =
     options.barChance === "none" ? null : rollMainBarChance(options.barOdds);
 
