@@ -10,6 +10,7 @@
 
 import { getPlayerFatalSnapshot, isFatalModeActive } from "./fatalModeStore";
 import { getCurrentPlayerBattleCard } from "./playerBattleCardStore";
+import { markFatalModeDrawStarted } from "./fatalModeWindowStore";
 
 type CutNumber = 1 | 2;
 
@@ -67,6 +68,8 @@ export function onFatalModeDraw(openingStarted: boolean) {
   // Outside Fatal Mode, and on draws with no movie of their own, the draw
   // cuts whatever was still on screen.
   if (!isFatalModeActive()) { lastPlayed = ""; hideFatalAttackCut(); return; }
+  // The band and the rest of the mode's dressing begin with this press.
+  markFatalModeDrawStarted(openingStarted ? SHUTTER_LEAD_MS : 0);
   const { totalGames, gamesLeft } = getPlayerFatalSnapshot();
   const turn = totalGames - gamesLeft + 1;
   const tag = `${totalGames}:${turn}`;
