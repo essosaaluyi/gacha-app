@@ -18,3 +18,10 @@
 @media (prefers-reduced-motion: reduce) {
   .actor[data-ally-summoning] :global(.battle-spawn-character) { animation: none; }
 }
+
+:global(.battle-cabinet-screen) .actor:global(.battle-spawn-actor-enemy) :is(:global(.battle-spawn-character-idle), [data-ally-settled]) {
+  left: calc(44% + var(--ally-idle-x));
+  top: calc(25% + var(--ally-idle-y));
+  transform: scale(var(--ally-idle-scale));
+  transform-origin: 50% 82%;
+}

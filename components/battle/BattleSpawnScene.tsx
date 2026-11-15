@@ -1412,22 +1412,29 @@ export const ALLY_PREVIEW_CHARACTERS = Object.entries(PLAYER_PRESETS_BY_CARD)
   .map(([id, preset]) => ({ id, name: preset.name }))
   .sort((a, b) => a.id.localeCompare(b.id));
 
-export function AllyPresentationPreview({ character, placement, animateSummon }: {
+export const ENEMY_PREVIEW_CHARACTERS = Object.values(battleEnemies).map(enemy => ({
+  id: String(enemy.id), name: getEnemyCharacterName(enemy).label,
+}));
+
+export function AllyPresentationPreview({ character, placement, animateSummon, side = "player" }: {
   character: string;
   placement: AllyPresentation;
   animateSummon: boolean;
+  side?: "player" | "enemy";
 }) {
-  const preset = PLAYER_PRESETS_BY_CARD[character] ?? revealPresets.r1TripletsBabyDragon;
-  return <SpawnActor side="player" name={preset.name} cardImage={preset.cardImage}
+  const preset = side === "enemy" ? enemyPresetFor(battleEnemies[Number(character) as EnemyId])
+    : PLAYER_PRESETS_BY_CARD[character] ?? revealPresets.r1TripletsBabyDragon;
+  return <SpawnActor side={side} name={preset.name} cardImage={preset.cardImage}
     preset={preset} persistent placement={placement} animateSummon={animateSummon} />;
 }
 
 function FighterPresentation({
-  side, identity, name, cardImage, basePreset, status, startedAt,
+  side, identity, enemyId, name, cardImage, basePreset, status, startedAt,
   onInspect,
 }: {
   side: "player" | "enemy";
   identity: string | number;
+  enemyId?: EnemyId;
   name: string;
   cardImage: string;
   basePreset: RevealPreset;
@@ -1440,18 +1447,18 @@ function FighterPresentation({
   // R1 and R3 it goes straight into the idle loop (the summon sound still plays).
   const skipIntro = r1 || (side === "player" && (basePreset === revealPresets.dragonRaider || basePreset === revealPresets.youngKnight));
   const [preset, setPreset] = useState(() => r1 ? basePreset : loadSavedPreset(basePreset));
-  const character = basePreset.cardImage.split("/").at(-2) ?? basePreset.id;
-  const [placement, setPlacement] = useState(() => side === "player" ? readAllyPresentation(character) : undefined);
-  const customSummon = placement?.summonEnabled === true && basePreset !== revealPresets.greenScaleDragon;
+  const character = side === "enemy" ? String(enemyId) : basePreset.cardImage.split("/").at(-2) ?? basePreset.id;
+  const [placement, setPlacement] = useState(() => readAllyPresentation(character, side));
+  const customSummon = side === "player" && placement?.summonEnabled === true && basePreset !== revealPresets.greenScaleDragon;
   const duration = customSummon ? placement.summonMs : skipIntro ? 0 : preset.durationMs;
 
   useEffect(() => {
     const sync = () => {
-      if (side === "player") setPlacement(readAllyPresentation(character));
+      setPlacement(readAllyPresentation(character, side));
       if (!r1) setPreset(loadSavedPreset(basePreset));
     };
     const onStorage = (event: StorageEvent) => {
-      if (event.key === allyPresentationKey(character) || event.key === ALLY_PRESENTATION_KEY || event.key === basePreset.storageKey || event.key === null) sync();
+      if (event.key === allyPresentationKey(character, side) || event.key === ALLY_PRESENTATION_KEY || event.key === basePreset.storageKey || event.key === null) sync();
     };
     window.addEventListener("storage", onStorage);
     window.addEventListener("focus", sync);
@@ -1508,7 +1515,7 @@ export default function BattleSpawnScene({ onInspect }: { onInspect?: (side: "pl
       <div className="battle-spawn-camera">
         {enemy && summon.enemyKey && (
           <FighterPresentation key={`enemy:${summon.enemyKey}`} side="enemy"
-            identity={summon.enemyKey} name={getEnemyCharacterName(enemy).label}
+            identity={summon.enemyKey} enemyId={enemy.id} name={getEnemyCharacterName(enemy).label}
             cardImage={enemy.image} basePreset={enemyPresetFor(enemy)}
             onInspect={onInspect ? origin => onInspect("enemy", origin) : undefined}
             status={summon.enemy} startedAt={summon.enemyStartedAt} />

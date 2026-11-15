@@ -1,5 +1,9 @@
 # Session Handoff
 
+### 【完了・実画面未確認】ワークステーションの敵タブ ／ Codex ／ 2026-11-16
+- 既存ページに敵タブを追加。敵ごとの待機試写と左右・上下・サイズを提供し、ブラウザ内の設定を味方と分けて保存。
+- 型チェックとHTTP 200を確認。召喚関連テストは15件通過、ラウンド進行の既存期待値2件は不一致。画面操作は未確認。
+
 ### 【完了】Seedance向け Enemy 1 待機ポーズの仮配置 ／ Codex（シン） ／ 2026-11-15 ／ ブランチ main
 - 確認用PNG1枚（1776×888、Git管理外）：`outputs/enemy-one-seedance/enemy-one-idle-reference-v1.png`。現行背景 `stage-day-field-cabinet.v3.webp` とR1の `idle.v2/0000.webp` を使用し、Enemy 1（Mourning Talon – Elias）は現行の待機素材とカードを参照して画像生成。
 - 目視確認：左手前のR1に向けたEnemy 1の斜め正面、翼・剣を含む全身、巣の底と両足の接地。R1は筐体の構図を基準に巣の底まで入るよう縮小し、足元に接地影を追加した。

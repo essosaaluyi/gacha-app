@@ -17,20 +17,21 @@ export const ALLY_SUMMON_CONTROLS = [
   { key: "summonScale", label: "出現時のサイズ（待機時に対して）", min: 40, max: 150, unit: "%" },
 ] as const;
 
-export function allyPresentationKey(character: string) {
-  return `${ALLY_PRESENTATION_KEY}:${character}`;
+export function allyPresentationKey(character: string, side: "player" | "enemy" = "player") {
+  return side === "enemy" ? `gacha-battle:enemy-placement:${character}` : `${ALLY_PRESENTATION_KEY}:${character}`;
 }
 
-export function defaultAllyPresentation(character: string): AllyPresentation {
+export function defaultAllyPresentation(character: string, side: "player" | "enemy" = "player"): AllyPresentation {
+  if (side === "enemy") return { ...DEFAULT_ALLY_PRESENTATION, x: 0, y: 0, scale: 100 };
   if (character === "R3") return { ...DEFAULT_ALLY_PRESENTATION, x: 1, y: 28, scale: 138 };
   return character === "R2" ? { ...DEFAULT_ALLY_PRESENTATION, x: -3, scale: 96 } : DEFAULT_ALLY_PRESENTATION;
 }
 
-export function readAllyPresentation(character: string): AllyPresentation {
-  const defaults = defaultAllyPresentation(character);
+export function readAllyPresentation(character: string, side: "player" | "enemy" = "player"): AllyPresentation {
+  const defaults = defaultAllyPresentation(character, side);
   try {
-    const shared = character === "R2" || character === "R3" ? null : window.localStorage.getItem(ALLY_PRESENTATION_KEY);
-    const saved = JSON.parse(window.localStorage.getItem(allyPresentationKey(character)) ?? shared ?? "null");
+    const shared = side === "enemy" || character === "R2" || character === "R3" ? null : window.localStorage.getItem(ALLY_PRESENTATION_KEY);
+    const saved = JSON.parse(window.localStorage.getItem(allyPresentationKey(character, side)) ?? shared ?? "null");
     const placement = { ...defaults, summonEnabled: saved?.summonEnabled === true };
     for (const { key, min, max } of [...ALLY_IDLE_CONTROLS, ...ALLY_SUMMON_CONTROLS]) {
       const value = saved?.[key];
