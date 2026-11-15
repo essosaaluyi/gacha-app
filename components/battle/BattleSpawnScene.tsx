@@ -669,11 +669,11 @@ const revealPresets = {
     storageKey: "r1-triplets-baby-dragon-layer-workstation-timeline-v2",
     cardImage: "/images/cards/player/R1/card.webp",
     standFrameCount: 82,
-    idleFrameCount: 173,
+    idleFrameCount: 94,
     standFrameMs: 36,
-    idleFrameMs: 40,
+    idleFrameMs: 1000 / 24,
     standStartFrame: 0,
-    idleStartFrame: 110,
+    idleStartFrame: 0,
     standTransformOrigin: "50% 82%",
     idleTransformOrigin: "50% 82%",
     durationMs: 7600,
@@ -684,7 +684,7 @@ const revealPresets = {
         .toString()
         .padStart(3, "0")}.webp`,
     idleFrameSrc: (index: number) =>
-      `/images/battle-characters/r1-triplets-baby-dragon/idle/${index
+      `/images/battle-characters/r1-triplets-baby-dragon/idle.v2/${index
         .toString()
         .padStart(4, "0")}.webp`,
   },
