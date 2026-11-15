@@ -310,8 +310,8 @@ const enemyOnePreset = {
   characterFrameWidth: 430,
   standFrameCount: 121,
   idleFrameCount: 121,
-  standFrameMs: 40,
-  idleFrameMs: 40,
+  standFrameMs: 1000 / 24,
+  idleFrameMs: 1000 / 24,
   standStartFrame: 0,
   idleStartFrame: 0,
   standTransformOrigin: "50% 50%",
@@ -324,13 +324,13 @@ const enemyOnePreset = {
   },
   layers: enemyOneLayers,
   standFrameSrc: (index: number) =>
-    `/images/battle-characters/enemy-one/idle/${index
+    `/images/battle-characters/enemy-one/idle.v2/${index
       .toString()
-      .padStart(4, "0")}.png`,
+      .padStart(4, "0")}.webp`,
   idleFrameSrc: (index: number) =>
-    `/images/battle-characters/enemy-one/idle/${index
+    `/images/battle-characters/enemy-one/idle.v2/${index
       .toString()
-      .padStart(4, "0")}.png`,
+      .padStart(4, "0")}.webp`,
 } satisfies RevealPreset;
 
 const enemyTwoLayers = {
@@ -746,9 +746,9 @@ const revealPresets = {
     storageKey: "young-knight-layer-workstation-timeline-v3",
     cardImage: "/images/cards/player/R4/card.webp",
     standFrameCount: 45,
-    idleFrameCount: 243,
+    idleFrameCount: 85,
     standFrameMs: 40,
-    idleFrameMs: 40,
+    idleFrameMs: 1000 / 24,
     standStartFrame: 0,
     idleStartFrame: 0,
     standTransformOrigin: "50% 82%",
@@ -761,9 +761,9 @@ const revealPresets = {
         .toString()
         .padStart(4, "0")}.png`,
     idleFrameSrc: (index: number) =>
-      `/images/battle-characters/young-knight/combined/${(index + 45)
+      `/images/battle-characters/young-knight/idle.v2/${index
         .toString()
-        .padStart(4, "0")}.png`,
+        .padStart(4, "0")}.webp`,
   },
   necroRunner: {
     id: "necro-runner",
@@ -1436,7 +1436,9 @@ function FighterPresentation({
   onInspect?: (origin: HTMLElement) => void;
 }) {
   const r1 = side === "player" && basePreset === revealPresets.r1TripletsBabyDragon;
-  const skipIntro = r1 || (side === "player" && basePreset === revealPresets.dragonRaider);
+  // R4's old stand-up frames are a different size and framing from its new idle loop, so like
+  // R1 and R3 it goes straight into the idle loop (the summon sound still plays).
+  const skipIntro = r1 || (side === "player" && (basePreset === revealPresets.dragonRaider || basePreset === revealPresets.youngKnight));
   const [preset, setPreset] = useState(() => r1 ? basePreset : loadSavedPreset(basePreset));
   const character = basePreset.cardImage.split("/").at(-2) ?? basePreset.id;
   const [placement, setPlacement] = useState(() => side === "player" ? readAllyPresentation(character) : undefined);

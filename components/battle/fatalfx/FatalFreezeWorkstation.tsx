@@ -11,8 +11,9 @@ const STAGE_H = 618;
 const STORAGE_KEY = "fatalFreezeWorkstation.v1";
 
 const MOVIES = [
-  { label: "R1 1本目", src: "/videos/battle-assets/fatal-attack/r1a1.v1.mp4" },
-  { label: "R1 2本目", src: "/videos/battle-assets/fatal-attack/r1a2.v2.mp4" },
+  { label: "R1 1本目", src: "/videos/battle-assets/fatal-attack/r1a1.v2.mp4" },
+  { label: "R1 2本目", src: "/videos/battle-assets/fatal-attack/r1a2.v3.mp4" },
+  { label: "3本目（E1 当たる寸前）", src: "/videos/battle-assets/fatal-attack/e1beforehit.v1.mp4" },
 ];
 
 type NumKey = { [K in keyof FreezeSettings]: FreezeSettings[K] extends number ? K : never }[keyof FreezeSettings];

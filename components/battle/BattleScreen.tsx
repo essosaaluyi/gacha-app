@@ -121,7 +121,8 @@ import {
 } from "@/lib/battle-pixi/state/playerBattleCardStore";
 import { startFatalMode } from "@/lib/battle-pixi/state/fatalModeStore";
 import { armPlayerFatalModeOpening } from "@/lib/battle-pixi/state/playerFatalModeOpeningStore";
-import { getCurrentEnemy, subscribeCurrentEnemy } from "@/lib/battle-pixi/state/currentEnemyStore";
+import { getCurrentEnemy, restoreEnemy, subscribeCurrentEnemy } from "@/lib/battle-pixi/state/currentEnemyStore";
+import { battleEnemies, type EnemyId } from "@/lib/battle-pixi/config/enemyConfig";
 import { getBattleMode, setBattleMode, subscribeBattleMode } from "@/lib/battle-pixi/state/battleModeStore";
 import { getPlayerWinRateForRound, resetPlayerWinRate } from "@/lib/battle-pixi/state/playerWinRateStore";
 import { buildBattleSnapshot } from "@/lib/battle-pixi/state/battleSessionSync";
@@ -657,10 +658,15 @@ export default function BattleScreen() {
 
       resetBattleRun({ preview: fatalPreview !== null });
       if (startFatalModePreview) {
+        // Optional: &ally=R4 puts that card first, &enemy=1 fixes the opponent.
+        const ally = searchParams.get("ally")?.toUpperCase();
+        const names = ally && /^[A-Z]+\d+$/.test(ally) ? [ally, ...["R1", "R2", "R3"].filter((name) => name !== ally)] : ["R1", "R2", "R3"];
         restorePlayerBattleHand({
-          cards: ["R1", "R2", "R3"].map((name) => ({ name, rarity: "R", image: `/images/cards/player/${name}/card.webp` })),
+          cards: names.map((name) => ({ name, rarity: name.replace(/\d+$/, ""), image: `/images/cards/player/${name}/card.webp` })),
           summonedIndices: [], activeIndex: null, selectedIndex: null,
         });
+        const enemyId = Number(searchParams.get("enemy")) as EnemyId;
+        if (battleEnemies[enemyId]) restoreEnemy(enemyId);
       }
       // Development mode entries keep their existing direct-to-mode behavior.
       if (startBonusRound || startCollectionPreview || startFatalModePreview || (fatalPreview && searchParams.get("dock-preview")!=="true")) {
