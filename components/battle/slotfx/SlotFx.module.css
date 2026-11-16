@@ -40,9 +40,19 @@
 }
 
 .glyphCell,
+.glyphBloom,
 .glyphShine {
   position: absolute;
   background-repeat: no-repeat;
+}
+
+/* The glyph again, blurred and added to itself: highlights bleed light the way
+   they do on a lit panel. */
+.glyphBloom {
+  filter: blur(0.05em) brightness(1.15) saturate(1.5);
+  mix-blend-mode: screen;
+  mix-blend-mode: plus-lighter;
+  opacity: 0.26;
 }
 
 /* A band of light that crosses each glyph, one after the other. */
@@ -58,6 +68,47 @@
 @keyframes slotShine {
   from { background-position: 130% 0; }
   to { background-position: -30% 0; }
+}
+
+/* A four-pointed star that flares once on a highlight. */
+.glint {
+  position: absolute;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background:
+    radial-gradient(closest-side, #fff 0 5%, rgba(255, 244, 210, 0.6) 13%, transparent 42%),
+    linear-gradient(90deg, transparent, #fff 50%, transparent) center / 100% 2.6% no-repeat,
+    linear-gradient(0deg, transparent, #fff 50%, transparent) center / 2.6% 100% no-repeat;
+  mix-blend-mode: screen;
+  mix-blend-mode: plus-lighter;
+  opacity: 0;
+  animation: slotGlint 640ms ease-out both;
+}
+
+@keyframes slotGlint {
+  0% { opacity: 0; scale: 0.2; rotate: 0deg; }
+  35% { opacity: 1; scale: 1.15; rotate: 18deg; }
+  100% { opacity: 0; scale: 0.45; rotate: 45deg; }
+}
+
+/* Sparks rising through the dark behind a big telop. */
+.spark {
+  position: absolute;
+  bottom: -3cqh;
+  border-radius: 50%;
+  background: #ffe2b0;
+  box-shadow: 0 0 1.2cqh 0.35cqh var(--spark-glow, rgba(255, 110, 40, 0.9));
+  opacity: 0;
+  animation: slotSpark var(--spark-ms) linear var(--spark-delay) both;
+}
+.telop[data-tone="ice"] .spark,
+.telop[data-tone="violet"] .spark { --spark-glow: rgba(190, 90, 255, 0.9); }
+.telop[data-tone="gold"] .spark { --spark-glow: rgba(255, 190, 60, 0.9); }
+
+@keyframes slotSpark {
+  0% { opacity: 0; translate: 0 0; }
+  12% { opacity: 1; }
+  100% { opacity: 0; translate: var(--spark-drift) -112cqh; }
 }
 
 /* ---- The tilt ------------------------------------------------------------ */
@@ -376,5 +427,5 @@
 @media (prefers-reduced-motion: reduce) {
   .words, .roundInner, .roundVersus { animation-duration: 1ms; animation-iteration-count: 1; }
   .sway { animation: none; transform: rotateZ(-4deg); }
-  .burst, .ring, .flash, .stopFlash, .stopLine, .stopRays, .glyphShine { animation: none; }
+  .burst, .ring, .flash, .stopFlash, .stopLine, .stopRays, .glyphShine, .glint, .spark { animation: none; }
 }

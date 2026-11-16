@@ -26,6 +26,23 @@ import {
 // PROVISIONAL — see slotFxStore.ts. This component draws the layer and, when
 // `live` is set, listens to what the battle already announces.
 
+/** Sparks that rise behind a big telop. Fixed, so every showing looks the same. */
+const SPARKS = Array.from({ length: 16 }, (_, index) => ({
+  left: `${4 + ((index * 37) % 93)}%`,
+  delay: `${(index * 173) % 900}ms`,
+  ms: `${900 + ((index * 131) % 700)}ms`,
+  drift: `${((index * 53) % 17) - 8}cqw`,
+  size: `${0.5 + ((index * 29) % 5) * 0.14}cqh`,
+}));
+
+/** Star glints on the lettering: where on the words, and when. */
+const GLINTS = [
+  { left: "6%", top: "8%", delay: "330ms", size: "12cqh" },
+  { left: "58%", top: "-8%", delay: "560ms", size: "8cqh" },
+  { left: "97%", top: "48%", delay: "800ms", size: "10cqh" },
+  { left: "30%", top: "96%", delay: "1040ms", size: "7cqh" },
+];
+
 const STOP_TONES: Record<string, SlotStop["tone"]> = {
   Attack: "fire",
   Chance: "rainbow",
@@ -173,6 +190,13 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
           {telop.size === "big" && <div className={styles.veil} />}
           {telop.size === "big" && <div className={styles.flash} />}
           <div className={styles.burst} />
+          {telop.size === "big" && SPARKS.map((spark, index) => (
+            <i
+              key={index}
+              className={styles.spark}
+              style={{ left: spark.left, width: spark.size, height: spark.size, "--spark-delay": spark.delay, "--spark-ms": spark.ms, "--spark-drift": spark.drift } as CSSProperties}
+            />
+          ))}
           <div className={styles.ring} />
           <div className={styles.sway}>
             {telop.size === "small" && <div className={styles.band} />}
@@ -184,6 +208,9 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
                 <SlotGlyphs text={main} tone={telop.tone} className={styles.main} shine={counted === null || counted === telop.countTo} />
               </div>
               {telop.tail && <SlotGlyphs text={telop.tail} tone="gold" className={styles.tail} shine={false} />}
+              {GLINTS.slice(0, telop.size === "big" ? 4 : 2).map((glint, index) => (
+                <i key={index} className={styles.glint} style={{ left: glint.left, top: glint.top, width: glint.size, animationDelay: glint.delay }} />
+              ))}
             </div>
           </div>
         </div>

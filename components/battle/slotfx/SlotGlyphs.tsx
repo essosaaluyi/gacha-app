@@ -49,7 +49,7 @@ export function slotGlyphSheets(): string[] {
  * `font-size` on the element is the height of a capital; the rim and the depth
  * hang outside that box, as they would on a real sign.
  */
-export default function SlotGlyphs({ text, tone, className = "", shine = true }: { text: string; tone: SlotTone; className?: string; shine?: boolean }) {
+export default function SlotGlyphs({ text, tone, className = "", shine = true, bloom = true }: { text: string; tone: SlotTone; className?: string; shine?: boolean; bloom?: boolean }) {
   const style = TONE_STYLE[tone];
 
   return (
@@ -73,6 +73,7 @@ export default function SlotGlyphs({ text, tone, className = "", shine = true }:
         return (
           <span key={index} className={styles.glyph} style={{ width: em(glyph.advance * unit) }}>
             <i className={styles.glyphCell} style={{ ...cell, backgroundImage: sheet, backgroundSize: size, backgroundPosition: position }} />
+            {bloom && <i className={styles.glyphBloom} style={{ ...cell, backgroundImage: sheet, backgroundSize: size, backgroundPosition: position }} />}
             {shine && (
               <i
                 className={styles.glyphShine}
