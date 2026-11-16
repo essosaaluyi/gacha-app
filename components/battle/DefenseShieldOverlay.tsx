@@ -6,6 +6,7 @@ import {
   settleDefenseShield,
   subscribeDefenseShield,
 } from "@/lib/battle-pixi/state/defenseShieldStore";
+import styles from "./DefenseShieldOverlay.module.css";
 
 const TRANSFER_MS = 620;
 
@@ -48,10 +49,10 @@ export default function DefenseShieldOverlay() {
         </svg>
       )}
       <div className="defense-shield-marker" aria-hidden="true">
-        <svg viewBox="0 0 64 76">
-          <path d="M32 3 57 13v22c0 18-10 30-25 38C17 65 7 53 7 35V13L32 3Z" />
-          <path d="M32 12 48 18v17c0 12-6 21-16 27-10-6-16-15-16-27V18l16-6Z" />
-        </svg>
+        <i className={styles.rays} />
+        <i className={styles.halo} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className={styles.icon} src={`/images/battle-ui/defense-shield/shield-${shield.grade}.v1.webp`} alt="" draggable={false} />
       </div>
     </div>
   );

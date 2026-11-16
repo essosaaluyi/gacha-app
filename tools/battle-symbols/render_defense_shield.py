@@ -1,6 +1,10 @@
 # Renders the crystal shield for the Defense card face (transparent PNG).
 #
-#   blender --background --factory-startup --python tools/battle-symbols/render_defense_shield.py -- <out.png> [samples]
+#   blender --background --factory-startup --python tools/battle-symbols/render_defense_shield.py -- <out.png> [samples] [colour] [pose]
+#
+# colour: blue (default), green, red, purple — the grades of the stored shield.
+# pose:   card (default; leaning, 1200 px) or icon (upright, 512 px), the marker
+#         shown on the battle screen when three Defense cards line up.
 #
 # The Attack card shows a sword cut from glowing red crystal. This is its
 # partner: a shield cut the same way, in blue. tools/battle-symbols/
@@ -14,6 +18,17 @@ import bpy
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 OUT = argv[0]
 SAMPLES = int(argv[1]) if len(argv) > 1 else 128
+COLOUR = argv[2] if len(argv) > 2 else "blue"
+POSE = argv[3] if len(argv) > 3 else "card"
+
+# For each colour: the stone, its inner light, the lit edges, the star, and the lamps.
+PALETTE = {
+    "blue": ((0.004, 0.035, 0.32), (0.0, 0.06, 0.7), (0.16, 0.5, 1.0), (0.05, 0.25, 0.9), (0.6, 0.82, 1.0)),
+    "green": ((0.004, 0.2, 0.06), (0.0, 0.45, 0.12), (0.2, 1.0, 0.45), (0.05, 0.7, 0.25), (0.7, 1.0, 0.8)),
+    "red": ((0.3, 0.008, 0.008), (0.7, 0.02, 0.01), (1.0, 0.3, 0.2), (0.9, 0.1, 0.06), (1.0, 0.75, 0.7)),
+    "purple": ((0.12, 0.01, 0.32), (0.3, 0.02, 0.7), (0.72, 0.4, 1.0), (0.5, 0.15, 0.9), (0.85, 0.75, 1.0)),
+}
+STONE, INNER, EDGE, STAR, LAMP = PALETTE[COLOUR]
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -75,9 +90,9 @@ for i in range(N):
     faces.append((top + i, top + (i + 1) % N, len(verts) - 1))
 faces.append(tuple(reversed(range(N))))  # the back
 
-crystal = material("crystal", (0.004, 0.035, 0.32), (0.0, 0.06, 0.7), 0.22, metallic=0.75, roughness=0.14)
-light = material("light", (0.2, 0.5, 1.0), (0.16, 0.5, 1.0), 5.0, metallic=0, roughness=0.5)
-star_mat = material("star", (0.05, 0.25, 0.9), (0.1, 0.4, 1.0), 0.9, metallic=0.6, roughness=0.12)
+crystal = material("crystal", STONE, INNER, 0.22, metallic=0.75, roughness=0.14)
+light = material("light", EDGE, EDGE, 5.0, metallic=0, roughness=0.5)
+star_mat = material("star", STAR, EDGE, 0.9, metallic=0.6, roughness=0.12)
 
 shield = add_mesh("shield", verts, faces, crystal)
 shield_edges = glowing_edges(shield, light, 0.008)
@@ -101,7 +116,7 @@ rig = bpy.data.objects.new("rig", None)
 scene.collection.objects.link(rig)
 for obj in (shield, shield_edges, star, star_edges):
     obj.parent = rig
-rig.rotation_euler = (math.radians(-10), math.radians(12), math.radians(-14))
+rig.rotation_euler = (math.radians(-8), math.radians(10), 0.0) if POSE == "icon" else (math.radians(-10), math.radians(12), math.radians(-14))
 
 # ---- Light, camera, render -------------------------------------------------
 
@@ -125,13 +140,13 @@ def area(name, location, energy, colour, size):
     track.up_axis = "UP_Y"
 
 
-area("key", (-2.4, 2.6, 3.4), 70, (0.6, 0.82, 1.0), 2.5)
-area("rim", (3.0, -0.6, 1.4), 90, (0.2, 0.6, 1.0), 1.6)
-area("under", (-1.0, -3.2, 1.6), 30, (0.1, 0.3, 1.0), 2.0)
+area("key", (-2.4, 2.6, 3.4), 70, LAMP, 2.5)
+area("rim", (3.0, -0.6, 1.4), 90, EDGE, 1.6)
+area("under", (-1.0, -3.2, 1.6), 30, EDGE, 2.0)
 
 cam_data = bpy.data.cameras.new("cam")
 cam_data.type = "ORTHO"
-cam_data.ortho_scale = 3.3
+cam_data.ortho_scale = 2.9 if POSE == "icon" else 3.3
 cam = bpy.data.objects.new("cam", cam_data)
 cam.location = (0, -0.08, 8)
 scene.collection.objects.link(cam)
@@ -141,8 +156,7 @@ scene.render.engine = "CYCLES"
 scene.cycles.samples = SAMPLES
 scene.cycles.use_denoising = True
 scene.render.film_transparent = True
-scene.render.resolution_x = 1200
-scene.render.resolution_y = 1200
+scene.render.resolution_x = scene.render.resolution_y = 512 if POSE == "icon" else 1200
 scene.render.image_settings.file_format = "PNG"
 scene.render.image_settings.color_mode = "RGBA"
 scene.view_settings.view_transform = "Standard"
