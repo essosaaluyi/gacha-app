@@ -26,6 +26,7 @@
 .glyphs[data-tone="ice"],
 .glyphs[data-tone="violet"] { --glyph-glow: rgba(170, 60, 255, 0.85); }
 .glyphs[data-tone="rainbow"] { --glyph-glow: rgba(255, 90, 200, 0.8); }
+.glyphs[data-tone="silver"] { --glyph-glow: rgba(120, 180, 255, 0.7); }
 
 .glyph {
   position: relative;

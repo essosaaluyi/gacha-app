@@ -10,10 +10,10 @@ import { getFatalWindowOutcome, getPlayerFatalSnapshot, isFatalModeActive, subsc
 import { isFatalModeWindowOpen, subscribeFatalModeWindow } from "@/lib/battle-pixi/state/fatalModeWindowStore";
 import { getFatalPresentation, subscribeFatalPresentation } from "@/lib/battle-pixi/state/fatalPresentationStore";
 import SlotBackdrop, { warmSlotBackdrops } from "./SlotBackdrop";
-import SlotGlyphs from "./SlotGlyphs";
+import SlotGlyphs, { slotGlyphSheets, slotGlyphsWidth } from "./SlotGlyphs";
 import dispenser from "./judgeDispenser.json";
 import css from "./SlotJudge.module.css";
-import { SLOT_FX, type SlotTone } from "./slotFxStore";
+import { SLOT_FX } from "./slotFxStore";
 import {
   JUDGE_FAIL_MS,
   JUDGE_FREEZE_MOVIE,
@@ -29,8 +29,11 @@ import {
 } from "./slotJudgeStore";
 
 // PROVISIONAL — see slotJudgeStore.ts for the sequence this draws.
+//
+// Nothing here may hint at the result before the card is drawn: the lettering
+// is steel, the background blue, the lamps cold. No red, gold or rainbow.
 
-const DISPENSER_IMAGE = "/images/battle-assets/slotfx/judge-dispenser.v1.webp";
+const DISPENSER_IMAGE = "/images/battle-assets/slotfx/judge-dispenser.v2.webp";
 
 /** When the title lands, after the last letter has flown past. */
 const LAND_MS = 1750;
@@ -38,12 +41,29 @@ const LAND_MS = 1750;
 /** "DESTINY JUDGE", one letter at a time, each thrown at a different part of the screen. */
 const FLY = Array.from("DESTINYJUDGE").map((char, index) => ({
   char,
-  tone: (index < 7 ? "gold" : "fire") as SlotTone,
   delay: 140 + index * 105,
   x: `${(((index * 37) % 7) - 3) * 9}cqw`,
   y: `${(((index * 53) % 5) - 2) * 8}cqh`,
-  turn: `${(((index * 29) % 9) - 4) * 4}deg`,
 }));
+
+/**
+ * The title's two words. Landing, each fills the screen on a line of its own;
+ * once the dispenser is up they stand side by side as one line along the top.
+ */
+const TITLE = (() => {
+  const gap = 0.55;
+  let x = 0;
+  const words = [
+    { text: "DESTINY", landTop: "17cqh", landMax: "21cqh" },
+    { text: "JUDGE", landTop: "47cqh", landMax: "28cqh" },
+  ].map((word) => {
+    const width = slotGlyphsWidth(word.text, "silver");
+    const placed = { ...word, width, x };
+    x += width + gap;
+    return placed;
+  });
+  return { words, width: x - gap };
+})();
 
 /** The crack: jagged rays out of one point of impact, with a few splinters between. */
 const CRACKS = (() => {
@@ -95,6 +115,8 @@ function useJudgeSignals(live: boolean) {
     let staged = false;
     // The judge draw has been pressed and its result not yet shown.
     let waiting = false;
+    // The judge's pictures have been asked for.
+    let warmed = false;
     let turned = 0;
     let outcomeSeen = getFatalWindowOutcome()?.key ?? 0;
 
@@ -119,11 +141,14 @@ function useJudgeSignals(live: boolean) {
       const { gamesLeft, totalGames } = getPlayerFatalSnapshot();
       if (gamesLeft > 1) staged = false;
       if (!isFatalModeActive()) return;
-      warmSlotBackdrops(["redTunnel", "redBurst", "speedLines", "glassShatter"]);
+      warmSlotBackdrops(["blueTunnel", "blueBurst", "speedLines", "glassShatter"]);
+      if (!warmed) {
+        warmed = true;
+        for (const src of [DISPENSER_IMAGE, ...slotGlyphSheets("silver")]) new Image().src = src;
+      }
       if (staged || gamesLeft !== 1 || totalGames <= 1) return;
       if (!isFatalModeWindowOpen() || getBattlePresentationFlow().phase !== "next_round_ready") return;
       staged = true;
-      new Image().src = DISPENSER_IMAGE;
       startSlotJudge();
     };
 
@@ -178,28 +203,36 @@ function useJudgeSignals(live: boolean) {
   }, [live]);
 }
 
+/** The letters thrown at the screen, and the flash they land in. */
 function Intro() {
   return (
-    <div className={css.intro} style={{ "--land-ms": `${LAND_MS}ms` } as CSSProperties}>
-      <SlotBackdrop kind="redTunnel" className={css.backdrop} rate={1.4} />
-      <div className={css.introShade} />
+    <>
       {FLY.map((letter, index) => (
-        <span
-          key={index}
-          className={css.fly}
-          style={{ animationDelay: `${letter.delay}ms`, "--fly-x": letter.x, "--fly-y": letter.y, "--fly-turn": letter.turn } as CSSProperties}
-        >
-          <SlotGlyphs text={letter.char} tone={letter.tone} className={css.flyGlyphs} shine={false} bloom={false} />
+        <span key={index} className={css.fly} style={{ animationDelay: `${letter.delay}ms`, "--fly-x": letter.x, "--fly-y": letter.y } as CSSProperties}>
+          <SlotGlyphs text={letter.char} tone="silver" className={css.flyGlyphs} shine={false} bloom={false} />
         </span>
       ))}
-      <SlotBackdrop kind="speedLines" className={css.landLines} />
       <div className={css.landFlash} />
-      <div className={css.land}>
-        <div className={css.landSway}>
-          <SlotGlyphs text="DESTINY" tone="gold" className={css.landTop} />
-          <SlotGlyphs text="JUDGE" tone="fire" className={css.landBottom} />
-        </div>
-      </div>
+    </>
+  );
+}
+
+/**
+ * "DESTINY JUDGE". One element for the whole judge, so the words that land
+ * across the screen are the same words that then stand over the dispenser.
+ */
+function Title({ phase }: { phase: SlotJudgePhase }) {
+  return (
+    <div className={css.title} data-phase={phase} style={{ "--line-w": TITLE.width } as CSSProperties}>
+      {TITLE.words.map((word, index) => (
+        <span
+          key={word.text}
+          className={css.word}
+          style={{ "--w": word.width, "--dock-x": word.x, "--land-top": word.landTop, "--land-max": word.landMax, "--i": index } as CSSProperties}
+        >
+          <SlotGlyphs text={word.text} tone="silver" shineDelay={LAND_MS + 320 + index * 180} />
+        </span>
+      ))}
     </div>
   );
 }
@@ -217,13 +250,20 @@ const CARD_BOX: CSSProperties = {
   transform: `perspective(150cqh) rotateX(${Math.round((Math.acos(dispenser.groundRatio) * 180) / Math.PI)}deg)`,
 };
 
-function Dispenser({ phase }: { phase: SlotJudgePhase }) {
-  const pulled = phase !== "prompt";
+/** Chevrons running the way the card is pulled: toward the player. */
+function Arrows() {
   return (
-    <div className={css.dispenser} data-pulled={pulled} data-fail={phase === "fail"}>
-      <SlotBackdrop kind="redBurst" className={css.backdrop} rate={pulled ? 1.7 : 1} />
-      <SlotBackdrop kind="speedLines" className={css.lines} />
-      <div className={css.shade} />
+    <div className={css.arrows}>
+      {[0, 1, 2].map((index) => (
+        <i key={index} className={css.arrow} style={{ animationDelay: `${index * 150}ms` }} />
+      ))}
+    </div>
+  );
+}
+
+function Dispenser({ phase }: { phase: SlotJudgePhase }) {
+  return (
+    <div className={css.dispenser} data-pulled={phase !== "prompt"}>
       <div className={css.enterFlash} />
       <div className={css.halo} />
       <div className={css.machineWrap}>
@@ -233,19 +273,31 @@ function Dispenser({ phase }: { phase: SlotJudgePhase }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className={css.card} src={PLAYER_CARD_BACK_IMAGE} alt="" draggable={false} />
         </div>
-        {[-1, 1].map((side) => (
-          <div key={side} className={css.arrows} data-side={side < 0 ? "left" : "right"}>
-            {[0, 1, 2].map((index) => (
-              <i key={index} className={css.arrow} style={{ animationDelay: `${index * 150}ms` }} />
-            ))}
-          </div>
-        ))}
       </div>
       <div className={css.draw}>
-        <div className={css.drawSway}>
-          <SlotGlyphs text="DRAW!!!" tone="rainbow" className={css.drawGlyphs} />
-        </div>
+        <Arrows />
+        <SlotGlyphs text="DRAW!!!" tone="silver" className={css.drawGlyphs} />
+        <Arrows />
       </div>
+    </div>
+  );
+}
+
+/** Everything up to the result: one screen from the first letter to the draw. */
+function Stage({ phase }: { phase: SlotJudgePhase }) {
+  const intro = phase === "intro";
+  const stopped = phase === "fail";
+  return (
+    <div className={css.stage} data-phase={phase} style={{ "--land-ms": `${LAND_MS}ms` } as CSSProperties}>
+      {intro ? (
+        <SlotBackdrop key="tunnel" kind="blueTunnel" className={css.backdrop} rate={1.4} />
+      ) : (
+        <SlotBackdrop key="burst" kind="blueBurst" className={css.backdrop} rate={phase === "prompt" ? 1 : 1.7} paused={stopped} />
+      )}
+      <SlotBackdrop kind="speedLines" className={css.lines} paused={stopped} />
+      <div className={css.shade} />
+      {intro ? <Intro /> : <Dispenser phase={phase} />}
+      <Title phase={phase} />
     </div>
   );
 }
@@ -320,8 +372,7 @@ export default function SlotJudge({ live = true }: { live?: boolean }) {
 
   return (
     <div className={css.judge} data-phase={phase}>
-      {phase === "intro" && <Intro key={`intro-${key}`} />}
-      {(phase === "prompt" || phase === "pulled" || phase === "fail") && <Dispenser key={`dispenser-${key}`} phase={phase} />}
+      {phase !== "success" && <Stage key={`stage-${key}`} phase={phase} />}
       {phase === "fail" && <Fail />}
       {phase === "success" && <Success key={`success-${key}`} onDone={() => clearSlotJudge(key)} />}
     </div>

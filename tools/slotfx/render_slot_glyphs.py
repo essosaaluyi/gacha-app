@@ -5,7 +5,10 @@
 # any number or word from them. Run with Blender in the background:
 #
 #   blender --background --factory-startup --python tools/slotfx/render_slot_glyphs.py -- \
-#       <image dir> <atlas json> [all | set:style,set:style ...] [samples]
+#       <image dir> <atlas json> [all | set:style,set:style ...] [samples] [look]
+#
+# `look` picks one of LOOKS below (default "classic"). Each look has its own
+# font, depth, metal and atlas file.
 #
 # The camera looks straight at the letters and the depth is sheared down and to
 # the right instead, so every front face sits exactly on the cell grid and the
@@ -21,30 +24,49 @@
 # picture with a few bright soft boxes painted into it by direction.
 
 import bpy, sys, os, json, math, glob
+import numpy as np
 
 argv = sys.argv[sys.argv.index("--") + 1:]
 IMAGE_DIR, JSON_PATH = argv[0], argv[1]
 ONLY = set(argv[2].split(",")) if len(argv) > 2 and argv[2] != "all" else None
 SAMPLES = int(argv[3]) if len(argv) > 3 else 96
-VERSION = "v2"
+LOOK_NAME = argv[4] if len(argv) > 4 else "classic"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FONT_CANDIDATES = [
-    # Abril Fatface, SIL Open Font License (fonts/OFL.txt): free to use and to ship.
-    os.path.join(HERE, "fonts", "AbrilFatface-Regular.ttf"),
-    r"C:\Windows\Fonts\timesbd.ttf",
-]
 
-# `cap_px` is the height of a capital in the rendered sheet.
-SETS = {
-    "digits": dict(chars="0123456789+", cols=6, cap_px=300),
-    "letters": dict(chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ!", cols=9, cap_px=210),
+# `cap_px` is the height of a capital in the rendered sheet. `rim`, `extrude`
+# and `line` are fractions of the height of a capital; `shear` is how far the
+# depth runs right and down for each unit it goes back.
+LOOKS = {
+    # Fat Didone, gold rim, deep: the hot telops.
+    "classic": dict(
+        # Abril Fatface, SIL Open Font License (fonts/OFL.txt): free to use and to ship.
+        font="AbrilFatface-Regular.ttf", version="v2", prefix="slot-glyphs",
+        sets={
+            "digits": dict(chars="0123456789+", cols=6, cap_px=300),
+            "letters": dict(chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ!", cols=9, cap_px=210),
+        },
+        styles=["gold", "blood", "violet", "rainbow"],
+        rim=0.06, extrude=0.2, line=0.016, shear=(0.28, 0.46), metal="gold",
+    ),
+    # Upright Roman capitals in polished steel, shallow: lettering that must
+    # promise nothing (the judge). No gold, no red.
+    "steel": dict(
+        # Cinzel Black, SIL Open Font License (fonts/OFL-Cinzel.txt).
+        font="Cinzel-Black.ttf", version="v1", prefix="slot-glyphs-steel",
+        sets={"letters": dict(chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ!", cols=9, cap_px=260)},
+        styles=["silver"],
+        rim=0.042, extrude=0.05, line=0.012, shear=(0.2, 0.42), metal="steel",
+    ),
 }
-STYLES = ["gold", "blood", "violet", "rainbow"]
-
-# Proportions, as fractions of the height of a capital.
-RIM_K, EXTRUDE_K, LINE_K = 0.06, 0.2, 0.016
-SHEAR_X, SHEAR_Y = 0.28, 0.46
+LOOK = LOOKS[LOOK_NAME]
+VERSION = LOOK["version"]
+FONT_CANDIDATES = [os.path.join(HERE, "fonts", LOOK["font"]), r"C:\Windows\Fonts\timesbd.ttf"]
+SETS = LOOK["sets"]
+STYLES = LOOK["styles"]
+RIM_K, EXTRUDE_K, LINE_K = LOOK["rim"], LOOK["extrude"], LOOK["line"]
+SHEAR_X, SHEAR_Y = LOOK["shear"]
+COOL = LOOK["metal"] == "steel"
 PAD_X = 0.2
 
 def plus_shape(cap):
@@ -65,8 +87,11 @@ FACES = {
               (0.54, (0.9, 0.02, 0.02)), (0.8, (0.5, 0.0, 0.0)), (1.0, (0.2, 0.0, 0.0))],
     "violet": [(0.0, (0.9, 0.7, 1.0)), (0.3, (0.42, 0.05, 0.9)), (0.46, (0.05, 0.0, 0.16)),
                (0.54, (0.7, 0.16, 1.0)), (0.8, (0.34, 0.02, 0.72)), (1.0, (0.14, 0.0, 0.32))],
+    # Chrome: sky above a dark horizon, ground below.
+    "silver": [(0.0, (0.95, 0.97, 1.0)), (0.3, (0.42, 0.49, 0.6)), (0.46, (0.03, 0.045, 0.09)),
+               (0.54, (0.82, 0.87, 0.95)), (0.8, (0.4, 0.46, 0.57)), (1.0, (0.12, 0.15, 0.23))],
 }
-INSETS = {"gold": (0.14, 0.0, 0.0), "blood": (0.0, 0.0, 0.0), "violet": (0.02, 0.0, 0.05), "rainbow": (0.04, 0.0, 0.08)}
+INSETS = {"gold": (0.14, 0.0, 0.0), "blood": (0.0, 0.0, 0.0), "violet": (0.02, 0.0, 0.05), "rainbow": (0.04, 0.0, 0.08), "silver": (0.0, 0.004, 0.012)}
 
 
 def setup_scene():
@@ -159,7 +184,18 @@ def build_world(scene):
     if pick:
         env = nt.nodes.new("ShaderNodeTexEnvironment")
         env.image = bpy.data.images.load(pick)
-        nt.links.new(env.outputs["Color"], base.inputs["Color"])
+        colour = env.outputs["Color"]
+        if COOL:
+            # Steel mirrors its room: a sunset in it would turn the steel to gold.
+            grey = nt.nodes.new("ShaderNodeHueSaturation")
+            grey.inputs["Saturation"].default_value = 0.0
+            nt.links.new(colour, grey.inputs["Color"])
+            tint = nt.nodes.new("ShaderNodeVectorMath")
+            tint.operation = "MULTIPLY"
+            nt.links.new(grey.outputs["Color"], tint.inputs[0])
+            tint.inputs[1].default_value = (0.8, 0.9, 1.0)
+            colour = tint.outputs["Vector"]
+        nt.links.new(colour, base.inputs["Color"])
     base.inputs["Strength"].default_value = 0.6
 
     # Direction the light comes from: x right, y up, z toward the camera.
@@ -173,12 +209,12 @@ def build_world(scene):
 
     boxes = [
         # A broad soft box overhead: the main highlight on every upper edge.
-        (math_node(nt, "MULTIPLY", between(dy, 0.4, 0.8, 0.05, 0.16), between(dx, -0.85, 0.85, 0.1)), 4.6, (1.0, 0.97, 0.9)),
-        # A warm strip below: light under the rim and along the depth.
-        (between(dy, -0.66, -0.5, 0.04), 3.2, (1.0, 0.62, 0.25)),
+        (math_node(nt, "MULTIPLY", between(dy, 0.4, 0.8, 0.05, 0.16), between(dx, -0.85, 0.85, 0.1)), 4.6, (0.94, 0.97, 1.0) if COOL else (1.0, 0.97, 0.9)),
+        # A strip below, warm for gold: light under the rim and along the depth.
+        (between(dy, -0.66, -0.5, 0.04), 3.2, (0.45, 0.66, 1.0) if COOL else (1.0, 0.62, 0.25)),
         # Tall strips at each side, cool on the right.
         (math_node(nt, "MULTIPLY", between(dx, 0.6, 0.74, 0.03), between(dy, -0.45, 0.3, 0.1)), 2.8, (0.82, 0.92, 1.0)),
-        (math_node(nt, "MULTIPLY", between(dx, -0.82, -0.72, 0.03), between(dy, -0.45, 0.3, 0.1)), 1.8, (1.0, 0.95, 0.9)),
+        (math_node(nt, "MULTIPLY", between(dx, -0.82, -0.72, 0.03), between(dy, -0.45, 0.3, 0.1)), 1.8, (0.92, 0.96, 1.0) if COOL else (1.0, 0.95, 0.9)),
     ]
     shader = base.outputs[0]
     for mask, strength, colour in boxes:
@@ -192,12 +228,15 @@ def build_world(scene):
     nt.links.new(shader, nt.nodes["World Output"].inputs["Surface"])
 
 
-def gold_material(front):
-    """The rim and the depth: polished gold that deepens to red-brown at the back."""
+def rim_material(front):
+    """The rim and the depth: polished metal that deepens toward the back."""
     mat, nt, bsdf = new_material("rim")
     _, sep = object_xyz(nt)
     depth = math_node(nt, "DIVIDE", math_node(nt, "SUBTRACT", front, sep.outputs["Z"]), front * 2)
-    colours = ramp(nt, [(0.0, (1.0, 0.72, 0.2)), (0.3, (1.0, 0.55, 0.07)), (1.0, (0.42, 0.09, 0.01))])
+    if COOL:
+        colours = ramp(nt, [(0.0, (0.93, 0.95, 0.98)), (0.3, (0.72, 0.77, 0.85)), (1.0, (0.16, 0.2, 0.3))])
+    else:
+        colours = ramp(nt, [(0.0, (1.0, 0.72, 0.2)), (0.3, (1.0, 0.55, 0.07)), (1.0, (0.42, 0.09, 0.01))])
     nt.links.new(depth, colours.inputs[0])
     nt.links.new(colours.outputs["Color"], bsdf.inputs["Base Color"])
     bsdf.inputs["Metallic"].default_value = 1.0
@@ -249,6 +288,10 @@ def face_material(style, cap):
         nt.links.new(height, colours.inputs[0])
         colour = colours.outputs["Color"]
         emission, dim = 0.88, tuple(c * 0.2 for c in FACES[style][1][1])
+        if style == "silver":
+            # Nearly black under the colour: lit, it would lift the dark horizon
+            # and the chrome would go flat white.
+            emission, dim = 0.8, (0.01, 0.012, 0.02)
     # The colour is emitted rather than lit, so the lights that polish the gold
     # rim cannot wash the face out.
     bsdf.inputs["Base Color"].default_value = (*dim, 1)
@@ -343,7 +386,48 @@ def render_set(set_name, spec, font_path, atlas):
         for vert in mesh.vertices:
             vert.co.x = min(max(vert.co.x, box[0] - reach), box[1] + reach)
             vert.co.y = min(max(vert.co.y, box[2] - reach), box[3] + reach)
+        pull_to_outline(mesh, body, reach)
         return mesh
+
+    outlines = {}
+
+    def outline_of(body):
+        """The glyph's outline as line segments: the open edges of its flat fill."""
+        if body not in outlines:
+            flat = text_mesh(body)
+            uses = {}
+            for poly in flat.polygons:
+                for key in poly.edge_keys:
+                    uses[key] = uses.get(key, 0) + 1
+            ends = [(flat.vertices[a].co, flat.vertices[b].co) for (a, b), count in uses.items() if count == 1]
+            outlines[body] = (
+                np.array([(a.x, a.y) for a, _ in ends], dtype=np.float64),
+                np.array([(b.x, b.y) for _, b in ends], dtype=np.float64),
+            )
+            bpy.data.meshes.remove(flat)
+        return outlines[body]
+
+    def pull_to_outline(mesh, body, reach):
+        """Bring back any point of a band that strays further than `reach` from the outline."""
+        start, end = outline_of(body)
+        if not len(start):
+            return
+        points = np.array([(v.co.x, v.co.y) for v in mesh.vertices], dtype=np.float64)
+        span = end - start
+        length = np.maximum((span ** 2).sum(axis=1), 1e-12)
+        for first in range(0, len(points), 2000):
+            chunk = points[first:first + 2000]
+            along = np.clip(((chunk[:, None, :] - start[None]) * span[None]).sum(axis=2) / length[None], 0.0, 1.0)
+            nearest = start[None] + along[..., None] * span[None]
+            gap = np.linalg.norm(chunk[:, None, :] - nearest, axis=2)
+            pick = gap.argmin(axis=1)
+            rows = np.arange(len(chunk))
+            far = gap[rows, pick]
+            for row in np.nonzero(far > reach)[0]:
+                foot = nearest[row, pick[row]]
+                pulled = foot + (chunk[row] - foot) * (reach / far[row])
+                vert = mesh.vertices[first + int(row)]
+                vert.co.x, vert.co.y = float(pulled[0]), float(pulled[1])
 
     # Measure first: the cell grid is fitted to the font.
     cap_mesh = text_mesh("H")
@@ -401,7 +485,7 @@ def render_set(set_name, spec, font_path, atlas):
         scene.collection.objects.link(obj)
         return obj
 
-    rim = gold_material(front)
+    rim = rim_material(front)
     inset = inset_material((0, 0, 0))
     faces = {style: face_material(style, cap) for style in STYLES}
     face_objects = []
@@ -415,7 +499,7 @@ def render_set(set_name, spec, font_path, atlas):
         place("walls-" + char, walls, origin)
 
         face = text_mesh(char, 0.004 * cap, 0.012 * cap, 2)
-        face.materials.append(faces["gold"])
+        face.materials.append(faces[STYLES[0]])
         finish(face, face_z, 25)
         face_objects.append(place("face-" + char, face, origin))
 
@@ -436,7 +520,7 @@ def render_set(set_name, spec, font_path, atlas):
 
     files = {}
     for style in STYLES:
-        name = f"slot-glyphs-{set_name}-{style}.{VERSION}.webp"
+        name = f"{LOOK['prefix']}-{set_name}-{style}.{VERSION}.webp"
         files[style] = name
         if ONLY and f"{set_name}:{style}" not in ONLY:
             continue

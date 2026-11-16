@@ -16,6 +16,9 @@ export const SLOT_BACKDROPS = {
   redTunnel: "slotfx-bg-red-tunnel.v1.mp4",
   /** Red and magenta light bursting from the centre. */
   redBurst: "slotfx-bg-red-burst.v1.mp4",
+  /** The same two turned blue, for moments that must not look hot. */
+  blueTunnel: "slotfx-bg-blue-tunnel.v1.mp4",
+  blueBurst: "slotfx-bg-blue-burst.v1.mp4",
   rainbowRays: "slotfx-bg-rainbow-rays.v1.mp4",
   goldBurst: "slotfx-bg-gold-burst.v1.mp4",
   violetLines: "slotfx-bg-violet-lines.v1.mp4",
@@ -53,7 +56,20 @@ export function warmSlotBackdrops(kinds: readonly SlotBackdropKind[]) {
   }
 }
 
-export default function SlotBackdrop({ kind, className = "", loop = true, rate = 1 }: { kind: SlotBackdropKind; className?: string; loop?: boolean; rate?: number }) {
+export default function SlotBackdrop({
+  kind,
+  className = "",
+  loop = true,
+  rate = 1,
+  paused = false,
+}: {
+  kind: SlotBackdropKind;
+  className?: string;
+  loop?: boolean;
+  rate?: number;
+  /** Hold the frame it is on. */
+  paused?: boolean;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -63,8 +79,9 @@ export default function SlotBackdrop({ kind, className = "", loop = true, rate =
     // video that is not muted is refused autoplay.
     video.muted = true;
     video.playbackRate = rate;
-    video.play().catch(() => {});
-  }, [kind, rate]);
+    if (paused) video.pause();
+    else video.play().catch(() => {});
+  }, [kind, rate, paused]);
 
   return <video ref={ref} className={className} src={slotBackdropSrc(kind)} muted playsInline autoPlay loop={loop} preload="auto" disablePictureInPicture />;
 }

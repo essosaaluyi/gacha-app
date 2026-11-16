@@ -130,7 +130,8 @@ def build(scene):
     brass_dark = material("brass_dark", (0.55, 0.33, 0.1), metallic=1.0, roughness=0.34)
     void = material("void", (0.002, 0.002, 0.003), roughness=0.9)
     teal_glow = material("teal_glow", (0.1, 0.9, 0.8), emission=(0.2, 1.0, 0.84), strength=4.0)
-    red_glow = material("red_glow", (1.0, 0.08, 0.04), roughness=0.12, coat=1.0, emission=(1.0, 0.05, 0.02), strength=2.4)
+    # Cold lamps: the judge must not look hot before the card is drawn.
+    lamp_glow = material("lamp_glow", (0.3, 0.6, 1.0), roughness=0.12, coat=1.0, emission=(0.25, 0.55, 1.0), strength=2.6)
     gem = material("gem", (0.1, 0.9, 0.8), roughness=0.08, coat=1.0, emission=(0.2, 1.0, 0.85), strength=2.6)
 
     # Base plate and body.
@@ -164,7 +165,7 @@ def build(scene):
     sphere("gem", 0.14, (0, -0.62, 1.19), gem, 0.55)
     for x in (-1.02, 1.02):
         cylinder("lamp_seat", 0.17, 0.07, (x, -0.62, 1.18), brass, axis="Z", bevel=0.015)
-        sphere("lamp", 0.13, (x, -0.62, 1.22), red_glow, 0.8)
+        sphere("lamp", 0.13, (x, -0.62, 1.22), lamp_glow, 0.8)
 
     # The slot on the front face: brass bezel, black throat, a line of light.
     box("bezel", (2.6, 0.14, 0.44), (0, -1.06, 0.44), brass, 0.035)
@@ -174,11 +175,11 @@ def build(scene):
     for x in (-1.46, 1.46):
         sphere("bolt", 0.075, (x, -1.05, 0.44), brass, 1.0)
 
-    # Light: a large soft key over the front, a teal rim from behind, a warm fill.
+    # Light: a large soft key over the front, a soft fill, teal and blue rims from behind.
     area_light("key", (0, -3.2, 6.5), (0, -0.2, 0.6), (7, 4), 560, (1.0, 0.96, 0.9))
     area_light("front", (0, -6.5, 1.6), (0, 0, 0.6), (8, 1.6), 260, (1.0, 0.82, 0.6))
     area_light("rim_left", (-5, 3.5, 3.2), (0, 0, 0.8), (3, 3), 620, (0.3, 1.0, 0.9))
-    area_light("rim_right", (5, 3.5, 3.2), (0, 0, 0.8), (3, 3), 620, (1.0, 0.5, 0.3))
+    area_light("rim_right", (5, 3.5, 3.2), (0, 0, 0.8), (3, 3), 620, (0.45, 0.65, 1.0))
 
     world = bpy.data.worlds.new("world")
     world.use_nodes = True

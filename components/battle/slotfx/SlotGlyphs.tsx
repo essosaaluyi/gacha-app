@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import atlas from "./slotGlyphAtlas.json";
+import steelAtlas from "./slotGlyphAtlasSteel.json";
 import styles from "./SlotFx.module.css";
 import type { SlotTone } from "./slotFxStore";
 
@@ -11,6 +12,9 @@ import type { SlotTone } from "./slotFxStore";
 // heavy serif figures and capitals with a gold rim, a dark inset line and a
 // coloured face. Each glyph is one cell of a sheet, so any number or word can
 // be set, and a count-up only changes which cells show.
+//
+// A second sheet, "silver", is upright Roman capitals in polished steel with a
+// shallow depth: lettering for moments that must promise nothing. Letters only.
 
 type GlyphSet = {
   cols: number;
@@ -24,10 +28,15 @@ type GlyphSet = {
   glyphs: Record<string, { col: number; row: number; advance: number }>;
 };
 
-type GlyphStyle = "gold" | "blood" | "violet" | "rainbow";
+type GlyphStyle = "gold" | "blood" | "violet" | "rainbow" | "silver";
+
+/** The layer's colour families, and the cold steel that belongs to none of them. */
+export type SlotGlyphTone = SlotTone | "silver";
 
 const BASE = "/images/battle-assets/slotfx/";
 const SETS = Object.values(atlas.sets) as unknown as GlyphSet[];
+const STEEL_SETS = Object.values(steelAtlas.sets) as unknown as GlyphSet[];
+const setsFor = (tone: SlotGlyphTone) => (tone === "silver" ? STEEL_SETS : SETS);
 
 /** The layer's colour families, mapped onto the four rendered faces. */
 const TONE_STYLE: Record<SlotTone, GlyphStyle> = {
@@ -41,22 +50,48 @@ const TONE_STYLE: Record<SlotTone, GlyphStyle> = {
 const em = (value: number) => `${Math.round(value * 1000) / 1000}em`;
 
 /** Every sheet, for warming the cache before the first telop needs one. */
-export function slotGlyphSheets(): string[] {
-  return SETS.flatMap((set) => Object.values(set.files).map((file) => BASE + file));
+export function slotGlyphSheets(tone: SlotGlyphTone = "gold"): string[] {
+  return setsFor(tone).flatMap((set) => Object.values(set.files).map((file) => BASE + file));
+}
+
+/** How wide a word sets, in capital heights (the element's `em`). */
+export function slotGlyphsWidth(text: string, tone: SlotGlyphTone): number {
+  const sets = setsFor(tone);
+  return Array.from(text.toUpperCase()).reduce((width, char) => {
+    if (char === " ") return width + 0.5;
+    const set = sets.find((candidate) => candidate.glyphs[char]);
+    return set ? width + set.glyphs[char].advance / set.capHeight : width;
+  }, 0);
 }
 
 /**
  * `font-size` on the element is the height of a capital; the rim and the depth
  * hang outside that box, as they would on a real sign.
  */
-export default function SlotGlyphs({ text, tone, className = "", shine = true, bloom = true }: { text: string; tone: SlotTone; className?: string; shine?: boolean; bloom?: boolean }) {
-  const style = TONE_STYLE[tone];
+export default function SlotGlyphs({
+  text,
+  tone,
+  className = "",
+  shine = true,
+  bloom = true,
+  shineDelay = 380,
+}: {
+  text: string;
+  tone: SlotGlyphTone;
+  className?: string;
+  shine?: boolean;
+  bloom?: boolean;
+  /** When the band of light sets off across the word, in ms. */
+  shineDelay?: number;
+}) {
+  const style = tone === "silver" ? "silver" : TONE_STYLE[tone];
+  const sets = setsFor(tone);
 
   return (
     <span className={`${styles.glyphs} ${className}`} data-tone={tone}>
       {Array.from(text.toUpperCase()).map((char, index) => {
         if (char === " ") return <span key={index} className={styles.glyphGap} />;
-        const set = SETS.find((candidate) => candidate.glyphs[char]);
+        const set = sets.find((candidate) => candidate.glyphs[char]);
         if (!set) return null;
         const glyph = set.glyphs[char];
         const unit = 1 / set.capHeight;
@@ -85,7 +120,7 @@ export default function SlotGlyphs({ text, tone, className = "", shine = true, b
                   maskSize: size,
                   WebkitMaskPosition: position,
                   maskPosition: position,
-                  animationDelay: `${380 + index * 70}ms`,
+                  animationDelay: `${shineDelay + index * 70}ms`,
                 }}
               />
             )}
