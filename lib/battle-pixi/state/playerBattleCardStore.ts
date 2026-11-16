@@ -6,6 +6,13 @@ const TEST_BATTLE_CARDS: Card[] = [
   { name: "R2", rarity: "R", image: "/images/cards/player/R2/card.webp" },
 ];
 
+// Trial lock (2026-11-16): while the presentation is being worked out on one
+// pairing, every card in a new run's deck is this one. The deck keeps its
+// size, so lives are unchanged. Set to null to play the real deck again.
+// The opponent has its own lock: FIXED_TEST_ENEMY_ID in currentEnemyStore.
+const FIXED_TEST_PLAYER_CARD: Card | null =
+  { name: "R1", rarity: "R", image: "/images/cards/player/R1/card.webp" };
+
 let playerBattleCards: Card[] = [];
 let currentIndex: number | null = null;
 let selectedIndex: number | null = null;
@@ -40,6 +47,11 @@ export function initializePlayerBattleCards() {
     playerBattleCards = isBattleDeck(parsed) ? parsed : TEST_BATTLE_CARDS;
   } catch {
     playerBattleCards = TEST_BATTLE_CARDS;
+  }
+
+  if (FIXED_TEST_PLAYER_CARD) {
+    const locked = FIXED_TEST_PLAYER_CARD;
+    playerBattleCards = playerBattleCards.map(() => ({ ...locked }));
   }
 
   currentIndex = null;
