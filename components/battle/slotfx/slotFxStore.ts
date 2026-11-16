@@ -18,6 +18,8 @@ export const SLOT_FX = {
   telops: true,
   /** The Fatal Mode judge: DESTINY JUDGE, the dispenser and DRAW!!!, crack or freeze. */
   judge: true,
+  /** BAR CHANCE as "BARを狙え！": tunnel in the tone's colour, plate, call and running band. */
+  barChance: true,
 };
 
 /** Colour families. "fire" is the crimson face, "ice" shares the violet one. */

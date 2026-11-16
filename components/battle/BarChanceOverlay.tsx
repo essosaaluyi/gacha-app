@@ -15,8 +15,19 @@ import {
 import { playSfx } from "@/lib/audio/sfxStore";
 import { setBattlePresentationPhase } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import { beginSuperMaxBlackout } from "@/lib/battle-pixi/state/cabinetSignalStore";
+import { warmSlotBackdrops } from "@/components/battle/slotfx/SlotBackdrop";
+import {
+  SLOT_BAR_CHANCE_BACKDROPS,
+  SlotBarChanceBackdrop,
+  SlotBarChanceCommand,
+  slotBarChanceClass,
+} from "@/components/battle/slotfx/SlotBarChance";
+import { SLOT_FX } from "@/components/battle/slotfx/slotFxStore";
 
 const DISTORTION_MS = 400;
+// PROVISIONAL: the slot-style dressing ("BARを狙え！") in place of the striped
+// background and the caption. Off, the overlay draws as it always has.
+const SLOT_DRESSING = SLOT_FX.enabled && SLOT_FX.barChance;
 
 export default function BarChanceOverlay() {
   const [state, setState] = useState(getBarChanceState());
@@ -59,6 +70,7 @@ export default function BarChanceOverlay() {
   }, [state.phase, state.token, state.bonusType]);
 
   useEffect(() => {
+    if (SLOT_DRESSING) warmSlotBackdrops(SLOT_BAR_CHANCE_BACKDROPS);
     return () => {
       if (unduckedVolume.current !== null) {
         setBgmVolume(unduckedVolume.current);
@@ -103,19 +115,27 @@ export default function BarChanceOverlay() {
   return (
     <div
       key={state.token}
-      className={`bar-chance-layer bar-chance-tone-${state.tone} bar-chance-phase-${state.phase}`}
+      className={`bar-chance-layer bar-chance-tone-${state.tone} bar-chance-phase-${state.phase}${SLOT_DRESSING ? ` ${slotBarChanceClass.layer}` : ""}`}
       aria-hidden="true"
     >
-      <div className="bar-chance-stream" />
+      {SLOT_DRESSING ? (
+        <SlotBarChanceBackdrop tone={state.tone} bars={state.revealedBars} />
+      ) : (
+        <div className="bar-chance-stream" />
+      )}
       <div
-        className="bar-chance-character"
+        className={`bar-chance-character${SLOT_DRESSING ? ` ${slotBarChanceClass.character}` : ""}`}
         style={{
           backgroundImage: `url("${state.characterImage}")`,
           transform: `scale(${1.02 + state.revealedBars * 0.045})`,
         }}
       />
 
-      {commandVisible && (
+      {commandVisible && SLOT_DRESSING && (
+        <SlotBarChanceCommand bars={state.revealedBars} />
+      )}
+
+      {commandVisible && !SLOT_DRESSING && (
         <div className="bar-chance-command">
           <span className="bar-chance-chevrons" aria-hidden="true">
             <span>◀</span><span>◀</span><span>◀</span>

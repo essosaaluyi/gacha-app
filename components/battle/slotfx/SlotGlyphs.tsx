@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import atlas from "./slotGlyphAtlas.json";
 import steelAtlas from "./slotGlyphAtlasSteel.json";
+import steelJpAtlas from "./slotGlyphAtlasSteelJp.json";
 import styles from "./SlotFx.module.css";
 import type { SlotTone } from "./slotFxStore";
 
@@ -14,7 +15,8 @@ import type { SlotTone } from "./slotFxStore";
 // be set, and a count-up only changes which cells show.
 //
 // A second sheet, "silver", is upright Roman capitals in polished steel with a
-// shallow depth: lettering for moments that must promise nothing. Letters only.
+// shallow depth: lettering for moments that must promise nothing. Letters only,
+// plus the Japanese characters of the calls in use (を狙え！).
 
 type GlyphSet = {
   cols: number;
@@ -35,7 +37,8 @@ export type SlotGlyphTone = SlotTone | "silver";
 
 const BASE = "/images/battle-assets/slotfx/";
 const SETS = Object.values(atlas.sets) as unknown as GlyphSet[];
-const STEEL_SETS = Object.values(steelAtlas.sets) as unknown as GlyphSet[];
+// Roman capitals, and the few Japanese characters drawn so far (a heavier face).
+const STEEL_SETS = [...Object.values(steelAtlas.sets), ...Object.values(steelJpAtlas.sets)] as unknown as GlyphSet[];
 const setsFor = (tone: SlotGlyphTone) => (tone === "silver" ? STEEL_SETS : SETS);
 
 /** The layer's colour families, mapped onto the four rendered faces. */

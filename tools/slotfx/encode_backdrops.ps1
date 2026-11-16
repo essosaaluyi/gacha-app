@@ -20,7 +20,8 @@ $jobs = @(
   @("slotfx-bg-red-burst.v1",    "fast-speed-vortex-tunnel-2026-01-28-03-06-05-utc.mov", 2, 4, 0.6, ""),
   # The same two cuts turned blue, for moments that must not look hot (the judge).
   @("slotfx-bg-blue-tunnel.v1",  "abstract-fiery-warp-speed-tunnel-background-2026-01-28-04-26-03-utc.mov", 2, 4, 0.6, "colorchannelmixer=rr=0:rb=1:br=1:bb=0"),
-  @("slotfx-bg-blue-burst.v1",   "fast-speed-vortex-tunnel-2026-01-28-03-06-05-utc.mov", 2, 4, 0.6, "colorchannelmixer=rr=0:rg=1:rb=0:gr=0.35:gg=0.65:gb=0:br=1:bg=0:bb=0.5"),
+  @("slotfx-bg-green-tunnel.v1", "abstract-fiery-warp-speed-tunnel-background-2026-01-28-04-26-03-utc.mov", 2, 4, 0.6, "colorchannelmixer=rr=0:rg=0.5:rb=0.5:gr=1:gg=0:gb=0:br=0:bg=0.5:bb=0.5"),
+  @("slotfx-bg-blue-burst.v1",  "fast-speed-vortex-tunnel-2026-01-28-03-06-05-utc.mov", 2, 4, 0.6, "colorchannelmixer=rr=0:rg=1:rb=0:gr=0.35:gg=0.65:gb=0:br=1:bg=0:bb=0.5"),
   @("slotfx-bg-rainbow-rays.v1", "light-rays-vj-loop-v3-2026-01-28-04-47-46-utc.mov", 2, 4, 0.6, ""),
   @("slotfx-bg-gold-burst.v1",   "51_bG9vb3BfNA.mov", 1, 4, 0.6, ""),
   @("slotfx-bg-violet-lines.v1", "30_aHlwZXJfMQ.mov", 1, 4, 0.6, ""),

@@ -58,6 +58,15 @@ LOOKS = {
         styles=["silver"],
         rim=0.042, extrude=0.05, line=0.012, shear=(0.2, 0.42), metal="steel",
     ),
+    # The same steel in a heavy Japanese face, for calls such as 「を狙え！」.
+    # Only the characters in use are drawn; add to `chars` as calls are added.
+    "steel-jp": dict(
+        # Dela Gothic One, SIL Open Font License (fonts/OFL-DelaGothicOne.txt).
+        font="DelaGothicOne-Regular.ttf", version="v1", prefix="slot-glyphs-steel",
+        sets={"kana": dict(chars="を狙え！", cols=4, cap_px=300)},
+        styles=["silver"],
+        rim=0.05, extrude=0.07, line=0.014, shear=(0.2, 0.42), metal="steel",
+    ),
 }
 LOOK = LOOKS[LOOK_NAME]
 VERSION = LOOK["version"]

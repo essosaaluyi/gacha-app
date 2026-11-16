@@ -6,6 +6,10 @@ import SlotRoundTitle from "./SlotRoundTitle";
 import frame from "../fatalfx/FatalFxWorkstation.module.css";
 import { showSlotAward, showSlotStop, showSlotTelop, type SlotTone } from "./slotFxStore";
 import { clearSlotJudge, pullSlotJudge, resolveSlotJudge, startSlotJudge } from "./slotJudgeStore";
+import BarChanceOverlay from "../BarChanceOverlay";
+import type { BarChanceTone } from "@/lib/battle-pixi/core/resultLottery";
+import { getPlayerFaceoffImage } from "@/lib/battle-pixi/presentation/attackFaceoffAssets";
+import { clearBarChance, revealBarChanceSymbol, startBarChance } from "@/lib/battle-pixi/state/barChanceStore";
 
 // PROVISIONAL — a bench for the slot-style layer, away from the battle.
 
@@ -29,6 +33,14 @@ const STOPS: { label: string; tone: SlotTone | "plain" }[] = [
   { label: "Reply", tone: "violet" },
   { label: "Chance", tone: "rainbow" },
 ];
+const BAR_TONES: { label: string; tone: BarChanceTone; tier: string }[] = [
+  { label: "青", tone: "blue", tier: "blue" },
+  { label: "緑", tone: "green", tier: "gold" },
+  { label: "赤", tone: "red", tier: "red" },
+];
+/** The bench plays the call only: "fake" never goes on to the freeze. */
+const playBarChance = (tone: BarChanceTone) =>
+  startBarChance({ outcome: "fake", tone, scope: "battle", characterImage: getPlayerFaceoffImage("R1") ?? "" });
 
 export default function SlotFxPreview() {
   const frameRef = useRef<HTMLDivElement>(null);
@@ -69,6 +81,7 @@ export default function SlotFxPreview() {
               </div>
             )}
             <SlotFxLayer live={false} />
+            <BarChanceOverlay />
           </div>
         </div>
 
@@ -111,6 +124,14 @@ export default function SlotFxPreview() {
           <button type="button" className={frame.playButton} data-tier="blue" onClick={() => resolveSlotJudge(false)}>③ 失敗（ヒビ → 暗転）</button>
           <button type="button" className={frame.playButton} data-tier="gold" onClick={() => resolveSlotJudge(true)}>③ 成功（フリーズ）</button>
           <button type="button" className={frame.playButton} onClick={() => clearSlotJudge()}>消す</button>
+        </div>
+        <div className={frame.transport}>
+          <strong>BARを狙え</strong>
+          {BAR_TONES.map((bar) => (
+            <button key={bar.tone} type="button" className={frame.playButton} data-tier={bar.tier} onClick={() => playBarChance(bar.tone)}>{bar.label}</button>
+          ))}
+          <button type="button" className={frame.playButton} data-tier="gold" onClick={() => revealBarChanceSymbol("Bar")}>BAR が1枚止まる</button>
+          <button type="button" className={frame.playButton} onClick={clearBarChance}>消す</button>
         </div>
       </section>
     </main>

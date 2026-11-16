@@ -16,8 +16,9 @@ export const SLOT_BACKDROPS = {
   redTunnel: "slotfx-bg-red-tunnel.v1.mp4",
   /** Red and magenta light bursting from the centre. */
   redBurst: "slotfx-bg-red-burst.v1.mp4",
-  /** The same two turned blue, for moments that must not look hot. */
+  /** The same cuts in other colours: blue for moments that must not look hot, and the tones of BAR CHANCE. */
   blueTunnel: "slotfx-bg-blue-tunnel.v1.mp4",
+  greenTunnel: "slotfx-bg-green-tunnel.v1.mp4",
   blueBurst: "slotfx-bg-blue-burst.v1.mp4",
   rainbowRays: "slotfx-bg-rainbow-rays.v1.mp4",
   goldBurst: "slotfx-bg-gold-burst.v1.mp4",
