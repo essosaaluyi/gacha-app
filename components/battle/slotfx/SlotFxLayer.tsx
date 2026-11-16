@@ -7,7 +7,7 @@ import {
   getEnemyDefeatPresentationKey,
   subscribeEnemyDefeatPresentation,
 } from "@/lib/battle-pixi/state/enemyDefeatPresentationStore";
-import SlotText from "./SlotText";
+import SlotGlyphs, { slotGlyphSheets } from "./SlotGlyphs";
 import styles from "./SlotFx.module.css";
 import {
   SLOT_FX,
@@ -128,12 +128,21 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
     return () => window.clearTimeout(timer);
   }, [telop]);
 
+  // Fetch the lettering sheets ahead of the first telop that needs them.
+  useEffect(() => {
+    if (!SLOT_FX.enabled) return;
+    const timer = window.setTimeout(() => {
+      for (const src of slotGlyphSheets()) new Image().src = src;
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   // Dev console: __slotFx.award(120), __slotFx.telop("ATTACK!", "fire"), __slotFx.stop("Attack", 3)
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
     (window as Window & { __slotFx?: unknown }).__slotFx = {
       award: showSlotAward,
-      telop: (main: string, tone: SlotTone = "rainbow", size: SlotTelop["size"] = "big") => showSlotTelop({ main, tone, size }),
+      telop: (main: string, tone: SlotTone = "fire", size: SlotTelop["size"] = "big") => showSlotTelop({ main, tone, size }),
       stop: (symbol = "Attack", order = 3) => showSlotStop({ order, tone: STOP_TONES[symbol] ?? "plain", strong: order === 3 }),
     };
   }, []);
@@ -157,18 +166,25 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
           className={styles.telop}
           data-tone={telop.tone}
           data-size={telop.size}
-          data-long={telop.main.length > 7}
+          data-kind={telop.countTo === undefined ? "word" : "number"}
+          data-long={telop.countTo === undefined ? telop.main.length > 7 : telop.main.length > 4}
           style={{ "--telop-ms": `${telop.durationMs}ms` } as CSSProperties}
         >
+          {telop.size === "big" && <div className={styles.veil} />}
           {telop.size === "big" && <div className={styles.flash} />}
           <div className={styles.burst} />
           <div className={styles.ring} />
-          <div className={styles.words}>
-            <div className={styles.column}>
-              {telop.lead && <SlotText text={telop.lead} tone={telop.tone} className={styles.lead} />}
-              <SlotText text={main} tone={telop.tone} className={styles.main} />
+          <div className={styles.sway}>
+            {telop.size === "small" && <div className={styles.band} />}
+            <div className={`${styles.rule} ${styles.ruleTop}`} />
+            <div className={`${styles.rule} ${styles.ruleBottom}`} />
+            <div className={styles.words}>
+              <div className={styles.column}>
+                {telop.lead && <SlotGlyphs text={telop.lead} tone="gold" className={styles.lead} shine={false} />}
+                <SlotGlyphs text={main} tone={telop.tone} className={styles.main} shine={counted === null || counted === telop.countTo} />
+              </div>
+              {telop.tail && <SlotGlyphs text={telop.tail} tone="gold" className={styles.tail} shine={false} />}
             </div>
-            {telop.tail && <SlotText text={telop.tail} tone={telop.tone} className={styles.tail} />}
           </div>
         </div>
       )}

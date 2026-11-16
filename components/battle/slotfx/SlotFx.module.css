@@ -1,4 +1,6 @@
-/* PROVISIONAL — pachislot-style presentation layer. See slotFxStore.ts. */
+/* PROVISIONAL — pachislot-style presentation layer. See slotFxStore.ts.
+   Look: black, crimson and gold; heavy serif lettering with a gold rim; and
+   everything set at a slight tilt that rocks from side to side. */
 
 .layer {
   position: absolute;
@@ -9,111 +11,68 @@
   container-type: size;
 }
 
-/* ---- Lettering --------------------------------------------------------- */
+/* ---- Lettering (pre-rendered glyphs, see SlotGlyphs.tsx) ---------------- */
 
-.text {
-  position: relative;
-  display: inline-block;
-  font-family: Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif;
-  font-weight: 900;
-  font-style: italic;
-  line-height: 0.9;
-  letter-spacing: 0.01em;
+.glyphs {
+  display: inline-flex;
+  align-items: flex-end;
+  line-height: 1;
   white-space: nowrap;
-  --slot-a: #fff7c2;
-  --slot-b: #ffb300;
-  --slot-c: #ff3b00;
-  --slot-d: #7a0b00;
-  --slot-edge: #fff3d0;
-  --slot-rim: #2a0500;
-  --slot-glow: rgba(255, 90, 0, 0.9);
+  --glyph-glow: rgba(255, 60, 30, 0.85);
+  /* A hard dark edge first, so the gold rim reads on any scene, then the glow. */
+  filter: drop-shadow(0 0 0.012em #000) drop-shadow(0 0.03em 0.04em rgba(0, 0, 0, 0.85)) drop-shadow(0 0 0.2em var(--glyph-glow));
 }
+.glyphs[data-tone="gold"] { --glyph-glow: rgba(255, 170, 40, 0.8); }
+.glyphs[data-tone="ice"],
+.glyphs[data-tone="violet"] { --glyph-glow: rgba(170, 60, 255, 0.85); }
+.glyphs[data-tone="rainbow"] { --glyph-glow: rgba(255, 90, 200, 0.8); }
 
-.text[data-tone="gold"] {
-  --slot-a: #fffbe0; --slot-b: #ffe14a; --slot-c: #f0a000; --slot-d: #7a4a00;
-  --slot-edge: #ffffff; --slot-rim: #3a1e00; --slot-glow: rgba(255, 200, 40, 0.9);
-}
-.text[data-tone="ice"] {
-  --slot-a: #ffffff; --slot-b: #8fe9ff; --slot-c: #1a7dff; --slot-d: #06206e;
-  --slot-edge: #eaffff; --slot-rim: #020a2e; --slot-glow: rgba(40, 170, 255, 0.95);
-}
-.text[data-tone="violet"] {
-  --slot-a: #ffffff; --slot-b: #e9a8ff; --slot-c: #9a2cff; --slot-d: #2e0a66;
-  --slot-edge: #fbeaff; --slot-rim: #16022e; --slot-glow: rgba(180, 70, 255, 0.95);
-}
-
-.textRim,
-.textEdge,
-.textShine {
-  position: absolute;
-  inset: 0;
-}
-
-/* Room for the slant on every layer: a clipped-to-text fill only paints inside
-   its own box, so without this the last glyph loses its leaning edge. */
-.textRim,
-.textEdge,
-.textShine,
-.textFill {
-  padding: 0 0.16em 0 0.06em;
-}
-
-.textRim {
-  color: var(--slot-rim);
-  -webkit-text-stroke: 0.2em var(--slot-rim);
-  transform: translate(0.035em, 0.05em);
-  filter: drop-shadow(0 0 0.14em var(--slot-glow)) drop-shadow(0 0 0.4em var(--slot-glow));
-}
-
-.textEdge {
-  color: var(--slot-edge);
-  -webkit-text-stroke: 0.085em var(--slot-edge);
-}
-
-.textFill {
+.glyph {
   position: relative;
   display: inline-block;
-  color: transparent;
-  background: linear-gradient(
-    180deg,
-    var(--slot-a) 0%,
-    var(--slot-b) 34%,
-    var(--slot-c) 50%,
-    var(--slot-d) 54%,
-    var(--slot-c) 66%,
-    var(--slot-b) 88%,
-    var(--slot-a) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
+  flex: none;
+  height: 1em;
 }
 
-.text[data-tone="rainbow"] .textFill {
-  background: linear-gradient(
-    100deg,
-    #ff3b5c 0%, #ff9a1f 18%, #ffe93b 36%, #4dff7a 54%, #37c8ff 72%, #a45bff 88%, #ff4bd0 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-.text[data-tone="rainbow"] {
-  --slot-edge: #ffffff; --slot-rim: #2b0030; --slot-glow: rgba(255, 80, 200, 0.9);
+.glyphGap {
+  flex: none;
+  width: 0.5em;
 }
 
-/* A band of light that crosses the lettering once it has landed. */
-.textShine {
-  color: transparent;
-  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.95) 50%, transparent 58%);
+.glyphCell,
+.glyphShine {
+  position: absolute;
+  background-repeat: no-repeat;
+}
+
+/* A band of light that crosses each glyph, one after the other. */
+.glyphShine {
+  background-image: linear-gradient(105deg, transparent 46%, rgba(255, 255, 255, 0.7) 50%, transparent 54%);
   background-size: 300% 100%;
-  background-position: 120% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  animation: slotShine 900ms 340ms ease-out both;
+  background-position: 130% 0;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: slotShine 760ms ease-out both;
 }
 
 @keyframes slotShine {
-  from { background-position: 120% 0; }
-  to { background-position: -20% 0; }
+  from { background-position: 130% 0; }
+  to { background-position: -30% 0; }
+}
+
+/* ---- The tilt ------------------------------------------------------------ */
+
+/* Lettering sits turned a little and rocks left and right, as a sign hung in
+   space would. The parent supplies the perspective. */
+.sway {
+  position: relative;
+  transform-style: preserve-3d;
+  animation: slotSway 1150ms ease-in-out infinite alternate;
+}
+
+@keyframes slotSway {
+  0% { transform: rotateZ(-5.5deg) rotateY(-13deg) rotateX(3deg); }
+  100% { transform: rotateZ(-2deg) rotateY(11deg) rotateX(-2deg); }
 }
 
 /* ---- Telop -------------------------------------------------------------- */
@@ -123,6 +82,30 @@
   inset: 0;
   display: grid;
   place-items: center;
+  perspective: 150cqh;
+}
+
+/* A big telop takes the screen: the scene sinks into dark crimson behind it. */
+.veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 72% at 50% 48%, rgba(128, 4, 16, 0.76) 0%, rgba(44, 0, 8, 0.86) 52%, rgba(0, 0, 0, 0.74) 100%);
+  opacity: 0;
+  animation: slotVeil var(--telop-ms) linear both;
+}
+.telop[data-tone="ice"] .veil,
+.telop[data-tone="violet"] .veil {
+  background: radial-gradient(ellipse 80% 72% at 50% 48%, rgba(84, 8, 140, 0.76) 0%, rgba(26, 0, 52, 0.88) 52%, rgba(0, 0, 0, 0.74) 100%);
+}
+.telop[data-tone="rainbow"] .veil {
+  background: radial-gradient(ellipse 80% 72% at 50% 48%, rgba(150, 6, 30, 0.78) 0%, rgba(60, 0, 60, 0.86) 55%, rgba(0, 0, 0, 0.74) 100%);
+}
+
+@keyframes slotVeil {
+  0% { opacity: 0; }
+  7% { opacity: 1; }
+  84% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .flash {
@@ -148,26 +131,26 @@
   aspect-ratio: 1;
   translate: -50% -50%;
   border-radius: 50%;
-  background: repeating-conic-gradient(from 0deg, var(--burst-a) 0deg 4deg, transparent 4deg 11deg, var(--burst-b) 11deg 13deg, transparent 13deg 20deg);
+  background: repeating-conic-gradient(from 0deg, var(--burst-a) 0deg 1.6deg, transparent 1.6deg 11deg, var(--burst-b) 11deg 11.8deg, transparent 11.8deg 20deg);
   -webkit-mask-image: radial-gradient(circle, transparent 9%, #000 22%, transparent 62%);
   mask-image: radial-gradient(circle, transparent 9%, #000 22%, transparent 62%);
   mix-blend-mode: screen;
   opacity: 0;
   animation: slotBurst var(--telop-ms) linear both;
-  --burst-a: rgba(255, 190, 60, 0.85);
-  --burst-b: rgba(255, 70, 20, 0.7);
+  --burst-a: rgba(255, 50, 40, 0.85);
+  --burst-b: rgba(255, 205, 110, 0.8);
 }
-.telop[data-tone="ice"] .burst { --burst-a: rgba(150, 235, 255, 0.9); --burst-b: rgba(40, 120, 255, 0.75); }
-.telop[data-tone="gold"] .burst { --burst-a: rgba(255, 245, 170, 0.9); --burst-b: rgba(255, 180, 20, 0.75); }
-.telop[data-tone="violet"] .burst { --burst-a: rgba(235, 170, 255, 0.9); --burst-b: rgba(140, 40, 255, 0.75); }
+.telop[data-tone="gold"] .burst { --burst-a: rgba(255, 190, 60, 0.85); --burst-b: rgba(255, 245, 190, 0.85); }
+.telop[data-tone="ice"] .burst,
+.telop[data-tone="violet"] .burst { --burst-a: rgba(180, 70, 255, 0.85); --burst-b: rgba(255, 215, 130, 0.75); }
 .telop[data-tone="rainbow"] .burst {
-  background: repeating-conic-gradient(from 0deg, rgba(255, 90, 120, 0.8) 0 5deg, transparent 5deg 10deg, rgba(255, 230, 80, 0.8) 10deg 15deg, transparent 15deg 20deg, rgba(90, 220, 255, 0.8) 20deg 25deg, transparent 25deg 30deg);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 70, 110, 0.85) 0 1.6deg, transparent 1.6deg 10deg, rgba(255, 225, 90, 0.85) 10deg 11.4deg, transparent 11.4deg 20deg, rgba(110, 215, 255, 0.8) 20deg 21.2deg, transparent 21.2deg 30deg);
 }
 
 @keyframes slotBurst {
   0% { opacity: 0; rotate: 0deg; scale: 0.4; }
-  10% { opacity: 1; scale: 1; }
-  80% { opacity: 0.9; }
+  10% { opacity: 0.75; scale: 1; }
+  80% { opacity: 0.65; }
   100% { opacity: 0; rotate: 40deg; scale: 1.15; }
 }
 
@@ -179,12 +162,13 @@
   aspect-ratio: 1;
   translate: -50% -50%;
   border-radius: 50%;
-  border: 0.9cqh solid #fff;
-  box-shadow: 0 0 4cqh 1cqh var(--ring, rgba(255, 140, 40, 0.9)), inset 0 0 4cqh 1cqh var(--ring, rgba(255, 140, 40, 0.9));
+  border: 0.7cqh solid #fff;
+  box-shadow: 0 0 4cqh 1cqh var(--ring, rgba(255, 50, 40, 0.9)), inset 0 0 4cqh 1cqh var(--ring, rgba(255, 50, 40, 0.9));
   opacity: 0;
   animation: slotRing 640ms 60ms cubic-bezier(0.1, 0.7, 0.2, 1) both;
 }
-.telop[data-tone="ice"] .ring { --ring: rgba(60, 170, 255, 0.95); }
+.telop[data-tone="gold"] .ring { --ring: rgba(255, 180, 50, 0.95); }
+.telop[data-tone="ice"] .ring,
 .telop[data-tone="violet"] .ring { --ring: rgba(190, 80, 255, 0.95); }
 .telop[data-tone="rainbow"] .ring { --ring: rgba(255, 90, 210, 0.95); }
 
@@ -197,24 +181,57 @@
   position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 1.5cqw;
-  rotate: -7deg;
+  gap: 2.4cqw;
   animation: slotSlam var(--telop-ms) both;
 }
 
-.telop[data-size="big"] .main { font-size: 44cqh; }
-.telop[data-size="big"] .tail { font-size: 17cqh; margin-bottom: 3cqh; rotate: 4deg; }
-.telop[data-size="big"] .lead { font-size: 11cqh; }
+/* Hairlines of gold above and below, drawn outward from the middle. */
+.rule {
+  position: absolute;
+  left: -5cqw;
+  right: -5cqw;
+  height: 0.35cqh;
+  background: linear-gradient(90deg, transparent, #ffd76a 18%, #fff6cf 50%, #ffd76a 82%, transparent);
+  box-shadow: 0 0 1.4cqh rgba(255, 170, 50, 0.9);
+  scale: 0 1;
+  animation: slotRule var(--telop-ms) both;
+}
+.ruleTop { top: -5cqh; }
+.ruleBottom { bottom: -12cqh; }
 
-.telop[data-size="small"] { place-items: start center; padding-top: 7cqh; }
-.telop[data-size="small"] .main { font-size: 17cqh; }
-.telop[data-size="small"] .tail { font-size: 8cqh; }
-.telop[data-size="small"] .lead { font-size: 6cqh; }
-.telop[data-size="small"] .burst { top: 17%; width: 90cqw; }
-.telop[data-size="small"] .ring { top: 17%; width: 14cqh; }
+@keyframes slotRule {
+  0%, 12% { scale: 0 1; opacity: 0; }
+  30% { scale: 1 1; opacity: 1; }
+  84% { scale: 1 1; opacity: 1; }
+  100% { scale: 1.2 1; opacity: 0; }
+}
 
-/* Long words shrink to stay inside the screen. */
-.telop[data-long="true"][data-size="big"] .main { font-size: 21cqh; }
+/* A caption telop keeps the scene: only a dark band behind the words. */
+.band {
+  position: absolute;
+  inset: -3cqh -12cqw -6cqh;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.82) 20%, rgba(40, 0, 6, 0.9) 50%, rgba(0, 0, 0, 0.82) 80%, transparent);
+  opacity: 0;
+  animation: slotVeil var(--telop-ms) linear both;
+}
+
+/* `font-size` is the height of a capital. */
+.telop[data-size="big"] .main { font-size: 33cqh; }
+.telop[data-size="big"][data-long="true"] .main { font-size: 26cqh; }
+.telop[data-size="big"][data-kind="word"] .main { font-size: 20cqh; }
+.telop[data-size="big"][data-kind="word"][data-long="true"] .main { font-size: 12cqh; }
+.telop[data-size="big"] .lead { font-size: 7.5cqh; }
+.telop[data-size="big"] .tail { font-size: 10.5cqh; }
+
+.telop[data-size="small"] { place-items: start center; padding-top: 9cqh; perspective-origin: 50% 14%; }
+.telop[data-size="small"] .main { font-size: 9.5cqh; }
+.telop[data-size="small"] .lead { font-size: 4cqh; }
+.telop[data-size="small"] .tail { font-size: 5cqh; }
+.telop[data-size="small"] .burst { display: none; }
+.telop[data-size="small"] .ring { top: 15%; width: 12cqh; }
+.telop[data-size="small"] .rule { left: -9cqw; right: -9cqw; height: 0.25cqh; }
+.telop[data-size="small"] .ruleTop { top: -3cqh; }
+.telop[data-size="small"] .ruleBottom { bottom: -6cqh; }
 
 .column {
   display: flex;
@@ -222,8 +239,9 @@
   align-items: flex-start;
 }
 
+/* The label's own depth hangs below it, so it needs air above the number. */
 .lead {
-  margin: 0 0 -1cqh 2cqw;
+  margin: 0 0 0.62em 0.4em;
 }
 
 /* Slams in oversized, settles with one overshoot, then is thrown at the viewer. */
@@ -294,7 +312,7 @@
   100% { opacity: 0; scale: 1; }
 }
 
-.stop[data-tone="fire"] { --stop-colour: #ff5a1f; --stop-peak: 0.55; }
+.stop[data-tone="fire"] { --stop-colour: #ff2f2f; --stop-peak: 0.55; }
 .stop[data-tone="gold"] { --stop-colour: #ffd23b; --stop-peak: 0.5; }
 .stop[data-tone="ice"] { --stop-colour: #49b6ff; --stop-peak: 0.5; }
 .stop[data-tone="violet"] { --stop-colour: #b45bff; --stop-peak: 0.5; }
@@ -305,43 +323,46 @@
 
 .round {
   position: absolute;
-  left: 3%;
-  top: 5%;
+  left: 4%;
+  top: 6%;
   z-index: 3;
   container-type: size;
   width: 60%;
-  height: 46%;
+  height: 50%;
   pointer-events: none;
+  perspective: 150cqh;
 }
 
 .roundInner {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  rotate: -5deg;
-  transform-origin: left top;
-  animation: slotRoundIn 520ms cubic-bezier(0.2, 0.9, 0.2, 1.2) both;
+  transform-origin: 30% 50%;
+  transform-style: preserve-3d;
+  animation: slotRoundIn 520ms cubic-bezier(0.2, 0.9, 0.2, 1.2) both, slotSway 1400ms ease-in-out infinite alternate;
 }
 
-.roundLabel { font-size: 22cqh; margin-left: 1cqw; z-index: 1; }
-.roundRow { display: flex; align-items: flex-end; gap: 3cqw; margin-top: 1cqh; }
-.roundNumber { font-size: 66cqh; }
-.roundExtra { font-size: 22cqh; margin-bottom: 8cqh; }
+.roundLabel { font-size: 12cqh; margin: 0 0 7cqh 1cqw; }
+.roundRow { display: flex; align-items: flex-end; gap: 4cqw; }
+.roundNumber { font-size: 48cqh; }
+.roundExtra { font-size: 12cqh; }
 
+/* The opponent: a thin white serif under a gold hairline. */
 .roundVersus {
-  margin: 1cqh 0 0 2cqw;
-  padding: 1.2cqh 3cqw 1.2cqh 2cqw;
-  font-family: Impact, "Arial Black", Arial, sans-serif;
-  font-style: italic;
-  font-size: 11cqh;
-  letter-spacing: 0.06em;
+  margin: 16cqh 0 0 1cqw;
+  padding: 2cqh 8cqw 0 0;
+  font-family: "Times New Roman", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: 7.5cqh;
+  white-space: nowrap;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   color: #fff;
-  background: linear-gradient(90deg, rgba(60, 0, 110, 0.95), rgba(140, 30, 255, 0.85) 60%, transparent);
-  border-left: 0.8cqh solid #ffe14a;
-  text-shadow: 0 0 1.5cqh rgba(210, 120, 255, 0.9);
+  border-top: 0.35cqh solid #ffd76a;
+  border-image: linear-gradient(90deg, #fff6cf, #ffd76a 40%, rgba(255, 215, 106, 0)) 1;
+  text-shadow: 0 0 1.6cqh rgba(255, 30, 40, 0.95), 0 0.3cqh 0.8cqh #000;
   animation: slotVersusIn 420ms 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-.roundVersus b { color: #ffe14a; margin-right: 1.2cqw; }
+.roundVersus b { color: #ff3b3b; font-weight: 400; margin-right: 1.8cqw; }
 
 @keyframes slotRoundIn {
   0% { opacity: 0; translate: -30cqw 0; scale: 1.4; }
@@ -353,6 +374,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .words, .roundInner, .roundVersus { animation-duration: 1ms; }
-  .burst, .ring, .flash, .stopFlash, .stopLine, .stopRays, .textShine { animation: none; }
+  .words, .roundInner, .roundVersus { animation-duration: 1ms; animation-iteration-count: 1; }
+  .sway { animation: none; transform: rotateZ(-4deg); }
+  .burst, .ring, .flash, .stopFlash, .stopLine, .stopRays, .glyphShine { animation: none; }
 }

@@ -1,0 +1,230 @@
+{
+  "version": "v1",
+  "font": "timesbd.ttf",
+  "sets": {
+    "digits": {
+      "cols": 6,
+      "rows": 2,
+      "cellW": 0.8,
+      "cellH": 0.95,
+      "padX": 0.2,
+      "padY": 0.26,
+      "capHeight": 0.4786,
+      "files": {
+        "gold": "slot-glyphs-digits-gold.v1.webp",
+        "blood": "slot-glyphs-digits-blood.v1.webp",
+        "violet": "slot-glyphs-digits-violet.v1.webp",
+        "rainbow": "slot-glyphs-digits-rainbow.v1.webp"
+      },
+      "glyphs": {
+        "0": {
+          "col": 0,
+          "row": 0,
+          "advance": 0.3615
+        },
+        "1": {
+          "col": 1,
+          "row": 0,
+          "advance": 0.3615
+        },
+        "2": {
+          "col": 2,
+          "row": 0,
+          "advance": 0.3615
+        },
+        "3": {
+          "col": 3,
+          "row": 0,
+          "advance": 0.3615
+        },
+        "4": {
+          "col": 4,
+          "row": 0,
+          "advance": 0.3615
+        },
+        "5": {
+          "col": 5,
+          "row": 0,
+          "advance": 0.3615
+        },
+        "6": {
+          "col": 0,
+          "row": 1,
+          "advance": 0.3615
+        },
+        "7": {
+          "col": 1,
+          "row": 1,
+          "advance": 0.3615
+        },
+        "8": {
+          "col": 2,
+          "row": 1,
+          "advance": 0.3615
+        },
+        "9": {
+          "col": 3,
+          "row": 1,
+          "advance": 0.3615
+        },
+        "+": {
+          "col": 4,
+          "row": 1,
+          "advance": 0.4119
+        }
+      }
+    },
+    "letters": {
+      "cols": 9,
+      "rows": 3,
+      "cellW": 1.1,
+      "cellH": 1.1,
+      "padX": 0.2,
+      "padY": 0.4,
+      "capHeight": 0.4786,
+      "files": {
+        "gold": "slot-glyphs-letters-gold.v1.webp",
+        "blood": "slot-glyphs-letters-blood.v1.webp",
+        "violet": "slot-glyphs-letters-violet.v1.webp",
+        "rainbow": "slot-glyphs-letters-rainbow.v1.webp"
+      },
+      "glyphs": {
+        "A": {
+          "col": 0,
+          "row": 0,
+          "advance": 0.5221
+        },
+        "B": {
+          "col": 1,
+          "row": 0,
+          "advance": 0.4822
+        },
+        "C": {
+          "col": 2,
+          "row": 0,
+          "advance": 0.5221
+        },
+        "D": {
+          "col": 3,
+          "row": 0,
+          "advance": 0.5221
+        },
+        "E": {
+          "col": 4,
+          "row": 0,
+          "advance": 0.4822
+        },
+        "F": {
+          "col": 5,
+          "row": 0,
+          "advance": 0.4416
+        },
+        "G": {
+          "col": 6,
+          "row": 0,
+          "advance": 0.5623
+        },
+        "H": {
+          "col": 7,
+          "row": 0,
+          "advance": 0.5623
+        },
+        "I": {
+          "col": 8,
+          "row": 0,
+          "advance": 0.2813
+        },
+        "J": {
+          "col": 0,
+          "row": 1,
+          "advance": 0.3615
+        },
+        "K": {
+          "col": 1,
+          "row": 1,
+          "advance": 0.5623
+        },
+        "L": {
+          "col": 2,
+          "row": 1,
+          "advance": 0.4822
+        },
+        "M": {
+          "col": 3,
+          "row": 1,
+          "advance": 0.6823
+        },
+        "N": {
+          "col": 4,
+          "row": 1,
+          "advance": 0.5221
+        },
+        "O": {
+          "col": 5,
+          "row": 1,
+          "advance": 0.5623
+        },
+        "P": {
+          "col": 6,
+          "row": 1,
+          "advance": 0.4416
+        },
+        "Q": {
+          "col": 7,
+          "row": 1,
+          "advance": 0.5623
+        },
+        "R": {
+          "col": 8,
+          "row": 1,
+          "advance": 0.5221
+        },
+        "S": {
+          "col": 0,
+          "row": 2,
+          "advance": 0.402
+        },
+        "T": {
+          "col": 1,
+          "row": 2,
+          "advance": 0.4822
+        },
+        "U": {
+          "col": 2,
+          "row": 2,
+          "advance": 0.5221
+        },
+        "V": {
+          "col": 3,
+          "row": 2,
+          "advance": 0.5221
+        },
+        "W": {
+          "col": 4,
+          "row": 2,
+          "advance": 0.7229
+        },
+        "X": {
+          "col": 5,
+          "row": 2,
+          "advance": 0.5221
+        },
+        "Y": {
+          "col": 6,
+          "row": 2,
+          "advance": 0.5221
+        },
+        "Z": {
+          "col": 7,
+          "row": 2,
+          "advance": 0.4822
+        },
+        "!": {
+          "col": 8,
+          "row": 2,
+          "advance": 0.2407
+        }
+      }
+    }
+  }
+}

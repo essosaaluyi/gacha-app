@@ -8,7 +8,7 @@
 
 export const SLOT_FX = {
   enabled: true,
-  /** "+15 GET!" when battle points are paid. */
+  /** "RESULT +15 GET" when battle points are paid. */
   award: true,
   /** Slot-style ROUND title in the round intro. */
   roundTitle: true,
@@ -18,15 +18,15 @@ export const SLOT_FX = {
   telops: true,
 };
 
-/** Colour families, after the reference machine's tiers. */
+/** Colour families. "fire" is the crimson face, "ice" shares the violet one. */
 export type SlotTone = "fire" | "gold" | "ice" | "rainbow" | "violet";
 
 export type SlotTelop = {
   key: number;
-  /** Small line above the main text ("TOTAL", "ROUND"). */
+  /** Small gold line above the main text ("RESULT"). */
   lead?: string;
   main: string;
-  /** Tag after the main text ("GET!"). */
+  /** Gold tag after the main text ("GET"). */
   tail?: string;
   tone: SlotTone;
   /** Numbers count up to this value instead of appearing at once. */
@@ -63,17 +63,17 @@ export function clearSlotTelop(forKey: number) {
   notify();
 }
 
-/** Award tiers: small wins burn red, mid wins go gold, big ones turn blue. */
+/** Award tiers: small wins are crimson, mid wins gold, big ones cut-crystal rainbow. */
 export function showSlotAward(points: number) {
   if (!SLOT_FX.enabled || !SLOT_FX.award || points <= 0) return;
-  const tone: SlotTone = points >= 100 ? "ice" : points >= 20 ? "gold" : "fire";
+  const tone: SlotTone = points >= 100 ? "rainbow" : points >= 20 ? "gold" : "fire";
   showSlotTelop({
-    lead: points >= 100 ? "TOTAL" : undefined,
+    lead: "RESULT",
     main: `+${points}`,
-    tail: "GET!",
+    tail: "GET",
     tone,
     countTo: points,
-    durationMs: points >= 100 ? 2100 : 1600,
+    durationMs: points >= 100 ? 2400 : 1900,
   });
 }
 
