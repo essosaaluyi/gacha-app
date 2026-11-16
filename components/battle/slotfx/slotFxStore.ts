@@ -20,6 +20,8 @@ export const SLOT_FX = {
   judge: true,
   /** BAR CHANCE as "BARを狙え！": tunnel in the tone's colour, plate, call and running band. */
   barChance: true,
+  /** The cabinet's lamps: the frame of the screen lit in the colour of the scene, dimmed for a held breath. */
+  cabinet: true,
 };
 
 /** Colour families. "fire" is the crimson face, "ice" shares the violet one. */

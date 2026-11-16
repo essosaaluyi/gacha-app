@@ -1,0 +1,168 @@
+/* PROVISIONAL — the cabinet's lamps. See SlotCabinetLights.tsx.
+   Both layers lie over the whole cabinet stage (1920 x 1080), above the
+   screen, the deck and the side panels, below the top HUD and the bezel
+   buttons. Nothing here takes a click. */
+
+.dimLayer,
+.lampLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.dimLayer { z-index: 30; }
+
+/* Light is added to the cabinet, not painted over it. */
+.lampLayer {
+  z-index: 31;
+  mix-blend-mode: screen;
+}
+
+/* ---- Lamps out ----------------------------------------------------------- */
+
+/* Everything but the screen and its frame goes dim. */
+.dim {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  clip-path: polygon(
+    evenodd,
+    0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+    var(--hole-l) var(--hole-t),
+    var(--hole-l) var(--hole-b),
+    var(--hole-r) var(--hole-b),
+    var(--hole-r) var(--hole-t),
+    var(--hole-l) var(--hole-t)
+  );
+  animation: cabDimIn 300ms ease-out both;
+}
+/* A held breath: the table must still be read, so only part way. */
+.dim[data-pattern="hush"] { --dim: 0.46; }
+.dim[data-pattern="dark"] { --dim: 0.74; }
+
+@keyframes cabDimIn {
+  from { opacity: 0; }
+  to { opacity: var(--dim, 0.5); }
+}
+
+/* ---- Lamps lit ----------------------------------------------------------- */
+
+/* Sized to the frame of the screen by the component. */
+.scene {
+  position: absolute;
+  --lamp-core: color-mix(in srgb, var(--lamp) 42%, #fff);
+}
+.scene[data-low="true"] { opacity: 0.72; }
+.scene[data-colour="rainbow"] { animation: cabHue 1100ms linear infinite; }
+
+@keyframes cabHue {
+  to { filter: hue-rotate(360deg); }
+}
+
+.pulse {
+  position: absolute;
+  inset: 0;
+  animation: cabIn 260ms ease-out both;
+}
+.scene[data-pattern="breathe"] .pulse { animation: cabBreathe 1500ms ease-in-out infinite alternate; }
+/* A few hard flashes, then it holds. Kept short: never a standing strobe. */
+.scene[data-pattern="burst"] .pulse { animation: cabStrobe 110ms steps(1) 5 both; }
+
+@keyframes cabIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cabBreathe {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+@keyframes cabStrobe {
+  0% { opacity: 1; }
+  50% { opacity: 0.12; }
+  100% { opacity: 1; }
+}
+
+/* The colour thrown onto the cabinet round the screen. */
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px var(--lamp),
+    0 0 26px 6px color-mix(in srgb, var(--lamp) 85%, transparent),
+    0 0 110px 34px color-mix(in srgb, var(--lamp) 55%, transparent),
+    0 0 340px 130px color-mix(in srgb, var(--lamp) 30%, transparent);
+}
+
+/* The lamps themselves: a row of lit segments along each side of the frame. */
+.strip {
+  position: absolute;
+  --seg: 34px;
+  filter: drop-shadow(0 0 5px var(--lamp)) drop-shadow(0 0 12px var(--lamp));
+}
+.strip[data-side="top"],
+.strip[data-side="bottom"] {
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(90deg, var(--lamp-core) 0 62%, transparent 62%) 0 0 / var(--seg) 100% repeat-x;
+}
+.strip[data-side="left"],
+.strip[data-side="right"] {
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: linear-gradient(180deg, var(--lamp-core) 0 62%, transparent 62%) 0 0 / 100% var(--seg) repeat-y;
+}
+.strip[data-side="top"] { top: 0; }
+.strip[data-side="bottom"] { bottom: 0; }
+.strip[data-side="left"] { left: 0; }
+.strip[data-side="right"] { right: 0; }
+
+/* Running: clockwise round the frame, one segment at a time. */
+.scene[data-pattern="chase"] .strip[data-side="top"],
+.scene[data-pattern="burst"] .strip[data-side="top"] { animation: cabRunRight var(--run-ms, 420ms) linear infinite; }
+.scene[data-pattern="chase"] .strip[data-side="right"],
+.scene[data-pattern="burst"] .strip[data-side="right"] { animation: cabRunDown var(--run-ms, 420ms) linear infinite; }
+.scene[data-pattern="chase"] .strip[data-side="bottom"],
+.scene[data-pattern="burst"] .strip[data-side="bottom"] { animation: cabRunLeft var(--run-ms, 420ms) linear infinite; }
+.scene[data-pattern="chase"] .strip[data-side="left"],
+.scene[data-pattern="burst"] .strip[data-side="left"] { animation: cabRunUp var(--run-ms, 420ms) linear infinite; }
+
+@keyframes cabRunRight { to { background-position: var(--seg) 0; } }
+@keyframes cabRunLeft { to { background-position: calc(var(--seg) * -1) 0; } }
+@keyframes cabRunDown { to { background-position: 0 var(--seg); } }
+@keyframes cabRunUp { to { background-position: 0 calc(var(--seg) * -1); } }
+
+/* ---- A card stops -------------------------------------------------------- */
+
+/* One beat of light on the frame, larger for the stop that matters. */
+.blip {
+  position: absolute;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 3px var(--lamp),
+    0 0 22px 6px color-mix(in srgb, var(--lamp) 80%, transparent),
+    0 0 90px 26px color-mix(in srgb, var(--lamp) 34%, transparent);
+  opacity: 0;
+  animation: cabBlip 380ms ease-out both;
+}
+.blip[data-strong="true"] {
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--lamp) 55%, #fff),
+    0 0 40px 12px var(--lamp),
+    0 0 160px 60px color-mix(in srgb, var(--lamp) 50%, transparent),
+    0 0 360px 140px color-mix(in srgb, var(--lamp) 22%, transparent);
+  animation-duration: 640ms;
+}
+
+@keyframes cabBlip {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse,
+  .strip,
+  .scene[data-colour="rainbow"] { animation: none !important; }
+}

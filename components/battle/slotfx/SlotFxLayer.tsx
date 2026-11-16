@@ -8,6 +8,7 @@ import {
   subscribeEnemyDefeatPresentation,
 } from "@/lib/battle-pixi/state/enemyDefeatPresentationStore";
 import SlotBackdrop, { TONE_BACKDROP, warmSlotBackdrops } from "./SlotBackdrop";
+import SlotCabinetLights from "./SlotCabinetLights";
 import SlotGlyphs, { slotGlyphSheets } from "./SlotGlyphs";
 import SlotJudge from "./SlotJudge";
 import { clearSlotJudge, pullSlotJudge, resolveSlotJudge, startSlotJudge } from "./slotJudgeStore";
@@ -223,6 +224,8 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
         </div>
       )}
       <SlotJudge live={live} />
+      {/* Draws on the cabinet round the screen, not in this layer. */}
+      <SlotCabinetLights />
     </div>
   );
 }
