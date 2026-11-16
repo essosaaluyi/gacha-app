@@ -49,10 +49,12 @@ export default function DefenseShieldOverlay() {
         </svg>
       )}
       <div className="defense-shield-marker" aria-hidden="true">
-        <i className={styles.rays} />
-        <i className={styles.halo} />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className={styles.icon} src={`/images/battle-ui/defense-shield/shield-${shield.grade}.v1.webp`} alt="" draggable={false} />
+        <div className={styles.place}>
+          <i className={styles.rays} />
+          <i className={styles.halo} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className={styles.icon} src={`/images/battle-ui/defense-shield/shield-${shield.grade}.v1.webp`} alt="" draggable={false} />
+        </div>
       </div>
     </div>
   );
