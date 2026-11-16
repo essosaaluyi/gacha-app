@@ -31,6 +31,7 @@ import {
 import { STAGE, UI } from "@/lib/battle-pixi/config";
 import { PresentationContext } from "@/lib/battle-pixi/presentation/presentationContext";
 import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
+import { battleSymbolImage } from "@/lib/battle-pixi/presentation/battleSymbolImages";
 import { arrangeBarChanceCards } from "@/lib/battle-pixi/core/barChanceReveal";
 import { rollDrawTell } from "@/lib/battle-pixi/presentation/drawTell";
 import { recordDrawOutcome } from "@/lib/battle-pixi/state/drawCostStore";
@@ -750,7 +751,7 @@ export default function BattlePixiStage({
           scaleX: surface.width / STAGE.WIDTH * 1920 / cabinetBounds.width,
           scaleY: surface.height / STAGE.HEIGHT * 1080 / cabinetBounds.height,
         } : null;
-        window.dispatchEvent(new CustomEvent("battle:cabinet-pile", { detail: { state, setCount, geometry:measuredGeometry, frontImages:currentBattleResult.cards.map(symbol=>`/images/battle-symbols/soft-edge/${symbol.toLowerCase()}.webp`), handoff: sizedHandoff, phase: dealPhase, mixStartedAt, ejectStartedAt, ejectEndedAt, ejectClock } }));
+        window.dispatchEvent(new CustomEvent("battle:cabinet-pile", { detail: { state, setCount, geometry:measuredGeometry, frontImages:currentBattleResult.cards.map(battleSymbolImage), handoff: sizedHandoff, phase: dealPhase, mixStartedAt, ejectStartedAt, ejectEndedAt, ejectClock } }));
       };
 
       const stage = new Container();
@@ -779,7 +780,7 @@ export default function BattlePixiStage({
           Assets.load(PLAYER_CARD_BACK_IMAGE),
           // Lossless WebP: the visible pixels are identical to the old PNGs.
           ...symbolNames.map((name) =>
-            Assets.load(`/images/battle-symbols/soft-edge/${name.toLowerCase()}.webp`)
+            Assets.load(battleSymbolImage(name))
           ),
         ]);
 
