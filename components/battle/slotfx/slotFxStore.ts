@@ -16,6 +16,8 @@ export const SLOT_FX = {
   stopFlash: true,
   /** Scene telops (ATTACK!, CHANCE, ENEMY DOWN ...). */
   telops: true,
+  /** The Fatal Mode judge: DESTINY JUDGE, the dispenser and DRAW!!!, crack or freeze. */
+  judge: true,
 };
 
 /** Colour families. "fire" is the crimson face, "ice" shares the violet one. */

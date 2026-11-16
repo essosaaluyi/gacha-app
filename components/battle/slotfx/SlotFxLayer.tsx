@@ -7,7 +7,10 @@ import {
   getEnemyDefeatPresentationKey,
   subscribeEnemyDefeatPresentation,
 } from "@/lib/battle-pixi/state/enemyDefeatPresentationStore";
+import SlotBackdrop, { TONE_BACKDROP, warmSlotBackdrops } from "./SlotBackdrop";
 import SlotGlyphs, { slotGlyphSheets } from "./SlotGlyphs";
+import SlotJudge from "./SlotJudge";
+import { clearSlotJudge, pullSlotJudge, resolveSlotJudge, startSlotJudge } from "./slotJudgeStore";
 import styles from "./SlotFx.module.css";
 import {
   SLOT_FX,
@@ -145,22 +148,26 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
     return () => window.clearTimeout(timer);
   }, [telop]);
 
-  // Fetch the lettering sheets ahead of the first telop that needs them.
+  // Fetch the lettering sheets and the telop backgrounds ahead of the first
+  // telop that needs them.
   useEffect(() => {
     if (!SLOT_FX.enabled) return;
     const timer = window.setTimeout(() => {
       for (const src of slotGlyphSheets()) new Image().src = src;
+      warmSlotBackdrops(["redBurst", "goldBurst", "rainbowRays", "violetLines"]);
     }, 1200);
     return () => window.clearTimeout(timer);
   }, []);
 
-  // Dev console: __slotFx.award(120), __slotFx.telop("ATTACK!", "fire"), __slotFx.stop("Attack", 3)
+  // Dev console: __slotFx.award(120), __slotFx.telop("ATTACK!", "fire"), __slotFx.stop("Attack", 3),
+  // __slotFx.judge.start() / .pull() / .result(true) / .clear()
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
     (window as Window & { __slotFx?: unknown }).__slotFx = {
       award: showSlotAward,
       telop: (main: string, tone: SlotTone = "fire", size: SlotTelop["size"] = "big") => showSlotTelop({ main, tone, size }),
       stop: (symbol = "Attack", order = 3) => showSlotStop({ order, tone: STOP_TONES[symbol] ?? "plain", strong: order === 3 }),
+      judge: { start: startSlotJudge, pull: pullSlotJudge, result: resolveSlotJudge, clear: () => clearSlotJudge() },
     };
   }, []);
 
@@ -188,8 +195,8 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
           style={{ "--telop-ms": `${telop.durationMs}ms` } as CSSProperties}
         >
           {telop.size === "big" && <div className={styles.veil} />}
+          {telop.size === "big" && <SlotBackdrop kind={TONE_BACKDROP[telop.tone]} className={styles.backdrop} />}
           {telop.size === "big" && <div className={styles.flash} />}
-          <div className={styles.burst} />
           {telop.size === "big" && SPARKS.map((spark, index) => (
             <i
               key={index}
@@ -215,6 +222,7 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
           </div>
         </div>
       )}
+      <SlotJudge live={live} />
     </div>
   );
 }

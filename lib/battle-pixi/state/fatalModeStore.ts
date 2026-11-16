@@ -10,6 +10,14 @@ export function setGuaranteedFatalBonusType(value: GuaranteedBonusType | null) {
 
 let listeners: (() => void)[] = [];
 
+/**
+ * How the most recent window ended. `key` counts windows, so a reader can tell
+ * a fresh ending from the one it has already seen. Read by the judge
+ * presentation, which shows the result once the cards have been turned.
+ */
+let windowOutcome: { key: number; enemyDefeated: boolean } | null = null;
+export function getFatalWindowOutcome() { return windowOutcome; }
+
 export function getFatalModeGamesLeft() {
   return fatalModeGamesLeft;
 }
@@ -62,6 +70,7 @@ export function consumeFatalModeTurn() {
     finished,
     enemyDefeated: finished && fatalModeHit,
   };
+  if (finished) windowOutcome = { key: (windowOutcome?.key ?? 0) + 1, enemyDefeated: result.enemyDefeated };
 
   listeners.forEach((listener) => listener());
 

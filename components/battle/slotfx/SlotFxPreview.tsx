@@ -5,6 +5,7 @@ import SlotFxLayer from "./SlotFxLayer";
 import SlotRoundTitle from "./SlotRoundTitle";
 import frame from "../fatalfx/FatalFxWorkstation.module.css";
 import { showSlotAward, showSlotStop, showSlotTelop, type SlotTone } from "./slotFxStore";
+import { clearSlotJudge, pullSlotJudge, resolveSlotJudge, startSlotJudge } from "./slotJudgeStore";
 
 // PROVISIONAL — a bench for the slot-style layer, away from the battle.
 
@@ -102,6 +103,14 @@ export default function SlotFxPreview() {
           {TELOPS.map((telop) => (
             <button key={telop.main} type="button" className={frame.playButton} data-tier="gold" onClick={() => showSlotTelop(telop)}>{telop.main}</button>
           ))}
+        </div>
+        <div className={frame.transport}>
+          <strong>ジャッジ</strong>
+          <button type="button" className={frame.playButton} data-tier="red" onClick={startSlotJudge}>① 開始（文字 → DRAW!!!）</button>
+          <button type="button" className={frame.playButton} data-tier="gold" onClick={pullSlotJudge}>② 引く</button>
+          <button type="button" className={frame.playButton} data-tier="blue" onClick={() => resolveSlotJudge(false)}>③ 失敗（ヒビ → 暗転）</button>
+          <button type="button" className={frame.playButton} data-tier="gold" onClick={() => resolveSlotJudge(true)}>③ 成功（フリーズ）</button>
+          <button type="button" className={frame.playButton} onClick={() => clearSlotJudge()}>消す</button>
         </div>
       </section>
     </main>

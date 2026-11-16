@@ -80,11 +80,26 @@ export function hideFatalAttackCut() {
   notify();
 }
 
+/** Told to the page on every hand's first draw press. */
+export const BATTLE_DRAW_PRESS_EVENT = "battle:draw-press";
+export type BattleDrawPressDetail = {
+  /** This press is the last draw of the player's Fatal Mode: the judge. */
+  fatalJudge: boolean;
+};
+
+function announceDraw() {
+  if (typeof window === "undefined") return;
+  const { totalGames, gamesLeft } = getPlayerFatalSnapshot();
+  const detail: BattleDrawPressDetail = { fatalJudge: isFatalModeActive() && totalGames > 1 && gamesLeft === 1 };
+  window.dispatchEvent(new CustomEvent(BATTLE_DRAW_PRESS_EVENT, { detail }));
+}
+
 /**
  * Called on the first draw press of every hand. `openingStarted` is true when
  * that press also fired the silver shutter insert.
  */
 export function onFatalModeDraw(openingStarted: boolean) {
+  announceDraw();
   // Outside Fatal Mode, and on draws with no movie of their own, the draw
   // cuts whatever was still on screen.
   if (!isFatalModeActive()) { lastPlayed = ""; hideFatalAttackCut(); return; }

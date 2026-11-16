@@ -1,0 +1,400 @@
+/* PROVISIONAL — the Fatal Mode judge. See slotJudgeStore.ts for the sequence.
+   Sits inside the slot layer, which supplies the container units. */
+
+.judge {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+.judge[data-phase="fail"] { background: transparent; }
+
+.backdrop,
+.lines,
+.landLines,
+.shards,
+.freeze {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---- Intro: DESTINY JUDGE ---------------------------------------------- */
+
+.intro {
+  position: absolute;
+  inset: 0;
+  animation: judgeShake 320ms linear var(--land-ms) both;
+}
+
+.introShade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 70% at 50% 50%, rgba(30, 0, 0, 0.2) 0%, rgba(20, 0, 0, 0.62) 70%, rgba(0, 0, 0, 0.86) 100%);
+  animation: judgeShadeDeepen 300ms linear var(--land-ms) both;
+}
+
+@keyframes judgeShadeDeepen {
+  from { background-color: transparent; }
+  to { background-color: rgba(20, 0, 2, 0.5); }
+}
+
+/* One letter, thrown from deep in the tunnel past the viewer's shoulder. */
+.fly {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  font-size: 26cqh;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: judgeFly 480ms cubic-bezier(0.55, 0, 0.9, 0.35) both;
+}
+.fly .flyGlyphs { filter: none; }
+
+@keyframes judgeFly {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.04) rotate(0deg); }
+  10% { opacity: 1; }
+  74% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--fly-x), var(--fly-y)) scale(11) rotate(var(--fly-turn)); }
+}
+
+.landLines {
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: judgeAppear 160ms linear var(--land-ms) both;
+}
+
+.landFlash,
+.enterFlash,
+.failFlash,
+.successFlash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+}
+.landFlash { animation: judgeFlash 560ms ease-out var(--land-ms) both; }
+
+@keyframes judgeFlash {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes judgeAppear {
+  from { opacity: 0; }
+  to { opacity: 0.9; }
+}
+
+/* The whole title, across the whole screen. */
+.land {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  perspective: 150cqh;
+  opacity: 0;
+  animation: judgeLand 440ms cubic-bezier(0.2, 0.9, 0.3, 1) var(--land-ms) both;
+}
+
+@keyframes judgeLand {
+  0% { opacity: 0; scale: 3.6; }
+  50% { opacity: 1; scale: 0.93; }
+  74% { scale: 1.04; }
+  100% { opacity: 1; scale: 1; }
+}
+
+.landSway {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8cqh;
+  padding-bottom: 5cqh;
+  transform-style: preserve-3d;
+  animation: judgeLandSway 1500ms ease-in-out infinite alternate;
+}
+
+@keyframes judgeLandSway {
+  from { transform: rotateZ(-4deg) rotateY(-9deg) rotateX(2deg); }
+  to { transform: rotateZ(-1.5deg) rotateY(8deg) rotateX(-1deg); }
+}
+
+.landTop { font-size: 25cqh; }
+.landBottom { font-size: 31cqh; }
+
+@keyframes judgeShake {
+  0%, 100% { translate: 0 0; }
+  15% { translate: -1.6cqw 1.2cqh; }
+  35% { translate: 1.4cqw -1cqh; }
+  55% { translate: -0.9cqw -0.8cqh; }
+  75% { translate: 0.6cqw 0.6cqh; }
+}
+
+/* ---- Prompt: the dispenser, DRAW!!!, pull arrows ------------------------ */
+
+.dispenser {
+  position: absolute;
+  inset: 0;
+}
+
+.lines {
+  mix-blend-mode: screen;
+  opacity: 0.55;
+}
+.dispenser[data-pulled="true"] .lines { opacity: 1; }
+
+.shade {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 62% 78% at 50% 56%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.22) 55%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.enterFlash { animation: judgeFlash 520ms ease-out both; }
+
+/* Light pooling behind the machine. */
+.halo {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 120cqh;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 240, 190, 0.9) 0%, rgba(255, 120, 40, 0.55) 26%, rgba(255, 30, 60, 0.2) 48%, transparent 66%);
+  mix-blend-mode: screen;
+  animation: judgeHalo 640ms ease-in-out infinite alternate;
+}
+
+@keyframes judgeHalo {
+  from { scale: 0.86; opacity: 0.7; }
+  to { scale: 1.06; opacity: 1; }
+}
+
+.machineWrap {
+  position: absolute;
+  left: 50%;
+  top: 19cqh;
+  height: 68cqh;
+  aspect-ratio: 1400 / 1000;
+  translate: -50% 0;
+  animation: judgeMachineIn 420ms cubic-bezier(0.2, 1.2, 0.3, 1) both;
+}
+
+@keyframes judgeMachineIn {
+  from { scale: 0.3; opacity: 0; }
+  to { scale: 1; opacity: 1; }
+}
+
+.machine {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 1.5cqh 2.4cqh rgba(0, 0, 0, 0.8)) drop-shadow(0 0 3cqh rgba(255, 170, 60, 0.55));
+}
+
+/* The table in front of the slot. Its top edge is the slot: whatever of the
+   card is still above that edge is still inside the machine. */
+.cardTilt {
+  position: absolute;
+  overflow: hidden;
+  transform-origin: 50% 0;
+}
+
+.card {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 4%;
+  filter: brightness(1.5) saturate(1.2);
+  animation: judgeCardPeek 620ms ease-in-out infinite alternate;
+}
+
+@keyframes judgeCardPeek {
+  from { translate: 0 -66%; }
+  to { translate: 0 -34%; }
+}
+
+/* Chevrons running the way the card is pulled: toward the player. */
+.arrows {
+  position: absolute;
+  top: 68%;
+  width: 16%;
+  display: grid;
+  gap: 0.5cqh;
+}
+.arrows[data-side="left"] { left: 5%; }
+.arrows[data-side="right"] { right: 5%; }
+
+.arrow {
+  display: block;
+  aspect-ratio: 1.5;
+  clip-path: polygon(0 0, 50% 42%, 100% 0, 100% 46%, 50% 100%, 0 46%);
+  background: linear-gradient(180deg, #fff 0%, #ffe680 38%, #ff7a1a 100%);
+  filter: drop-shadow(0 0 0.8cqh rgba(255, 120, 30, 0.95));
+  opacity: 0.12;
+  animation: judgeArrow 600ms linear infinite;
+}
+
+@keyframes judgeArrow {
+  0% { opacity: 0.12; translate: 0 -30%; scale: 0.9; }
+  22% { opacity: 1; translate: 0 0; scale: 1.12; }
+  55% { opacity: 0.5; translate: 0 18%; scale: 1; }
+  100% { opacity: 0.12; translate: 0 30%; scale: 0.9; }
+}
+
+.draw {
+  position: absolute;
+  inset: 3.5cqh 0 auto 0;
+  display: grid;
+  place-items: center;
+  perspective: 150cqh;
+  animation: judgeDrawIn 420ms cubic-bezier(0.2, 1.3, 0.3, 1) 120ms both;
+}
+
+@keyframes judgeDrawIn {
+  from { opacity: 0; scale: 3; }
+  to { opacity: 1; scale: 1; }
+}
+
+.drawSway {
+  transform-style: preserve-3d;
+  animation: judgeDrawSway 1100ms ease-in-out infinite alternate;
+}
+
+@keyframes judgeDrawSway {
+  from { transform: rotateZ(-4deg) rotateY(-12deg); }
+  to { transform: rotateZ(-1deg) rotateY(10deg); }
+}
+
+.drawGlyphs {
+  font-size: 19cqh;
+  animation: judgeDrawPulse 300ms ease-in-out infinite alternate;
+}
+
+@keyframes judgeDrawPulse {
+  from { scale: 1; }
+  to { scale: 1.09; }
+}
+
+/* Pulled: the words go, the card is out, the machine strains. */
+.dispenser[data-pulled="true"] .draw { animation: judgeDrawOut 200ms ease-in both; }
+.dispenser[data-pulled="true"] .arrows { display: none; }
+.dispenser[data-pulled="true"] .machineWrap { animation: judgeStrain 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.dispenser[data-pulled="true"] .machine { animation: judgeRattle 90ms linear infinite; }
+.dispenser[data-pulled="true"] .card { animation: judgeCardOut 300ms cubic-bezier(0.4, 0, 1, 0.6) both; }
+.dispenser[data-pulled="true"] .halo { animation-duration: 180ms; }
+
+@keyframes judgeRattle {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -0.35cqw 0.2cqh; }
+  50% { translate: 0.3cqw -0.25cqh; }
+  75% { translate: -0.2cqw -0.15cqh; }
+}
+
+@keyframes judgeCardOut {
+  from { translate: 0 -34%; opacity: 1; }
+  to { translate: 0 60%; opacity: 0; }
+}
+
+@keyframes judgeDrawOut {
+  from { opacity: 1; scale: 1; }
+  to { opacity: 0; scale: 1.7; }
+}
+
+@keyframes judgeStrain {
+  from { scale: 1; }
+  to { scale: 1.14; }
+}
+
+/* ---- Fail: crack, shards, black ----------------------------------------- */
+
+/* Everything stops dead under the glass, drains, and is gone by the black. */
+.dispenser[data-fail="true"] {
+  filter: grayscale(0.85) brightness(0.55);
+  transition: filter 260ms linear;
+  animation: judgeGone 10ms linear 1300ms both;
+}
+.dispenser[data-fail="true"] *,
+.dispenser[data-fail="true"] .machine { animation-play-state: paused; }
+
+@keyframes judgeGone {
+  to { opacity: 0; }
+}
+
+.fail {
+  position: absolute;
+  inset: 0;
+  animation: judgeShake 260ms linear both;
+}
+
+.failFlash { animation: judgeFlash 240ms ease-out both; }
+
+.cracks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: judgeGone 10ms linear 1300ms both;
+}
+
+.crackShadow,
+.crackLine {
+  fill: none;
+  stroke-linejoin: miter;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  vector-effect: non-scaling-stroke;
+  animation: judgeCrack 190ms cubic-bezier(0.1, 0.8, 0.3, 1) both;
+}
+.crackShadow { stroke: rgba(0, 0, 0, 0.8); stroke-width: 7px; }
+.crackLine { stroke: #fff; stroke-width: 2.4px; filter: drop-shadow(0 0 3px rgba(190, 230, 255, 0.9)); }
+
+@keyframes judgeCrack {
+  to { stroke-dashoffset: 0; }
+}
+
+.shards {
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: judgeShards 1300ms linear 120ms both;
+}
+
+@keyframes judgeShards {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.blackout {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  animation: judgeBlackout 2500ms linear both;
+}
+
+@keyframes judgeBlackout {
+  0%, 30% { opacity: 0; }
+  52% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ---- Success: the freeze movie ------------------------------------------ */
+
+.success {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+.successFlash { animation: judgeFlash 600ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro, .fail, .landSway, .drawSway, .drawGlyphs, .halo, .machine, .arrow { animation: none; }
+}
