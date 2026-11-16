@@ -1,0 +1,175 @@
+{
+  "version": "v1",
+  "font": "DelaGothicOne-Regular.ttf",
+  "sets": {
+    "heavy": {
+      "cols": 8,
+      "rows": 4,
+      "cellW": 1.04,
+      "cellH": 0.92,
+      "padX": 0.2,
+      "padY": 0.28,
+      "capHeight": 0.5049,
+      "files": {
+        "silver": "slot-glyphs-steel-heavy-silver.v1.webp"
+      },
+      "glyphs": {
+        "A": {
+          "col": 0,
+          "row": 0,
+          "advance": 0.6558
+        },
+        "B": {
+          "col": 1,
+          "row": 0,
+          "advance": 0.6217
+        },
+        "C": {
+          "col": 2,
+          "row": 0,
+          "advance": 0.6558
+        },
+        "D": {
+          "col": 3,
+          "row": 0,
+          "advance": 0.621
+        },
+        "E": {
+          "col": 4,
+          "row": 0,
+          "advance": 0.6029
+        },
+        "F": {
+          "col": 5,
+          "row": 0,
+          "advance": 0.5981
+        },
+        "G": {
+          "col": 6,
+          "row": 0,
+          "advance": 0.6391
+        },
+        "H": {
+          "col": 7,
+          "row": 0,
+          "advance": 0.6384
+        },
+        "I": {
+          "col": 0,
+          "row": 1,
+          "advance": 0.4597
+        },
+        "J": {
+          "col": 1,
+          "row": 1,
+          "advance": 0.6147
+        },
+        "K": {
+          "col": 2,
+          "row": 1,
+          "advance": 0.637
+        },
+        "L": {
+          "col": 3,
+          "row": 1,
+          "advance": 0.5591
+        },
+        "M": {
+          "col": 4,
+          "row": 1,
+          "advance": 0.7601
+        },
+        "N": {
+          "col": 5,
+          "row": 1,
+          "advance": 0.6391
+        },
+        "O": {
+          "col": 6,
+          "row": 1,
+          "advance": 0.6752
+        },
+        "P": {
+          "col": 7,
+          "row": 1,
+          "advance": 0.6182
+        },
+        "Q": {
+          "col": 0,
+          "row": 2,
+          "advance": 0.6752
+        },
+        "R": {
+          "col": 1,
+          "row": 2,
+          "advance": 0.614
+        },
+        "S": {
+          "col": 2,
+          "row": 2,
+          "advance": 0.6426
+        },
+        "T": {
+          "col": 3,
+          "row": 2,
+          "advance": 0.653
+        },
+        "U": {
+          "col": 4,
+          "row": 2,
+          "advance": 0.6398
+        },
+        "V": {
+          "col": 5,
+          "row": 2,
+          "advance": 0.628
+        },
+        "W": {
+          "col": 6,
+          "row": 2,
+          "advance": 0.7622
+        },
+        "X": {
+          "col": 7,
+          "row": 2,
+          "advance": 0.612
+        },
+        "Y": {
+          "col": 0,
+          "row": 3,
+          "advance": 0.6558
+        },
+        "Z": {
+          "col": 1,
+          "row": 3,
+          "advance": 0.6015
+        },
+        "!": {
+          "col": 2,
+          "row": 3,
+          "advance": 0.2149
+        },
+        "\u3092": {
+          "col": 3,
+          "row": 3,
+          "advance": 0.6954
+        },
+        "\u72d9": {
+          "col": 4,
+          "row": 3,
+          "advance": 0.6954
+        },
+        "\u3048": {
+          "col": 5,
+          "row": 3,
+          "advance": 0.6954
+        },
+        "\uff01": {
+          "col": 6,
+          "row": 3,
+          "advance": 0.6954
+        }
+      }
+    }
+  }
+}

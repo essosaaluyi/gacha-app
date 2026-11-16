@@ -19,6 +19,7 @@ import { warmSlotBackdrops } from "@/components/battle/slotfx/SlotBackdrop";
 import {
   SLOT_BAR_CHANCE_BACKDROPS,
   SlotBarChanceBackdrop,
+  SlotBarChanceBlackout,
   SlotBarChanceCommand,
   slotBarChanceClass,
 } from "@/components/battle/slotfx/SlotBarChance";
@@ -150,7 +151,8 @@ export default function BarChanceOverlay() {
         </div>
       )}
 
-      {state.phase === "failure" && <div className="bar-chance-failure-dim" />}
+      {state.phase === "failure" &&
+        (SLOT_DRESSING ? <SlotBarChanceBlackout /> : <div className="bar-chance-failure-dim" />)}
       {state.phase === "distortion" && <div className="bar-chance-distortion" />}
     </div>
   );

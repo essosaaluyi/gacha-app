@@ -143,12 +143,11 @@
   40% { opacity: 0; scale: 0.5; rotate: 45deg; }
 }
 
-/* The kanji stand taller than a capital, so the call laps over the foot of
-   the plate. */
+/* "AIM!!", set close under the plate so the two read as one call. */
 .callGlyphs {
   position: relative;
-  margin-top: 0.3em;
-  font-size: 13.5cqh;
+  margin-top: 0.22em;
+  font-size: 15cqh;
   transform: skewX(-9deg);
   animation: aimWordsIn 300ms cubic-bezier(0.2, 0.9, 0.3, 1) 140ms both;
 }
@@ -169,13 +168,25 @@
 
 /* ---- The band along the foot of the screen ------------------------------ */
 
+/* The band lies back into the screen, as the Fatal Mode band does: turned
+   about its upright so the right end is far and the left end is near, then
+   tilted so the far end climbs. What it carries runs from far to near. The
+   origin sits under the middle of the screen; the band reaches further to the
+   right, where the turn foreshortens it. */
+.bandSpace {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
 .band {
   position: absolute;
-  left: -6%;
-  right: -6%;
-  bottom: 3.5cqh;
-  height: 14cqh;
-  rotate: -2.5deg;
+  left: -30%;
+  right: -80%;
+  bottom: 5cqh;
+  height: 13.5cqh;
+  transform-origin: 38.1% 50%;
+  transform: perspective(90cqw) rotate(-3.5deg) rotateY(38deg);
   overflow: hidden;
   background: linear-gradient(180deg, color-mix(in srgb, var(--bar-core) 55%, #fff) 0%, var(--bar-core) 20%, var(--bar-deep) 64%, #03050a 100%);
   box-shadow:
@@ -189,8 +200,16 @@
 }
 
 @keyframes aimBandIn {
-  from { translate: 100% 0; }
-  to { translate: 0 0; }
+  from { translate: 60% 0; opacity: 0; }
+  to { translate: 0 0; opacity: 1; }
+}
+
+/* The far end sinks into the dark, so the band reads as coming out of it. */
+.band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 40%, rgba(0, 3, 12, 0.5) 68%, rgba(0, 3, 12, 0.88) 100%);
 }
 
 /* Two copies of the same run, moved by exactly one of them: a seamless loop. */
@@ -198,7 +217,7 @@
   display: flex;
   width: max-content;
   height: 100%;
-  animation: aimBandRun 3200ms linear infinite;
+  animation: aimBandRun 5600ms linear infinite;
 }
 
 @keyframes aimBandRun {
@@ -254,6 +273,21 @@
 @keyframes aimHit {
   0% { opacity: 0.9; }
   100% { opacity: 0; }
+}
+
+/* ---- The line is not made: lights out ----------------------------------- */
+
+.blackout {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  background: radial-gradient(ellipse at 50% 42%, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0.96) 70%);
+  animation: aimBlackout 380ms ease-out both;
+}
+
+@keyframes aimBlackout {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -31,6 +31,7 @@ import {
 import { STAGE, UI } from "@/lib/battle-pixi/config";
 import { PresentationContext } from "@/lib/battle-pixi/presentation/presentationContext";
 import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
+import { arrangeBarChanceCards } from "@/lib/battle-pixi/core/barChanceReveal";
 import { rollDrawTell } from "@/lib/battle-pixi/presentation/drawTell";
 import { recordDrawOutcome } from "@/lib/battle-pixi/state/drawCostStore";
 import {
@@ -3841,6 +3842,23 @@ export default function BattlePixiStage({
         if (getChanceWaitRemaining() > 0) return;
 
         setCardPhase("flipping", `place-card-${cardIndex + 1}`);
+
+        // BAR CHANCE shows its result by the order the cards are turned (see
+        // barChanceReveal.ts), so the miss is placed now, before anything
+        // below reads this card. Written into the same array: the pending
+        // hand and the Fatal plan hold this result and must see the same hand.
+        if (currentBattleResult.barChance) {
+          const arranged = arrangeBarChanceCards(
+            currentBattleResult.barChance.outcome,
+            currentBattleResult.cards,
+            revealed,
+            cardIndex
+          );
+          if (arranged.some((symbol, index) => symbol !== currentBattleResult.cards[index])) {
+            currentBattleResult.cards.splice(0, arranged.length, ...arranged);
+            if (cabinetMode && getPendingBattleHand()) persistPendingHand();
+          }
+        }
 
         // All placement cues fire on the click-to-flip so they attribute to the
         // card the player just flipped (firing at settle-time made them land on

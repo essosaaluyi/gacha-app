@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import atlas from "./slotGlyphAtlas.json";
 import steelAtlas from "./slotGlyphAtlasSteel.json";
-import steelJpAtlas from "./slotGlyphAtlasSteelJp.json";
+import steelHeavyAtlas from "./slotGlyphAtlasSteelHeavy.json";
 import styles from "./SlotFx.module.css";
 import type { SlotTone } from "./slotFxStore";
 
@@ -15,8 +15,9 @@ import type { SlotTone } from "./slotFxStore";
 // be set, and a count-up only changes which cells show.
 //
 // A second sheet, "silver", is upright Roman capitals in polished steel with a
-// shallow depth: lettering for moments that must promise nothing. Letters only,
-// plus the Japanese characters of the calls in use (を狙え！).
+// shallow depth: lettering for moments that must promise nothing. Letters only.
+// "silverHeavy" is the same steel in a heavy block face, for short calls
+// ("AIM!!"): capitals, and the Japanese characters of the calls drawn so far.
 
 type GlyphSet = {
   cols: number;
@@ -33,13 +34,14 @@ type GlyphSet = {
 type GlyphStyle = "gold" | "blood" | "violet" | "rainbow" | "silver";
 
 /** The layer's colour families, and the cold steel that belongs to none of them. */
-export type SlotGlyphTone = SlotTone | "silver";
+export type SlotGlyphTone = SlotTone | "silver" | "silverHeavy";
 
 const BASE = "/images/battle-assets/slotfx/";
 const SETS = Object.values(atlas.sets) as unknown as GlyphSet[];
-// Roman capitals, and the few Japanese characters drawn so far (a heavier face).
-const STEEL_SETS = [...Object.values(steelAtlas.sets), ...Object.values(steelJpAtlas.sets)] as unknown as GlyphSet[];
-const setsFor = (tone: SlotGlyphTone) => (tone === "silver" ? STEEL_SETS : SETS);
+const STEEL_SETS = Object.values(steelAtlas.sets) as unknown as GlyphSet[];
+const HEAVY_SETS = Object.values(steelHeavyAtlas.sets) as unknown as GlyphSet[];
+const isSteel = (tone: SlotGlyphTone) => tone === "silver" || tone === "silverHeavy";
+const setsFor = (tone: SlotGlyphTone) => (tone === "silver" ? STEEL_SETS : tone === "silverHeavy" ? HEAVY_SETS : SETS);
 
 /** The layer's colour families, mapped onto the four rendered faces. */
 const TONE_STYLE: Record<SlotTone, GlyphStyle> = {
@@ -87,11 +89,11 @@ export default function SlotGlyphs({
   /** When the band of light sets off across the word, in ms. */
   shineDelay?: number;
 }) {
-  const style = tone === "silver" ? "silver" : TONE_STYLE[tone];
+  const style = isSteel(tone) ? "silver" : TONE_STYLE[tone as SlotTone];
   const sets = setsFor(tone);
 
   return (
-    <span className={`${styles.glyphs} ${className}`} data-tone={tone}>
+    <span className={`${styles.glyphs} ${className}`} data-tone={isSteel(tone) ? "silver" : tone}>
       {Array.from(text.toUpperCase()).map((char, index) => {
         if (char === " ") return <span key={index} className={styles.glyphGap} />;
         const set = sets.find((candidate) => candidate.glyphs[char]);

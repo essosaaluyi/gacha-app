@@ -131,6 +131,7 @@ export default function SlotFxPreview() {
             <button key={bar.tone} type="button" className={frame.playButton} data-tier={bar.tier} onClick={() => playBarChance(bar.tone)}>{bar.label}</button>
           ))}
           <button type="button" className={frame.playButton} data-tier="gold" onClick={() => revealBarChanceSymbol("Bar")}>BAR が1枚止まる</button>
+          <button type="button" className={frame.playButton} onClick={() => revealBarChanceSymbol("Empty")}>外れ（暗転）</button>
           <button type="button" className={frame.playButton} onClick={clearBarChance}>消す</button>
         </div>
       </section>
