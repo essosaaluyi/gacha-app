@@ -7,6 +7,8 @@ import {
   hideRoundInsert,
   subscribeRoundInsert,
 } from "@/lib/battle-pixi/state/roundInsertStore";
+import SlotRoundTitle from "@/components/battle/slotfx/SlotRoundTitle";
+import { SLOT_FX } from "@/components/battle/slotfx/slotFxStore";
 
 export default function RoundInsert() {
   const [state, setState] = useState(getRoundInsertState());
@@ -51,11 +53,16 @@ export default function RoundInsert() {
           </>
         )}
 
-        <div className="round-insert-title-wrap" data-text={state.roundText}>
-          <div className="round-insert-text" data-text={state.roundText}>
-            {state.roundText}
+        {/* Provisional slot-style title; the original stays behind the flag. */}
+        {SLOT_FX.enabled && SLOT_FX.roundTitle ? (
+          <SlotRoundTitle roundText={state.roundText} enemyName={state.enemyName} />
+        ) : (
+          <div className="round-insert-title-wrap" data-text={state.roundText}>
+            <div className="round-insert-text" data-text={state.roundText}>
+              {state.roundText}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

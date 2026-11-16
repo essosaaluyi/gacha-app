@@ -1,0 +1,358 @@
+/* PROVISIONAL — pachislot-style presentation layer. See slotFxStore.ts. */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 9998;
+  overflow: hidden;
+  pointer-events: none;
+  container-type: size;
+}
+
+/* ---- Lettering --------------------------------------------------------- */
+
+.text {
+  position: relative;
+  display: inline-block;
+  font-family: Impact, "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  --slot-a: #fff7c2;
+  --slot-b: #ffb300;
+  --slot-c: #ff3b00;
+  --slot-d: #7a0b00;
+  --slot-edge: #fff3d0;
+  --slot-rim: #2a0500;
+  --slot-glow: rgba(255, 90, 0, 0.9);
+}
+
+.text[data-tone="gold"] {
+  --slot-a: #fffbe0; --slot-b: #ffe14a; --slot-c: #f0a000; --slot-d: #7a4a00;
+  --slot-edge: #ffffff; --slot-rim: #3a1e00; --slot-glow: rgba(255, 200, 40, 0.9);
+}
+.text[data-tone="ice"] {
+  --slot-a: #ffffff; --slot-b: #8fe9ff; --slot-c: #1a7dff; --slot-d: #06206e;
+  --slot-edge: #eaffff; --slot-rim: #020a2e; --slot-glow: rgba(40, 170, 255, 0.95);
+}
+.text[data-tone="violet"] {
+  --slot-a: #ffffff; --slot-b: #e9a8ff; --slot-c: #9a2cff; --slot-d: #2e0a66;
+  --slot-edge: #fbeaff; --slot-rim: #16022e; --slot-glow: rgba(180, 70, 255, 0.95);
+}
+
+.textRim,
+.textEdge,
+.textShine {
+  position: absolute;
+  inset: 0;
+}
+
+/* Room for the slant on every layer: a clipped-to-text fill only paints inside
+   its own box, so without this the last glyph loses its leaning edge. */
+.textRim,
+.textEdge,
+.textShine,
+.textFill {
+  padding: 0 0.16em 0 0.06em;
+}
+
+.textRim {
+  color: var(--slot-rim);
+  -webkit-text-stroke: 0.2em var(--slot-rim);
+  transform: translate(0.035em, 0.05em);
+  filter: drop-shadow(0 0 0.14em var(--slot-glow)) drop-shadow(0 0 0.4em var(--slot-glow));
+}
+
+.textEdge {
+  color: var(--slot-edge);
+  -webkit-text-stroke: 0.085em var(--slot-edge);
+}
+
+.textFill {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  background: linear-gradient(
+    180deg,
+    var(--slot-a) 0%,
+    var(--slot-b) 34%,
+    var(--slot-c) 50%,
+    var(--slot-d) 54%,
+    var(--slot-c) 66%,
+    var(--slot-b) 88%,
+    var(--slot-a) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.text[data-tone="rainbow"] .textFill {
+  background: linear-gradient(
+    100deg,
+    #ff3b5c 0%, #ff9a1f 18%, #ffe93b 36%, #4dff7a 54%, #37c8ff 72%, #a45bff 88%, #ff4bd0 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.text[data-tone="rainbow"] {
+  --slot-edge: #ffffff; --slot-rim: #2b0030; --slot-glow: rgba(255, 80, 200, 0.9);
+}
+
+/* A band of light that crosses the lettering once it has landed. */
+.textShine {
+  color: transparent;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.95) 50%, transparent 58%);
+  background-size: 300% 100%;
+  background-position: 120% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: slotShine 900ms 340ms ease-out both;
+}
+
+@keyframes slotShine {
+  from { background-position: 120% 0; }
+  to { background-position: -20% 0; }
+}
+
+/* ---- Telop -------------------------------------------------------------- */
+
+.telop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  animation: slotFlash 520ms ease-out both;
+}
+
+@keyframes slotFlash {
+  0% { opacity: 0; }
+  8% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+
+/* Rays behind the lettering, in the telop's own colour. */
+.burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 190cqw;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--burst-a) 0deg 4deg, transparent 4deg 11deg, var(--burst-b) 11deg 13deg, transparent 13deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 9%, #000 22%, transparent 62%);
+  mask-image: radial-gradient(circle, transparent 9%, #000 22%, transparent 62%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: slotBurst var(--telop-ms) linear both;
+  --burst-a: rgba(255, 190, 60, 0.85);
+  --burst-b: rgba(255, 70, 20, 0.7);
+}
+.telop[data-tone="ice"] .burst { --burst-a: rgba(150, 235, 255, 0.9); --burst-b: rgba(40, 120, 255, 0.75); }
+.telop[data-tone="gold"] .burst { --burst-a: rgba(255, 245, 170, 0.9); --burst-b: rgba(255, 180, 20, 0.75); }
+.telop[data-tone="violet"] .burst { --burst-a: rgba(235, 170, 255, 0.9); --burst-b: rgba(140, 40, 255, 0.75); }
+.telop[data-tone="rainbow"] .burst {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 90, 120, 0.8) 0 5deg, transparent 5deg 10deg, rgba(255, 230, 80, 0.8) 10deg 15deg, transparent 15deg 20deg, rgba(90, 220, 255, 0.8) 20deg 25deg, transparent 25deg 30deg);
+}
+
+@keyframes slotBurst {
+  0% { opacity: 0; rotate: 0deg; scale: 0.4; }
+  10% { opacity: 1; scale: 1; }
+  80% { opacity: 0.9; }
+  100% { opacity: 0; rotate: 40deg; scale: 1.15; }
+}
+
+.ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30cqh;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 0.9cqh solid #fff;
+  box-shadow: 0 0 4cqh 1cqh var(--ring, rgba(255, 140, 40, 0.9)), inset 0 0 4cqh 1cqh var(--ring, rgba(255, 140, 40, 0.9));
+  opacity: 0;
+  animation: slotRing 640ms 60ms cubic-bezier(0.1, 0.7, 0.2, 1) both;
+}
+.telop[data-tone="ice"] .ring { --ring: rgba(60, 170, 255, 0.95); }
+.telop[data-tone="violet"] .ring { --ring: rgba(190, 80, 255, 0.95); }
+.telop[data-tone="rainbow"] .ring { --ring: rgba(255, 90, 210, 0.95); }
+
+@keyframes slotRing {
+  0% { opacity: 1; scale: 0.2; }
+  100% { opacity: 0; scale: 5.5; }
+}
+
+.words {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5cqw;
+  rotate: -7deg;
+  animation: slotSlam var(--telop-ms) both;
+}
+
+.telop[data-size="big"] .main { font-size: 44cqh; }
+.telop[data-size="big"] .tail { font-size: 17cqh; margin-bottom: 3cqh; rotate: 4deg; }
+.telop[data-size="big"] .lead { font-size: 11cqh; }
+
+.telop[data-size="small"] { place-items: start center; padding-top: 7cqh; }
+.telop[data-size="small"] .main { font-size: 17cqh; }
+.telop[data-size="small"] .tail { font-size: 8cqh; }
+.telop[data-size="small"] .lead { font-size: 6cqh; }
+.telop[data-size="small"] .burst { top: 17%; width: 90cqw; }
+.telop[data-size="small"] .ring { top: 17%; width: 14cqh; }
+
+/* Long words shrink to stay inside the screen. */
+.telop[data-long="true"][data-size="big"] .main { font-size: 21cqh; }
+
+.column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.lead {
+  margin: 0 0 -1cqh 2cqw;
+}
+
+/* Slams in oversized, settles with one overshoot, then is thrown at the viewer. */
+@keyframes slotSlam {
+  0% { opacity: 0; scale: 3.2; }
+  9% { opacity: 1; scale: 0.9; }
+  14% { scale: 1.08; translate: 0.8cqw -0.5cqh; }
+  19% { scale: 0.98; translate: -0.6cqw 0.4cqh; }
+  24% { scale: 1; translate: 0 0; }
+  84% { opacity: 1; scale: 1.03; }
+  100% { opacity: 0; scale: 1.7; }
+}
+
+/* ---- Card stop ---------------------------------------------------------- */
+
+.stop {
+  position: absolute;
+  inset: 0;
+}
+
+.stopFlash {
+  position: absolute;
+  inset: 0;
+  background: var(--stop-colour, #fff);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: slotStop 260ms ease-out both;
+}
+.stop[data-strong="true"] .stopFlash { animation-duration: 520ms; }
+
+@keyframes slotStop {
+  0% { opacity: var(--stop-peak, 0.4); }
+  100% { opacity: 0; }
+}
+
+/* A hard line of light that drops down the screen with the stop. */
+.stopLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3cqh;
+  top: 0;
+  background: linear-gradient(180deg, transparent, var(--stop-colour, #fff) 45%, #fff 50%, var(--stop-colour, #fff) 55%, transparent);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: slotStopLine 300ms cubic-bezier(0.3, 0, 0.7, 1) both;
+}
+
+@keyframes slotStopLine {
+  0% { opacity: 0.95; top: -3cqh; }
+  100% { opacity: 0; top: 100cqh; }
+}
+
+/* Third stop of a hand that means something: rays from the edges inward. */
+.stopRays {
+  position: absolute;
+  inset: -10%;
+  background: repeating-conic-gradient(from 3deg, var(--stop-colour, #fff) 0deg 1.2deg, transparent 1.2deg 7deg);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 34%, #000 78%);
+  mask-image: radial-gradient(ellipse at center, transparent 34%, #000 78%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: slotStopRays 620ms ease-out both;
+}
+
+@keyframes slotStopRays {
+  0% { opacity: 0.9; scale: 1.25; }
+  100% { opacity: 0; scale: 1; }
+}
+
+.stop[data-tone="fire"] { --stop-colour: #ff5a1f; --stop-peak: 0.55; }
+.stop[data-tone="gold"] { --stop-colour: #ffd23b; --stop-peak: 0.5; }
+.stop[data-tone="ice"] { --stop-colour: #49b6ff; --stop-peak: 0.5; }
+.stop[data-tone="violet"] { --stop-colour: #b45bff; --stop-peak: 0.5; }
+.stop[data-tone="rainbow"] { --stop-colour: #ff7ad9; --stop-peak: 0.55; }
+.stop[data-tone="plain"] { --stop-colour: #ffffff; --stop-peak: 0.16; }
+
+/* ---- Round title (inside the existing round intro) ----------------------- */
+
+.round {
+  position: absolute;
+  left: 3%;
+  top: 5%;
+  z-index: 3;
+  container-type: size;
+  width: 60%;
+  height: 46%;
+  pointer-events: none;
+}
+
+.roundInner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  rotate: -5deg;
+  transform-origin: left top;
+  animation: slotRoundIn 520ms cubic-bezier(0.2, 0.9, 0.2, 1.2) both;
+}
+
+.roundLabel { font-size: 22cqh; margin-left: 1cqw; z-index: 1; }
+.roundRow { display: flex; align-items: flex-end; gap: 3cqw; margin-top: 1cqh; }
+.roundNumber { font-size: 66cqh; }
+.roundExtra { font-size: 22cqh; margin-bottom: 8cqh; }
+
+.roundVersus {
+  margin: 1cqh 0 0 2cqw;
+  padding: 1.2cqh 3cqw 1.2cqh 2cqw;
+  font-family: Impact, "Arial Black", Arial, sans-serif;
+  font-style: italic;
+  font-size: 11cqh;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: linear-gradient(90deg, rgba(60, 0, 110, 0.95), rgba(140, 30, 255, 0.85) 60%, transparent);
+  border-left: 0.8cqh solid #ffe14a;
+  text-shadow: 0 0 1.5cqh rgba(210, 120, 255, 0.9);
+  animation: slotVersusIn 420ms 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.roundVersus b { color: #ffe14a; margin-right: 1.2cqw; }
+
+@keyframes slotRoundIn {
+  0% { opacity: 0; translate: -30cqw 0; scale: 1.4; }
+  100% { opacity: 1; translate: 0 0; scale: 1; }
+}
+@keyframes slotVersusIn {
+  0% { opacity: 0; translate: -12cqw 0; }
+  100% { opacity: 1; translate: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .words, .roundInner, .roundVersus { animation-duration: 1ms; }
+  .burst, .ring, .flash, .stopFlash, .stopLine, .stopRays, .textShine { animation: none; }
+}
