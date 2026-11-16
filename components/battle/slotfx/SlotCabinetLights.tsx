@@ -11,10 +11,10 @@ import css from "./SlotCabinetLights.module.css";
 
 // PROVISIONAL — see slotFxStore.ts.
 //
-// The cabinet's lamps: the frame round the screen lights in the colour of the
-// scene, the colour spills onto the cabinet, and for a held breath the whole
-// cabinet goes dim. On a real machine the side lamps and the reel lights do
-// this; here the frame of the screen stands in for them.
+// The cabinet's lamps: a spotlight at each corner of the screen throws a beam
+// in the colour of the scene, the colour spills onto the cabinet, and for a
+// held breath the whole cabinet goes dim. On a real machine the side lamps and
+// the reel lights do this.
 //
 // It decides nothing and sends nothing. It reads what the layer and the game
 // already show (the telop, the card stop, the judge, BAR CHANCE, Fatal Mode)
@@ -40,12 +40,13 @@ const LAMP = {
 } as const;
 
 type LampColour = keyof typeof LAMP;
+type Place = { stage: HTMLElement; x: number; y: number; w: number; h: number };
 
 /**
- * glow    lit and steady
- * breathe lit, slowly rising and falling
- * chase   lit, the lamps running round the frame
- * burst   a few hard flashes, then running fast
+ * glow    lit, the beams held still
+ * breathe lit, rising and falling, the beams drifting
+ * chase   lit, the beams sweeping
+ * burst   a few hard flashes, then sweeping fast
  * hush    lamps out, the cabinet dimmed: a held breath
  * dark    lamps out, the cabinet near black
  */
@@ -55,7 +56,7 @@ type Scene = {
   id: string;
   colour: LampColour;
   pattern: Pattern;
-  /** One step of the running lamps. */
+  /** How quick the beams sweep: smaller is faster. */
   runMs?: number;
   /** A standing mood rather than a moment: lit at part strength. */
   low?: boolean;
@@ -63,7 +64,19 @@ type Scene = {
 
 /** The frame of the screen stands this far outside the picture. */
 const FRAME = 9;
-const SIDES = ["top", "right", "bottom", "left"] as const;
+const CORNERS = ["tl", "tr", "bl", "br"] as const;
+
+/** Finds the cabinet a component inside the screen stands in, and the screen's place on it. */
+export function useCabinetPlace() {
+  const [place, setPlace] = useState<Place | null>(null);
+  const anchor = useCallback((node: HTMLSpanElement | null) => {
+    const screen = node?.closest<HTMLElement>(".battle-cabinet-screen");
+    const stage = screen?.closest<HTMLElement>(".battle-cabinet-stage");
+    if (!screen || !stage) return;
+    setPlace({ stage, x: screen.offsetLeft, y: screen.offsetTop, w: screen.offsetWidth, h: screen.offsetHeight });
+  }, []);
+  return { place, anchor };
+}
 
 type BarChance = ReturnType<typeof getBarChanceState>;
 
@@ -104,23 +117,14 @@ function useWatch<T>(subscribe: (listener: () => void) => () => void, read: () =
   return value;
 }
 
-type Place = { stage: HTMLElement; x: number; y: number; w: number; h: number };
 
 export default function SlotCabinetLights() {
-  const [place, setPlace] = useState<Place | null>(null);
+  const { place, anchor } = useCabinetPlace();
   const judge = useWatch(subscribeSlotJudge, getSlotJudge);
   const bar = useWatch(subscribeBarChance, getBarChanceState);
   const telop = useWatch(subscribeSlotFx, getSlotTelop);
   const stop = useWatch(subscribeSlotFx, getSlotStop);
   const fatal = useWatch(subscribeFatalMode, isFatalModeActive);
-
-  // Where the screen stands on the cabinet, in the cabinet's own pixels.
-  const anchor = useCallback((node: HTMLSpanElement | null) => {
-    const screen = node?.closest<HTMLElement>(".battle-cabinet-screen");
-    const stage = screen?.closest<HTMLElement>(".battle-cabinet-stage");
-    if (!screen || !stage) return;
-    setPlace({ stage, x: screen.offsetLeft, y: screen.offsetTop, w: screen.offsetWidth, h: screen.offsetHeight });
-  }, []);
 
   if (!SLOT_FX.enabled || !SLOT_FX.cabinet) return null;
 
@@ -169,7 +173,12 @@ export default function SlotCabinetLights() {
               >
                 <div className={css.pulse}>
                   <i className={css.ring} />
-                  {SIDES.map((side) => <i key={side} className={css.strip} data-side={side} />)}
+                  {CORNERS.map((corner) => (
+                    <span key={corner} className={css.spot} data-corner={corner}>
+                      <i className={css.beam} />
+                      <i className={css.lens} />
+                    </span>
+                  ))}
                 </div>
               </div>
             )}

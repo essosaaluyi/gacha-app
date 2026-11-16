@@ -1,0 +1,149 @@
+/* PROVISIONAL — what a card does to the table as it lands. See SlotCardImpact.tsx.
+   The layer lies over the cabinet stage; each impact is a point on it, where
+   the card came down. The table lies back in perspective, so everything that
+   spreads over it is drawn as a flattened ellipse. */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.impact {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* One beat of light on the card itself. */
+.flash {
+  position: absolute;
+  left: -150px;
+  top: -110px;
+  width: 300px;
+  height: 220px;
+  background: radial-gradient(ellipse, #fff 0%, color-mix(in srgb, var(--fx) 70%, transparent) 30%, transparent 68%);
+  animation: impFlash 320ms ease-out both;
+}
+@keyframes impFlash {
+  0% { opacity: 1; scale: 0.5; }
+  100% { opacity: 0; scale: 1.25; }
+}
+
+/* ---- Shockwave ----------------------------------------------------------- */
+
+.shock {
+  position: absolute;
+  left: -210px;
+  top: -84px;
+  width: 420px;
+  height: 168px;
+  border-radius: 50%;
+  border: 7px solid color-mix(in srgb, var(--fx) 55%, #fff);
+  box-shadow: 0 0 22px 4px var(--fx), inset 0 0 26px 2px color-mix(in srgb, var(--fx) 70%, transparent);
+  animation: impShock 560ms cubic-bezier(0.15, 0.7, 0.3, 1) both;
+}
+.shockLate {
+  border-width: 3px;
+  animation-duration: 760ms;
+  animation-delay: 110ms;
+}
+@keyframes impShock {
+  0% { opacity: 1; scale: 0.12; }
+  70% { opacity: 0.7; }
+  100% { opacity: 0; scale: 1.5; }
+}
+
+/* ---- Smoke --------------------------------------------------------------- */
+
+.smoke {
+  position: absolute;
+  left: -70px;
+  top: -52px;
+  width: 140px;
+  height: 104px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--fx) 46%, #dfe6f0) 0%, color-mix(in srgb, var(--fx) 22%, transparent) 46%, transparent 70%);
+  filter: blur(7px);
+  opacity: 0;
+  animation: impSmoke 900ms ease-out both;
+}
+.smoke[data-at="0"] { --dx: -150px; --dy: -8px; }
+.smoke[data-at="1"] { --dx: 150px; --dy: -4px; animation-delay: 30ms; }
+.smoke[data-at="2"] { --dx: -92px; --dy: -58px; animation-delay: 60ms; }
+.smoke[data-at="3"] { --dx: 96px; --dy: -64px; animation-delay: 20ms; }
+.smoke[data-at="4"] { --dx: -30px; --dy: 30px; animation-delay: 80ms; }
+.smoke[data-at="5"] { --dx: 40px; --dy: -96px; animation-delay: 50ms; }
+@keyframes impSmoke {
+  0% { opacity: 0.95; translate: 0 0; scale: 0.4; }
+  100% { opacity: 0; translate: var(--dx) var(--dy); scale: 1.9; }
+}
+
+/* ---- Wind ---------------------------------------------------------------- */
+
+/* Arcs of air whipping round the card: a ring with most of itself cut away. */
+.wind {
+  position: absolute;
+  left: -190px;
+  top: -76px;
+  width: 380px;
+  height: 152px;
+  border-radius: 50%;
+  border: 5px solid color-mix(in srgb, var(--fx) 45%, #fff);
+  -webkit-mask-image: conic-gradient(from var(--from, 0deg), #000 0deg, transparent 80deg, transparent 180deg, #000 190deg, transparent 250deg);
+  mask-image: conic-gradient(from var(--from, 0deg), #000 0deg, transparent 80deg, transparent 180deg, #000 190deg, transparent 250deg);
+  filter: drop-shadow(0 0 6px var(--fx));
+  opacity: 0;
+  animation: impWind 720ms ease-out both;
+}
+.wind[data-at="0"] { --from: 0deg; }
+.wind[data-at="1"] { --from: 120deg; scale: 0.72; animation-delay: 60ms; }
+.wind[data-at="2"] { --from: 240deg; scale: 1.22; animation-delay: 120ms; }
+@keyframes impWind {
+  0% { opacity: 0; rotate: 0deg; }
+  18% { opacity: 1; }
+  100% { opacity: 0; rotate: 300deg; }
+}
+
+/* ---- Lightning ----------------------------------------------------------- */
+
+/* Strikes down onto the card; the foot of the box is the point of landing. */
+.bolt {
+  position: absolute;
+  left: -70px;
+  top: -330px;
+  width: 140px;
+  height: 330px;
+  overflow: visible;
+  animation: impBolt 430ms steps(1) both;
+}
+.boltGlow,
+.boltCore {
+  fill: none;
+  stroke-linejoin: miter;
+  stroke-linecap: round;
+}
+.boltGlow {
+  stroke: var(--fx);
+  stroke-width: 12;
+  opacity: 0.75;
+  filter: blur(5px);
+}
+.boltCore {
+  stroke: #fff;
+  stroke-width: 3.4;
+}
+@keyframes impBolt {
+  0% { opacity: 1; }
+  22% { opacity: 0.25; }
+  36% { opacity: 1; translate: 5px 0; }
+  58% { opacity: 0.2; }
+  70% { opacity: 0.9; translate: -3px 0; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shock, .smoke, .wind, .bolt { display: none; }
+}

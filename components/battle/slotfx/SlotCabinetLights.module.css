@@ -94,45 +94,66 @@
     0 0 340px 130px color-mix(in srgb, var(--lamp) 30%, transparent);
 }
 
-/* The lamps themselves: a row of lit segments along each side of the frame. */
-.strip {
+/* The lamps themselves: a spotlight at each corner of the screen, its beam
+   thrown across the picture toward the far corner and swung to and fro. */
+.spot {
   position: absolute;
-  --seg: 34px;
-  filter: drop-shadow(0 0 5px var(--lamp)) drop-shadow(0 0 12px var(--lamp));
+  width: 0;
+  height: 0;
+  --sweep-ms: calc(var(--run-ms, 420ms) * 5);
 }
-.strip[data-side="top"],
-.strip[data-side="bottom"] {
+.spot[data-corner="tl"] { left: 0; top: 0; --aim: 26deg; --lag: 0; }
+.spot[data-corner="tr"] { left: 100%; top: 0; --aim: 154deg; --lag: -0.5; }
+.spot[data-corner="bl"] { left: 0; top: 100%; --aim: -26deg; --lag: -0.27; }
+.spot[data-corner="br"] { left: 100%; top: 100%; --aim: 206deg; --lag: -0.78; }
+
+/* A cone of light: narrow at the lamp, wide and faint where it ends. */
+.beam {
+  position: absolute;
   left: 0;
-  right: 0;
-  height: 8px;
-  background: linear-gradient(90deg, var(--lamp-core) 0 62%, transparent 62%) 0 0 / var(--seg) 100% repeat-x;
+  top: -150px;
+  width: 760px;
+  height: 300px;
+  transform-origin: 0 50%;
+  rotate: var(--aim);
+  clip-path: polygon(0 47%, 100% 4%, 100% 96%, 0 53%);
+  background:
+    linear-gradient(90deg, var(--lamp-core) 0%, color-mix(in srgb, var(--lamp) 62%, transparent) 14%, color-mix(in srgb, var(--lamp) 24%, transparent) 58%, transparent 100%);
+  filter: blur(5px);
+  opacity: 0.8;
 }
-.strip[data-side="left"],
-.strip[data-side="right"] {
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  background: linear-gradient(180deg, var(--lamp-core) 0 62%, transparent 62%) 0 0 / 100% var(--seg) repeat-y;
+/* The hot core down the middle of the cone. */
+.beam::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 49%, 100% 34%, 100% 66%, 0 51%);
+  background: linear-gradient(90deg, #fff 0%, color-mix(in srgb, var(--lamp-core) 55%, transparent) 30%, transparent 86%);
 }
-.strip[data-side="top"] { top: 0; }
-.strip[data-side="bottom"] { bottom: 0; }
-.strip[data-side="left"] { left: 0; }
-.strip[data-side="right"] { right: 0; }
 
-/* Running: clockwise round the frame, one segment at a time. */
-.scene[data-pattern="chase"] .strip[data-side="top"],
-.scene[data-pattern="burst"] .strip[data-side="top"] { animation: cabRunRight var(--run-ms, 420ms) linear infinite; }
-.scene[data-pattern="chase"] .strip[data-side="right"],
-.scene[data-pattern="burst"] .strip[data-side="right"] { animation: cabRunDown var(--run-ms, 420ms) linear infinite; }
-.scene[data-pattern="chase"] .strip[data-side="bottom"],
-.scene[data-pattern="burst"] .strip[data-side="bottom"] { animation: cabRunLeft var(--run-ms, 420ms) linear infinite; }
-.scene[data-pattern="chase"] .strip[data-side="left"],
-.scene[data-pattern="burst"] .strip[data-side="left"] { animation: cabRunUp var(--run-ms, 420ms) linear infinite; }
+.lens {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 20%, var(--lamp-core) 38%, color-mix(in srgb, var(--lamp) 60%, transparent) 60%, transparent 74%);
+  box-shadow: 0 0 26px 8px color-mix(in srgb, var(--lamp) 70%, transparent);
+}
 
-@keyframes cabRunRight { to { background-position: var(--seg) 0; } }
-@keyframes cabRunLeft { to { background-position: calc(var(--seg) * -1) 0; } }
-@keyframes cabRunDown { to { background-position: 0 var(--seg); } }
-@keyframes cabRunUp { to { background-position: 0 calc(var(--seg) * -1); } }
+.scene[data-pattern="breathe"] .beam,
+.scene[data-pattern="chase"] .beam,
+.scene[data-pattern="burst"] .beam {
+  animation: cabSweep var(--sweep-ms) ease-in-out infinite alternate;
+  animation-delay: calc(var(--sweep-ms) * 2 * var(--lag));
+}
+.scene[data-pattern="breathe"] .spot { --sweep-ms: 3200ms; }
+
+@keyframes cabSweep {
+  from { rotate: calc(var(--aim) - 17deg); }
+  to { rotate: calc(var(--aim) + 17deg); }
+}
 
 /* ---- A card stops -------------------------------------------------------- */
 
@@ -163,6 +184,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pulse,
-  .strip,
+  .beam,
   .scene[data-colour="rainbow"] { animation: none !important; }
 }
