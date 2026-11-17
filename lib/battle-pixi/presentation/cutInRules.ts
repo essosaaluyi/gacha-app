@@ -91,23 +91,9 @@ export function showSymbolCutIn(symbol: BattleCardSymbol) {
 }
 
 function getResultCutIn(result: BattleOutcome) {
-  if (result === "TripleChance") {
-    return {
-      title: "TRIPLE CHANCE",
-      subtitle: "High expectation",
-      tone: "rainbow" as const,
-      durationMs: 1300,
-    };
-  }
-
-  if (result === "DoubleChance") {
-    return {
-      title: "DOUBLE CHANCE",
-      subtitle: "Big route",
-      tone: "chance" as const,
-      durationMs: 1100,
-    };
-  }
+  // No words for a Double or Triple Chance either (owner, 2026-11-17): the
+  // second and third Chance already send their lightning over the whole
+  // table as they land (SlotCardImpact), and the text only covered the scene.
 
   if (result === "Bar") {
     return {

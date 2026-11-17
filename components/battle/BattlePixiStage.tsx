@@ -1433,8 +1433,9 @@ export default function BattlePixiStage({
       // Payoff game: the struggle is already on screen from the draw click.
       // This is the winner the third flip will name.
       let pendingStruggleWinner: "player" | "enemy" | null = null;
-      // This hand's Attack sits on its target and its roll (made at the draw)
-      // was won. Read only by the landing presentation; decides nothing.
+      // This hand's Attack sits on its target and its roll (made at the draw,
+      // in Fatal Mode or out of it) was won. Read only by the landing
+      // presentation, which shows it only some of the time; decides nothing.
       let handAttackWon = false;
       let pendingFakeoutDialogue: PendingFakeoutDialogue | null = null;
       let pendingTripleDefenseGrade: DefenseShieldGrade | null = null;
@@ -2071,6 +2072,7 @@ export default function BattlePixiStage({
           if (!fatalHit && (evaluation.attackOnTarget || evaluation.attackOffTarget)) {
             const attackResult = rollAttackAttempt(evaluation.attackCardRate);
             fatalHit = attackResult.success;
+            handAttackWon = attackResult.success && evaluation.attackOnTarget;
             logEvent({
               kind: "attackRoll",
               detail: {
@@ -3137,10 +3139,14 @@ export default function BattlePixiStage({
         electricity.blendMode = "add";
         layer.addChild(frameGlow, electricity);
 
-        const farLeft = getTableSurfacePoint(0.015, 0.025);
-        const farRight = getTableSurfacePoint(0.985, 0.025);
-        const nearLeftWidth = getTableSurfacePoint(0.015, 0.965);
-        const nearRightWidth = getTableSurfacePoint(0.985, 0.965);
+        // The far edge sits on the table's gold rim (stage y ≈ 89, measured
+        // against the artwork 2026-11-17). It used to start at v 0.025
+        // (y ≈ 71), which stood above the rim and over the bottom of the screen.
+        const RIM_V = 0.066;
+        const farLeft = getTableSurfacePoint(0.005, RIM_V);
+        const farRight = getTableSurfacePoint(0.995, RIM_V);
+        const nearLeftWidth = getTableSurfacePoint(0.005, 0.965);
+        const nearRightWidth = getTableSurfacePoint(0.995, 0.965);
         const visibleFrontY = getTableSurfacePoint(0.5, 0.76).y;
         // The Pixi surface extends below the rendered table so cards/effects
         // have bleed room. Its side X coordinates still match the gold frame,
