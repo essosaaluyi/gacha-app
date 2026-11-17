@@ -22,7 +22,7 @@ export const SLOT_FX = {
   barChance: true,
   /** The cabinet's lamps: the frame of the screen lit in the colour of the scene, dimmed for a held breath. */
   cabinet: true,
-  /** Lightning, wind, smoke or a shockwave on the table as each card is set down. */
+  /** A card set down: its slot's frame blinks and thin electricity crawls round it. */
   cardImpact: true,
 };
 

@@ -27,12 +27,17 @@
 .blink {
   animation: slotBlink 92ms steps(1) infinite;
 }
-.impact[data-quiet="true"] .blink {
-  opacity: 0.55;
+/* The quiet symbols: one slow swell of light, and gone. */
+.impact[data-slow="true"] .blink {
+  animation: slotSwell 1000ms ease-in-out 1 both;
 }
 @keyframes slotBlink {
   0% { opacity: 1; }
   50% { opacity: 0.06; }
+}
+@keyframes slotSwell {
+  0%, 100% { opacity: 0; }
+  45% { opacity: 1; }
 }
 
 .frameGlow {
@@ -60,6 +65,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .blink { animation: none; }
+  .blink, .impact[data-slow="true"] .blink { animation: none; }
   .arcGlow, .arcCore { display: none; }
 }

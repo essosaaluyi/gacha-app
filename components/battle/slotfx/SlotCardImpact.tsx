@@ -26,15 +26,15 @@ const JUMP_MS = 46;
 
 type Point = { x: number; y: number };
 
-/** Colour, how many arcs crawl at once, and for how long. No arcs: the frame only blinks. */
+/** Colour, how many arcs crawl at once, and for how long. No arcs: the frame
+ *  swells and fades once, slowly. A symbol not listed (Empty) shows nothing. */
 const IMPACT: Record<string, { colour: string; arcs: number; ms: number }> = {
   Attack: { colour: "#ff4a2a", arcs: 6, ms: 820 },
   Chance: { colour: "#ff6fd0", arcs: 8, ms: 1000 },
   Bar: { colour: "#ffd24a", arcs: 7, ms: 900 },
   Defense: { colour: "#4fb8ff", arcs: 4, ms: 620 },
-  Coin: { colour: "#ffc23a", arcs: 4, ms: 620 },
-  Reply: { colour: "#b77bff", arcs: 4, ms: 620 },
-  Empty: { colour: "#b9c4d6", arcs: 0, ms: 260 },
+  Coin: { colour: "#ffc23a", arcs: 0, ms: 1000 },
+  Reply: { colour: "#b77bff", arcs: 0, ms: 1000 },
 };
 
 type Impact = { key: number; symbol: string; corners: Point[]; arcs: string[] };
@@ -128,7 +128,8 @@ export default function SlotCardImpact() {
         x: (table.left + (quad[index] / STAGE_W) * table.width - cabinet.left) * scale,
         y: (table.top + (quad[index + 1] / STAGE_H) * table.height - cabinet.top) * scale,
       }));
-      const spec = IMPACT[symbol] ?? IMPACT.Empty;
+      const spec = IMPACT[symbol];
+      if (!spec) return;
       key += 1;
       const impact: Impact = { key, symbol, corners, arcs: crackle(grown(corners, 1.05), spec.arcs) };
       setImpacts((list) => [...list, impact]);
@@ -151,8 +152,8 @@ export default function SlotCardImpact() {
     if (!live) return;
     const timer = window.setInterval(() => {
       setImpacts((list) => list.map((impact) => {
-        const spec = IMPACT[impact.symbol] ?? IMPACT.Empty;
-        return spec.arcs > 0 ? { ...impact, arcs: crackle(grown(impact.corners, 1.05), spec.arcs) } : impact;
+        const spec = IMPACT[impact.symbol];
+        return spec && spec.arcs > 0 ? { ...impact, arcs: crackle(grown(impact.corners, 1.05), spec.arcs) } : impact;
       }));
     }, JUMP_MS);
     return () => window.clearInterval(timer);
@@ -170,11 +171,12 @@ export default function SlotCardImpact() {
           aria-hidden="true"
         >
           {impacts.map((impact) => {
-            const spec = IMPACT[impact.symbol] ?? IMPACT.Empty;
+            const spec = IMPACT[impact.symbol];
+            if (!spec) return null;
             const frame = grown(impact.corners, 1.07).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
             const arcs = impact.arcs.join("");
             return (
-              <g key={impact.key} className={css.impact} style={{ "--fx": spec.colour } as CSSProperties} data-quiet={spec.arcs === 0}>
+              <g key={impact.key} className={css.impact} style={{ "--fx": spec.colour } as CSSProperties} data-slow={spec.arcs === 0}>
                 <g className={css.blink}>
                   <polygon points={frame} className={css.frameGlow} />
                   <polygon points={frame} className={css.frameCore} />
