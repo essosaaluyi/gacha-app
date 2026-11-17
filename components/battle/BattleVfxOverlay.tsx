@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { shakeTable, stopTableShake } from "@/components/battle/tableShake";
 
 /** The Pixi stage's own coordinate space, from the generated layout config. */
 const STAGE_WIDTH = 1200;
@@ -52,8 +53,10 @@ type TellDetail = { rung?: Rung };
 type LandedDetail = {
   symbol?: string;
   onTarget?: boolean;
-  stage?: { x: number; y: number };
 };
+
+/** How hard the table jolts when each card lands; a card not here does not move it. */
+const LANDING_JOLT = { chance: 1, attack: 0.85 } as const;
 
 type Fx = {
   armDraw: (
@@ -69,11 +72,6 @@ type Fx = {
       | { x: number; y: number }
       | Array<{ x: number; y: number; delay?: number; duration?: number }>,
     duration?: number
-  ) => void;
-  cardLanded: (
-    target: HTMLElement | { x: number; y: number },
-    symbol: string,
-    options?: { burst?: boolean; wave?: boolean }
   ) => void;
   clear: () => void;
   dispose: () => void;
@@ -101,9 +99,10 @@ type Fx = {
  * scaled back up, which is exactly how you get soft, aliased sparks. It sits
  * outside and works in viewport pixels.
  *
- * **The shake still belongs to the machine.** The canvas covers the window, but
- * the thing that jolts on a landing is the cabinet, so the shake target is the
- * stage element while the coordinates stay in viewport space.
+ * **The jolt belongs to the table.** A hard landing shakes the card table
+ * itself (tableShake.ts), not this canvas and not the cabinet round it. DeckFx
+ * is still handed the stage as its shake target, but the battle no longer asks
+ * it to shake.
  */
 export default function BattleVfxOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -191,28 +190,24 @@ export default function BattleVfxOverlay() {
       });
     };
 
+    // A landing jolts the table, nothing more (owner, 2026-11-17): DeckFx's
+    // sparks read as a splash on the card and its round wave is not wanted
+    // (the stage's own wave keeps the shape of the card's frame), and its
+    // shake moved the whole cabinet, which read as the camera, not the table.
+    // Only a Chance, or an Attack that lands on its target: an attack that
+    // misses is not a hit, and the same jolt would say it was.
     const onLanded = (event: Event) => {
-      if (!fx || !(event instanceof CustomEvent)) return;
+      if (!(event instanceof CustomEvent)) return;
       const detail = (event.detail ?? {}) as LandedDetail;
-      if (!detail.stage) return;
-
-      // The wave is the chance card's alone. An attack only earns one when it
-      // actually lands on its target — an attack that misses is not a hit, and
-      // giving it the same punctuation would say it was.
-      const symbol =
+      const jolt =
         detail.symbol === "Chance"
-          ? "chance"
+          ? LANDING_JOLT.chance
           : detail.symbol === "Attack" && detail.onTarget
-            ? "attack"
-            : null;
-      if (!symbol) return;
-
-      // The jolt only (owner, 2026-11-17): the sparks read as a splash on the
-      // card, and a round wave is not wanted; the stage's own wave
-      // (runChanceImpactWave) keeps the shape of the card's frame.
-      const point = fromStage(detail.stage.x, detail.stage.y);
-      if (point) fx.cardLanded(point, symbol, { burst: false, wave: false });
+            ? LANDING_JOLT.attack
+            : 0;
+      if (jolt > 0) shakeTable(jolt);
     };
+    window.addEventListener("battle:vfx-card-landed", onLanded);
 
     (async () => {
       try {
@@ -240,7 +235,6 @@ export default function BattleVfxOverlay() {
         fxRef.current = instance;
         window.addEventListener("battle:cabinet-pile", onPile);
         window.addEventListener("battle:vfx-tell", onTell);
-        window.addEventListener("battle:vfx-card-landed", onLanded);
       } catch {
         // Effects are decoration. A stage that cannot build one still deals.
       }
@@ -251,6 +245,7 @@ export default function BattleVfxOverlay() {
       window.removeEventListener("battle:cabinet-pile", onPile);
       window.removeEventListener("battle:vfx-tell", onTell);
       window.removeEventListener("battle:vfx-card-landed", onLanded);
+      stopTableShake();
       probeRef.current?.remove();
       probeRef.current = null;
       fxRef.current = null;

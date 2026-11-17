@@ -603,20 +603,50 @@ function getPerspectiveEllipsePoints(
   return points;
 }
 
+/** A card's width over its height, for corners that are round on the card rather than in u, v. */
+const CARD_FRAME_ASPECT = 0.72;
+/** A wave's corner radius as a share of its frame's width. */
+const CARD_FRAME_CORNER = 0.16;
+
 /**
- * The card's own outline grown about its middle, in the table's perspective:
- * the rectangle u, v ∈ 0.5 ± scale / 2 of the card, so its sides run along the
+ * The card's own outline grown about its middle, in the table's perspective,
+ * with round corners (owner, 2026-11-17: square ones were too sharp): the
+ * rectangle u, v ∈ 0.5 ± scale / 2 of the card, so its sides run along the
  * table's lines to the same vanishing point. What a wave that keeps the shape
- * of the card's frame is drawn on. Corners far, far, near, near.
+ * of the card's frame is drawn on.
+ *
+ * In two halves, both starting and ending level with the card's middle: `far`
+ * runs up the left side, over the far edge and down the right; `near` runs
+ * on round the near edge back to the start. `loop` is the whole outline.
  */
-function getPerspectiveFramePoints(quad: Quad, scale: number, centerV = 0.5) {
+function getPerspectiveRoundedFrame(quad: Quad, scale: number, centerV = 0.5) {
   const half = scale * 0.5;
-  return [
-    getPerspectiveQuadPoint(quad, 0.5 - half, centerV - half),
-    getPerspectiveQuadPoint(quad, 0.5 + half, centerV - half),
-    getPerspectiveQuadPoint(quad, 0.5 + half, centerV + half),
-    getPerspectiveQuadPoint(quad, 0.5 - half, centerV + half),
+  const left = 0.5 - half;
+  const right = 0.5 + half;
+  const far = centerV - half;
+  const near = centerV + half;
+  const ru = CARD_FRAME_CORNER * scale;
+  const rv = ru * CARD_FRAME_ASPECT;
+  const steps = 6;
+  // One corner, as a quarter turn from `from` radians, v growing towards the near edge.
+  const corner = (cu: number, cv: number, from: number) =>
+    Array.from({ length: steps + 1 }, (_, index) => {
+      const angle = from + (index / steps) * (Math.PI / 2);
+      return getPerspectiveQuadPoint(quad, cu + Math.cos(angle) * ru, cv + Math.sin(angle) * rv);
+    });
+  const farHalf = [
+    getPerspectiveQuadPoint(quad, left, centerV),
+    ...corner(left + ru, far + rv, Math.PI),
+    ...corner(right - ru, far + rv, Math.PI * 1.5),
+    getPerspectiveQuadPoint(quad, right, centerV),
   ];
+  const nearHalf = [
+    getPerspectiveQuadPoint(quad, right, centerV),
+    ...corner(right - ru, near - rv, 0),
+    ...corner(left + ru, near - rv, Math.PI / 2),
+    getPerspectiveQuadPoint(quad, left, centerV),
+  ];
+  return { far: farHalf, near: nearHalf, loop: [...farHalf, ...nearHalf.slice(1, -1)] };
 }
 
 const flatPoints = (points: { x: number; y: number }[]) =>
@@ -2475,35 +2505,30 @@ export default function BattlePixiStage({
               // From the card's frame out to about twice its size.
               const scale = 1.02 + eased * (ring === 0 ? 1.05 : 0.8);
               const fade = 1 - progress;
-              const [farLeft, farRight, nearRight, nearLeft] =
-                getPerspectiveFramePoints(cardQuad, scale);
-              const half = scale * 0.5;
-              const midLeft = getPerspectiveQuadPoint(cardQuad, 0.5 - half, 0.5);
-              const midRight = getPerspectiveQuadPoint(cardQuad, 0.5 + half, 0.5);
-              const farSide = flatPoints([midLeft, farLeft, farRight, midRight]);
-              const nearSide = flatPoints([midRight, nearRight, nearLeft, midLeft]);
+              const frame = getPerspectiveRoundedFrame(cardQuad, scale);
 
+              // See-through rather than solid white (owner, 2026-11-17).
               wave.clear();
               const strength = ring === 0 ? 1 : 0.6;
-              wave
-                .poly(flatPoints([farLeft, farRight, nearRight, nearLeft]), true)
-                .stroke({
-                  width: Math.max(2, 13 * fade),
-                  color: 0xffffff,
-                  alpha: fade * strength * 0.48,
-                  join: "miter",
-                });
-              wave.poly(farSide, false).stroke({
+              wave.poly(flatPoints(frame.loop), true).stroke({
+                width: Math.max(2, 13 * fade),
+                color: 0xffffff,
+                alpha: fade * strength * 0.22,
+                join: "round",
+              });
+              wave.poly(flatPoints(frame.far), false).stroke({
                 width: Math.max(1, 4 * fade),
                 color: 0xe9fbff,
-                alpha: fade * strength * 0.86,
-                join: "miter",
+                alpha: fade * strength * 0.38,
+                join: "round",
+                cap: "round",
               });
-              wave.poly(nearSide, false).stroke({
+              wave.poly(flatPoints(frame.near), false).stroke({
                 width: Math.max(1.5, 7 * fade),
                 color: 0xffffff,
-                alpha: fade * strength,
-                join: "miter",
+                alpha: fade * strength * 0.5,
+                join: "round",
+                cap: "round",
               });
 
               if (progress >= 1 || !alive()) {
@@ -3288,32 +3313,33 @@ export default function BattlePixiStage({
               const eased = 1 - Math.pow(1 - progress, 2);
               const fade = 1 - progress;
               // The card's frame, spreading out (owner, 2026-11-17: no round
-              // waves). Kept nearer the card than the old ovals were: a frame
-              // grown as wide as they went would run off the top of the table.
-              const frame = getPerspectiveFramePoints(
+              // waves; round corners, see-through). Kept nearer the card than
+              // the old ovals were: a frame grown as wide as they went would
+              // run off the top of the table.
+              const frame = getPerspectiveRoundedFrame(
                 cardQuad,
                 1.02 + eased * (success ? 1.1 : 0.75) * strength
               );
 
               wave.clear();
-              wave.poly(flatPoints(frame), true).stroke({
+              wave.poly(flatPoints(frame.loop), true).stroke({
                 width: Math.max(2, (success ? 12 : 8) * fade),
                 color: echoIndex === 0 ? 0xfff4ce : 0xffc84a,
-                alpha: fade * (echoIndex === 0 ? 0.95 : 0.58),
-                join: "miter",
+                alpha: fade * (echoIndex === 0 ? 0.5 : 0.32),
+                join: "round",
               });
 
               if (echoIndex === 0 && progress < 0.5) {
                 const flash = 1 - progress / 0.5;
-                const tableRipple = getPerspectiveFramePoints(
+                const tableRipple = getPerspectiveRoundedFrame(
                   cardQuad,
                   1.1 + eased * (success ? 2.6 : 1.7)
                 );
-                wave.poly(flatPoints(tableRipple), true).stroke({
+                wave.poly(flatPoints(tableRipple.loop), true).stroke({
                   width: success ? 5 : 3,
                   color: 0xffdf80,
-                  alpha: flash * (success ? 0.72 : 0.28),
-                  join: "miter",
+                  alpha: flash * (success ? 0.4 : 0.16),
+                  join: "round",
                 });
               }
 

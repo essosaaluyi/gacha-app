@@ -157,23 +157,22 @@
 
 /* ---- A card stops -------------------------------------------------------- */
 
-/* One beat of light on the frame, larger for the stop that matters. */
+/* One beat of light on the frame, larger for the stop that matters. It stays
+   on the frame: the wide glow it once threw tinted the table and the whole
+   cabinet in the card's colour (owner, 2026-11-17: no colour flash). */
 .blip {
   position: absolute;
   border-radius: 4px;
   box-shadow:
     0 0 0 3px var(--lamp),
-    0 0 22px 6px color-mix(in srgb, var(--lamp) 80%, transparent),
-    0 0 90px 26px color-mix(in srgb, var(--lamp) 34%, transparent);
+    0 0 18px 4px color-mix(in srgb, var(--lamp) 70%, transparent);
   opacity: 0;
   animation: cabBlip 380ms ease-out both;
 }
 .blip[data-strong="true"] {
   box-shadow:
     0 0 0 5px color-mix(in srgb, var(--lamp) 55%, #fff),
-    0 0 40px 12px var(--lamp),
-    0 0 160px 60px color-mix(in srgb, var(--lamp) 50%, transparent),
-    0 0 360px 140px color-mix(in srgb, var(--lamp) 22%, transparent);
+    0 0 26px 6px color-mix(in srgb, var(--lamp) 80%, transparent);
   animation-duration: 640ms;
 }
 

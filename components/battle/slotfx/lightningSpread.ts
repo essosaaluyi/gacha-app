@@ -7,10 +7,10 @@
 // that, so every bolt is a filled shape whose two sides follow its width.
 //
 // Two things are drawn with it: the short runs round a card as it lands, and
-// the spread that leaves a card and runs out over the whole table, past its
-// frame. A spread's bolts are struck from the card's edge towards a point
-// beyond the table's edge: each grows out from the card, then lets go of it
-// and runs off its far end, with a fork or two that follow it. Where a bolt
+// the spread that leaves a card and runs out over the table. A spread's bolts
+// are struck from the card's edge towards a point part of the way to the
+// table's edge: each grows out from the card, then lets go of it and runs off
+// its far end, with a fork or two that follow it. Where a bolt
 // goes, its rough shape and where it is thick, are fixed when it is struck,
 // so it reads as one bolt; the fine crackle on it is thrown afresh every frame.
 //
@@ -177,7 +177,7 @@ export function addBolt(out: Strokes, points: Knot[], width: number, options: { 
     return { x: p.x, y: p.y, w: p.w * width * flicker * Math.max(0.08, ease), t: Math.max(0.2, ease) };
   });
   const edge = 1.5 + width * 0.6;
-  out.halo += ribbon(shaped, 4 + width * 1.4);
+  out.halo += ribbon(shaped, 2 + width * 0.7);
   out.edge += ribbon(shaped, edge);
   out.inner += ribbon(shaped, edge * 0.3);
   out.core += ribbon(shaped, 0);
@@ -194,6 +194,9 @@ function toEdge(p: Point, dx: number, dy: number, box: Box) {
 /**
  * Strike a spread: `count` bolts all round the card, and a second, smaller
  * strike a moment later, so the table keeps running with it.
+ *
+ * Out over the table but not across all of it (owner, 2026-11-17: it spread
+ * too far): each bolt stops well short of the table's edge.
  */
 export function planSpread(corners: Point[], table: Box, inks: number, count: number): Spread {
   const xs = corners.map((p) => p.x);
@@ -204,15 +207,15 @@ export function planSpread(corners: Point[], table: Box, inks: number, count: nu
 
   const bolts: Bolt[] = [];
   for (let strike = 0; strike < 2; strike += 1) {
-    const many = strike === 0 ? count : Math.round(count * 0.6);
+    const many = strike === 0 ? count : Math.max(1, Math.round(count * 0.35));
     const turn = Math.random() * Math.PI * 2;
     for (let index = 0; index < many; index += 1) {
       const angle = turn + (index / many) * Math.PI * 2 + between(-0.25, 0.25);
       const dx = Math.cos(angle);
       const dy = Math.sin(angle);
       const from = { x: centre.x + dx * halfW * 1.04, y: centre.y + dy * halfH * 1.04, w: 1 };
-      // Past the table's edge, and never shorter than a couple of cards.
-      const reach = Math.max(toEdge(centre, dx, dy, table) * between(1.1, 1.4), Math.hypot(halfW, halfH) * 1.8);
+      // Part of the way to the table's edge, and never shorter than about a card.
+      const reach = Math.max(toEdge(centre, dx, dy, table) * between(0.5, 0.8), Math.hypot(halfW, halfH) * 1.4);
       const to = { x: centre.x + dx * reach, y: centre.y + dy * reach, w: 1 };
       const line = thicken(jag(from, to, 0.15, 4), 0.45);
       const length = Math.hypot(to.x - from.x, to.y - from.y);
@@ -243,7 +246,7 @@ export function drawSpread(spread: Spread, elapsed: number, inks: number): { str
     if (tail >= head) continue;
     alight += 1 - tail;
     const out = strokes[bolt.ink];
-    addBolt(out, crackle(cut(bolt.line, tail, head)), TRUNK, { hairs: 4, rooted: tail === 0 });
+    addBolt(out, crackle(cut(bolt.line, tail, head)), TRUNK, { hairs: 2, rooted: tail === 0 });
     // A fork grows as the bolt's front passes it and goes when its back does.
     for (const fork of bolt.forks) {
       const forkHead = clamp01(((head - fork.at) / (1 - fork.at)) * 1.6);

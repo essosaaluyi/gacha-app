@@ -18,7 +18,6 @@ import styles from "./SlotFx.module.css";
 import {
   SLOT_FX,
   clearSlotTelop,
-  getSlotStop,
   getSlotTelop,
   landingTier,
   showSlotAward,
@@ -142,7 +141,6 @@ function useCountUp(telop: SlotTelop | null) {
 
 export default function SlotFxLayer({ live = true }: { live?: boolean }) {
   const telop = useSyncExternalStore(subscribeSlotFx, getSlotTelop, () => null);
-  const stop = useSyncExternalStore(subscribeSlotFx, getSlotStop, () => null);
   const counted = useCountUp(telop);
   useBattleSignals(live);
 
@@ -184,13 +182,7 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
 
   return (
     <div className={styles.layer} aria-hidden="true">
-      {/* Over the whole screen only for the biggest landings; a lesser one blips the cabinet's frame. */}
-      {stop?.strong && (
-        <div key={`stop-${stop.key}`} className={styles.stop} data-tone={stop.tone}>
-          <div className={styles.stopFlash} />
-          <div className={styles.stopRays} />
-        </div>
-      )}
+      {/* A landing does not flash the screen (owner, 2026-11-17); the cabinet's frame answers it. */}
       {telop && (
         <div
           key={`telop-${telop.key}`}

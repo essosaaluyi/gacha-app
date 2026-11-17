@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { getBarChanceState } from "@/lib/battle-pixi/state/barChanceStore";
+import { tableShakeOffset } from "@/components/battle/tableShake";
 import { addBolt, drawSpread, noStrokes, planSpread, type Box, type Knot, type Point, type Spread, type Strokes } from "./lightningSpread";
 import { useCabinetPlace } from "./SlotCabinetLights";
 import { SLOT_FX, landingTier } from "./slotFxStore";
@@ -17,7 +18,7 @@ import css from "./SlotCardImpact.module.css";
 //
 // The rare ones go further. A Chance on the target, or the second or third
 // Chance of a hand, turns the card's colours inside out for an instant and
-// sends its electricity out over the whole table and past its frame. An
+// sends its electricity out over the table round it. An
 // Attack on the target whose roll was won does the same, most of the time,
 // in red and black.
 //
@@ -51,18 +52,16 @@ const IMPACT: Record<string, Spec> = {
 type Ink = { glow: string; core: string; dark?: boolean };
 type SpreadName = "chance" | "blood";
 const SPREADS: Record<SpreadName, { inks: Ink[]; bolts: number; flip: boolean }> = {
-  chance: { inks: [{ glow: "#ff2fbf", core: "#ffffff" }, { glow: "#8a3cff", core: "#ffffff" }], bolts: 9, flip: true },
-  blood: { inks: [{ glow: "#ff1a0a", core: "#fff2ec" }, { glow: "#e0100a", core: "#070002", dark: true }], bolts: 8, flip: false },
+  chance: { inks: [{ glow: "#ff2fbf", core: "#ffffff" }, { glow: "#8a3cff", core: "#ffffff" }], bolts: 6, flip: true },
+  blood: { inks: [{ glow: "#ff1a0a", core: "#fff2ec" }, { glow: "#e0100a", core: "#070002", dark: true }], bolts: 5, flip: false },
 };
 /** How often an Attack on its target whose roll was won shows the red and black. */
 const BLOOD_ODDS = 0.7;
 
 type Struck = {
-  name: SpreadName; plan: Spread; born: number; centre: Point; reach: Point;
+  name: SpreadName; plan: Spread; born: number;
   /** This frame's bolts, one drawing per colour. */
   strokes: Strokes[];
-  /** This frame's light on the felt, flickering with the bolts. */
-  glow: number;
 };
 type Impact = { key: number; symbol: string; corners: Point[]; arcs: Strokes; spread: Struck | null };
 type Landed = { symbol?: string; onTarget?: boolean; quad?: number[]; chanceCount?: number; attackWon?: boolean };
@@ -144,8 +143,8 @@ function frameOf(impact: Impact, now: number): Impact {
   const spec = IMPACT[impact.symbol];
   const arcs = spec && spec.arcs > 0 ? crackle(grown(impact.corners, 1.05), arcCount(spec, impact.spread)) : impact.arcs;
   if (!impact.spread) return { ...impact, arcs };
-  const { strokes, level } = drawSpread(impact.spread.plan, now - impact.spread.born, SPREADS[impact.spread.name].inks.length);
-  return { ...impact, arcs, spread: { ...impact.spread, strokes, glow: level * between(0.55, 1) } };
+  const { strokes } = drawSpread(impact.spread.plan, now - impact.spread.born, SPREADS[impact.spread.name].inks.length);
+  return { ...impact, arcs, spread: { ...impact.spread, strokes } };
 }
 
 /** A drawing of electricity, over the table: its band of colour, the paler band, the white core, the filaments. */
@@ -178,14 +177,17 @@ export default function SlotCardImpact() {
       const spec = IMPACT[symbol];
       const mount = document.querySelector<HTMLElement>(".bcab-pixi-mount");
       if (!spec || !quad || quad.length < 8 || !mount) return;
-      // From the table's own pixels to the cabinet's, by way of the page.
+      // From the table's own pixels to the cabinet's, by way of the page. A
+      // table caught mid-jolt is measured where it stands at rest: these
+      // layers ride the same jolt (data-table-fx), so it would count twice.
       const table = mount.getBoundingClientRect();
       const cabinet = place.stage.getBoundingClientRect();
       if (cabinet.width === 0) return;
       const scale = place.stage.offsetWidth / cabinet.width;
+      const jolt = tableShakeOffset();
       const toCabinet = (x: number, y: number) => ({
-        x: (table.left + (x / STAGE_W) * table.width - cabinet.left) * scale,
-        y: (table.top + (y / STAGE_H) * table.height - cabinet.top) * scale,
+        x: (table.left + (x / STAGE_W) * table.width - cabinet.left) * scale - jolt.x,
+        y: (table.top + (y / STAGE_H) * table.height - cabinet.top) * scale - jolt.y,
       });
       const corners = [0, 2, 4, 6].map((index) => toCabinet(quad[index], quad[index + 1]));
 
@@ -198,17 +200,14 @@ export default function SlotCardImpact() {
         const topLeft = toCabinet(TABLE.left, TABLE.top);
         const bottomRight = toCabinet(TABLE.right, TABLE.bottom);
         const box = { left: topLeft.x, top: topLeft.y, right: bottomRight.x, bottom: bottomRight.y };
-        const centre = { x: corners.reduce((s, p) => s + p.x, 0) / 4, y: corners.reduce((s, p) => s + p.y, 0) / 4 };
         const look = SPREADS[name];
+        // No wash of light over the felt (owner, 2026-11-17: it clouded the
+        // table): the bolts and the narrow light round them only.
         spread = {
           name,
           plan: planSpread(corners, box, look.inks.length, look.bolts),
           born: performance.now(),
-          centre,
-          // The light it throws on the felt: most of the table, centred on the card.
-          reach: { x: (box.right - box.left) * 0.6, y: (box.bottom - box.top) * 0.75 },
           strokes: [],
-          glow: 0,
         };
       }
 
@@ -250,13 +249,13 @@ export default function SlotCardImpact() {
       {place && createPortal(
         <>
           {/* Under the light: the card's colours turned inside out for an instant. */}
-          <svg className={css.invert} viewBox={viewBox} aria-hidden="true">
+          <svg className={css.invert} viewBox={viewBox} aria-hidden="true" data-table-fx="">
             {impacts.map((impact) => impact.spread && SPREADS[impact.spread.name].flip && (
               <polygon key={impact.key} points={points(impact.corners)} className={css.flip} />
             ))}
           </svg>
           {/* The light: added to the table. */}
-          <svg className={css.layer} viewBox={viewBox} aria-hidden="true">
+          <svg className={css.layer} viewBox={viewBox} aria-hidden="true" data-table-fx="">
             {impacts.map((impact) => {
               const spec = IMPACT[impact.symbol];
               if (!spec) return null;
@@ -266,21 +265,6 @@ export default function SlotCardImpact() {
                 <g key={impact.key} className={css.impact} style={{ "--fx": spec.colour } as CSSProperties} data-slow={spec.slow === true}>
                   {spread && (
                     <g className={css.spread}>
-                      <defs>
-                        <radialGradient id={`slot-spread-${impact.key}`}>
-                          <stop offset="0" stopColor={inks[0].glow} stopOpacity="0.55" />
-                          <stop offset="0.45" stopColor={inks[0].glow} stopOpacity="0.18" />
-                          <stop offset="1" stopColor={inks[0].glow} stopOpacity="0" />
-                        </radialGradient>
-                      </defs>
-                      <ellipse
-                        cx={spread.centre.x}
-                        cy={spread.centre.y}
-                        rx={spread.reach.x}
-                        ry={spread.reach.y}
-                        fill={`url(#slot-spread-${impact.key})`}
-                        style={{ opacity: spread.glow }}
-                      />
                       {inks.map((ink, index) => spread.strokes[index]?.halo && (
                         <path key={index} d={spread.strokes[index].halo} className={css.halo} style={{ "--ink": ink.glow } as CSSProperties} />
                       ))}
@@ -296,7 +280,7 @@ export default function SlotCardImpact() {
             })}
           </svg>
           {/* Over the light, laid on rather than added, so the colour stays deep: the bolts themselves. */}
-          <svg className={css.bolts} viewBox={viewBox} aria-hidden="true">
+          <svg className={css.bolts} viewBox={viewBox} aria-hidden="true" data-table-fx="">
             {impacts.map((impact) => {
               const spec = IMPACT[impact.symbol];
               if (!spec) return null;

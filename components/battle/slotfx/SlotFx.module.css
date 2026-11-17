@@ -296,51 +296,8 @@
   100% { opacity: 0; scale: 1.7; }
 }
 
-/* ---- Card stop ---------------------------------------------------------- */
-
-.stop {
-  position: absolute;
-  inset: 0;
-}
-
-.stopFlash {
-  position: absolute;
-  inset: 0;
-  background: var(--stop-colour, #fff);
-  mix-blend-mode: screen;
-  opacity: 0;
-  animation: slotStop 260ms ease-out both;
-}
-.stopFlash { animation-duration: 520ms; }
-
-@keyframes slotStop {
-  0% { opacity: var(--stop-peak, 0.4); }
-  100% { opacity: 0; }
-}
-
-/* The biggest landings only: rays from the edges inward. */
-.stopRays {
-  position: absolute;
-  inset: -10%;
-  background: repeating-conic-gradient(from 3deg, var(--stop-colour, #fff) 0deg 1.2deg, transparent 1.2deg 7deg);
-  -webkit-mask-image: radial-gradient(ellipse at center, transparent 34%, #000 78%);
-  mask-image: radial-gradient(ellipse at center, transparent 34%, #000 78%);
-  mix-blend-mode: screen;
-  opacity: 0;
-  animation: slotStopRays 620ms ease-out both;
-}
-
-@keyframes slotStopRays {
-  0% { opacity: 0.9; scale: 1.25; }
-  100% { opacity: 0; scale: 1; }
-}
-
-.stop[data-tone="fire"] { --stop-colour: #ff2f2f; --stop-peak: 0.55; }
-.stop[data-tone="gold"] { --stop-colour: #ffd23b; --stop-peak: 0.5; }
-.stop[data-tone="ice"] { --stop-colour: #49b6ff; --stop-peak: 0.5; }
-.stop[data-tone="violet"] { --stop-colour: #b45bff; --stop-peak: 0.5; }
-.stop[data-tone="rainbow"] { --stop-colour: #ff7ad9; --stop-peak: 0.55; }
-.stop[data-tone="plain"] { --stop-colour: #ffffff; --stop-peak: 0.16; }
+/* Card stop: no flash over the screen (owner, 2026-11-17). A stop lights the
+   cabinet's frame only (SlotCabinetLights). */
 
 /* ---- Round title (inside the existing round intro) ----------------------- */
 
@@ -399,5 +356,5 @@
 @media (prefers-reduced-motion: reduce) {
   .words, .roundInner, .roundVersus { animation-duration: 1ms; animation-iteration-count: 1; }
   .sway { animation: none; transform: rotateZ(-4deg); }
-  .ring, .flash, .stopFlash, .stopRays, .glyphShine, .glint, .spark { animation: none; }
+  .ring, .flash, .glyphShine, .glint, .spark { animation: none; }
 }

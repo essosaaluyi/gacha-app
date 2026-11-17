@@ -72,13 +72,14 @@
 /* ---- Electricity, on the card and over the table --------------------------
    Filled shapes, in the cabinet's pixels (lightningSpread.ts): the width
    swells and pinches along each bolt. A sharp core, a narrow band of deep
-   colour hugging it, and only a little soft light beyond. A dark bolt is the
+   colour hugging it, and only a little soft light beyond: kept faint and
+   tight, or the table looks clouded (owner, 2026-11-17). A dark bolt is the
    same with a black core. */
 
 .halo {
   fill: var(--ink);
-  opacity: 0.9;
-  filter: blur(3px);
+  opacity: 0.55;
+  filter: blur(2px);
 }
 .edge {
   fill: var(--ink);
