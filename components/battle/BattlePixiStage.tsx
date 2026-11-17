@@ -603,31 +603,24 @@ function getPerspectiveEllipsePoints(
   return points;
 }
 
-function getPerspectiveArcPoints(
-  quad: Quad,
-  widthScale: number,
-  depthScale: number,
-  centerV: number,
-  startAngle: number,
-  endAngle: number,
-  segments = 28
-) {
-  const points: number[] = [];
-
-  for (let index = 0; index <= segments; index += 1) {
-    const angle =
-      startAngle + ((endAngle - startAngle) * index) / segments;
-    const point = getPerspectiveQuadPoint(
-      quad,
-      0.5 + Math.cos(angle) * widthScale * 0.5,
-      centerV + Math.sin(angle) * depthScale * 0.5
-    );
-
-    points.push(point.x, point.y);
-  }
-
-  return points;
+/**
+ * The card's own outline grown about its middle, in the table's perspective:
+ * the rectangle u, v ∈ 0.5 ± scale / 2 of the card, so its sides run along the
+ * table's lines to the same vanishing point. What a wave that keeps the shape
+ * of the card's frame is drawn on. Corners far, far, near, near.
+ */
+function getPerspectiveFramePoints(quad: Quad, scale: number, centerV = 0.5) {
+  const half = scale * 0.5;
+  return [
+    getPerspectiveQuadPoint(quad, 0.5 - half, centerV - half),
+    getPerspectiveQuadPoint(quad, 0.5 + half, centerV - half),
+    getPerspectiveQuadPoint(quad, 0.5 + half, centerV + half),
+    getPerspectiveQuadPoint(quad, 0.5 - half, centerV + half),
+  ];
 }
+
+const flatPoints = (points: { x: number; y: number }[]) =>
+  points.flatMap((point) => [point.x, point.y]);
 
 function animateMeshToTable(
   card: PerspectiveMesh,
@@ -2450,10 +2443,11 @@ export default function BattlePixiStage({
         pixiApp.ticker.add(electricityTicker);
       };
 
-      // One-second white holder shockwave with a 60%-strength echo. Both rings
+      // One-second white holder shockwave with a 60%-strength echo. Both fronts
       // and the short electrical arcs are derived from the holder quad, so the
       // effect shares the table's vanishing point instead of reading as a flat
-      // screen-space oval.
+      // screen-space oval. The fronts keep the shape of the card's frame
+      // (owner, 2026-11-17: no round waves); the far side is the fainter.
       const runChanceImpactWave = (cardIndex: number) => {
         const alive = aliveGuard();
         const card = drawCards[cardIndex];
@@ -2478,52 +2472,38 @@ export default function BattlePixiStage({
               );
               const eased = 1 - Math.pow(1 - progress, 2);
 
-              // The depth opens with the cabinet angle. At 60 degrees this is
-              // visibly deeper than the old flattened oval while remaining
-              // locked to the same table-plane vanishing point.
-              const widthScale = 0.48 + eased * 2.2;
-              const depthScale =
-                (0.12 + eased * 0.55) * CABINET_TABLE_DEPTH_SCALE;
+              // From the card's frame out to about twice its size.
+              const scale = 1.02 + eased * (ring === 0 ? 1.05 : 0.8);
               const fade = 1 - progress;
-              const wholeRing = getPerspectiveEllipsePoints(
-                cardQuad,
-                widthScale,
-                depthScale,
-                0.5
-              );
-              const nearArc = getPerspectiveArcPoints(
-                cardQuad,
-                widthScale,
-                depthScale,
-                0.5,
-                0,
-                Math.PI
-              );
-              const farArc = getPerspectiveArcPoints(
-                cardQuad,
-                widthScale,
-                depthScale,
-                0.5,
-                Math.PI,
-                Math.PI * 2
-              );
+              const [farLeft, farRight, nearRight, nearLeft] =
+                getPerspectiveFramePoints(cardQuad, scale);
+              const half = scale * 0.5;
+              const midLeft = getPerspectiveQuadPoint(cardQuad, 0.5 - half, 0.5);
+              const midRight = getPerspectiveQuadPoint(cardQuad, 0.5 + half, 0.5);
+              const farSide = flatPoints([midLeft, farLeft, farRight, midRight]);
+              const nearSide = flatPoints([midRight, nearRight, nearLeft, midLeft]);
 
               wave.clear();
               const strength = ring === 0 ? 1 : 0.6;
-              wave.poly(wholeRing, true).stroke({
-                width: Math.max(2, 13 * fade),
-                color: 0xffffff,
-                alpha: fade * strength * 0.48,
-              });
-              wave.poly(farArc, false).stroke({
+              wave
+                .poly(flatPoints([farLeft, farRight, nearRight, nearLeft]), true)
+                .stroke({
+                  width: Math.max(2, 13 * fade),
+                  color: 0xffffff,
+                  alpha: fade * strength * 0.48,
+                  join: "miter",
+                });
+              wave.poly(farSide, false).stroke({
                 width: Math.max(1, 4 * fade),
                 color: 0xe9fbff,
                 alpha: fade * strength * 0.86,
+                join: "miter",
               });
-              wave.poly(nearArc, false).stroke({
+              wave.poly(nearSide, false).stroke({
                 width: Math.max(1.5, 7 * fade),
                 color: 0xffffff,
                 alpha: fade * strength,
+                join: "miter",
               });
 
               if (progress >= 1 || !alive()) {
@@ -3307,37 +3287,33 @@ export default function BattlePixiStage({
               );
               const eased = 1 - Math.pow(1 - progress, 2);
               const fade = 1 - progress;
-              const widthScale = 0.58 + eased * (success ? 3.35 : 2.15) * strength;
-              const depthScale =
-                (0.14 + eased * (success ? 0.88 : 0.58)) *
-                CABINET_TABLE_DEPTH_SCALE;
-              const ring = getPerspectiveEllipsePoints(
+              // The card's frame, spreading out (owner, 2026-11-17: no round
+              // waves). Kept nearer the card than the old ovals were: a frame
+              // grown as wide as they went would run off the top of the table.
+              const frame = getPerspectiveFramePoints(
                 cardQuad,
-                widthScale,
-                depthScale,
-                0.5
+                1.02 + eased * (success ? 1.1 : 0.75) * strength
               );
 
               wave.clear();
-              wave.poly(ring, true).stroke({
+              wave.poly(flatPoints(frame), true).stroke({
                 width: Math.max(2, (success ? 12 : 8) * fade),
                 color: echoIndex === 0 ? 0xfff4ce : 0xffc84a,
                 alpha: fade * (echoIndex === 0 ? 0.95 : 0.58),
+                join: "miter",
               });
 
               if (echoIndex === 0 && progress < 0.5) {
                 const flash = 1 - progress / 0.5;
-                const tableRipple = getPerspectiveEllipsePoints(
+                const tableRipple = getPerspectiveFramePoints(
                   cardQuad,
-                  1.2 + eased * (success ? 6.8 : 4.4),
-                  (0.2 + eased * (success ? 1.5 : 0.95)) *
-                    CABINET_TABLE_DEPTH_SCALE,
-                  0.5
+                  1.1 + eased * (success ? 2.6 : 1.7)
                 );
-                wave.poly(tableRipple, true).stroke({
+                wave.poly(flatPoints(tableRipple), true).stroke({
                   width: success ? 5 : 3,
                   color: 0xffdf80,
                   alpha: flash * (success ? 0.72 : 0.28),
+                  join: "miter",
                 });
               }
 

@@ -72,7 +72,8 @@ type Fx = {
   ) => void;
   cardLanded: (
     target: HTMLElement | { x: number; y: number },
-    symbol: string
+    symbol: string,
+    options?: { burst?: boolean; wave?: boolean }
   ) => void;
   clear: () => void;
   dispose: () => void;
@@ -206,8 +207,11 @@ export default function BattleVfxOverlay() {
             : null;
       if (!symbol) return;
 
+      // The jolt only (owner, 2026-11-17): the sparks read as a splash on the
+      // card, and a round wave is not wanted; the stage's own wave
+      // (runChanceImpactWave) keeps the shape of the card's frame.
       const point = fromStage(detail.stage.x, detail.stage.y);
-      if (point) fx.cardLanded(point, symbol);
+      if (point) fx.cardLanded(point, symbol, { burst: false, wave: false });
     };
 
     (async () => {
