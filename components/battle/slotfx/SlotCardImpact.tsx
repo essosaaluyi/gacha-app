@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { getBarChanceState } from "@/lib/battle-pixi/state/barChanceStore";
-import { drawSpread, planSpread, type Box, type Point, type Spread } from "./lightningSpread";
+import { addBolt, drawSpread, noStrokes, planSpread, type Box, type Knot, type Point, type Spread, type Strokes } from "./lightningSpread";
 import { useCabinetPlace } from "./SlotCabinetLights";
 import { SLOT_FX, landingTier } from "./slotFxStore";
 import css from "./SlotCardImpact.module.css";
@@ -51,20 +51,20 @@ const IMPACT: Record<string, Spec> = {
 type Ink = { glow: string; core: string; dark?: boolean };
 type SpreadName = "chance" | "blood";
 const SPREADS: Record<SpreadName, { inks: Ink[]; bolts: number; flip: boolean }> = {
-  chance: { inks: [{ glow: "#ff4fcf", core: "#ffffff" }, { glow: "#a35cff", core: "#ffffff" }], bolts: 9, flip: true },
-  blood: { inks: [{ glow: "#ff2414", core: "#ffe0d6" }, { glow: "#e0100a", core: "#070002", dark: true }], bolts: 8, flip: false },
+  chance: { inks: [{ glow: "#ff2fbf", core: "#ffffff" }, { glow: "#8a3cff", core: "#ffffff" }], bolts: 9, flip: true },
+  blood: { inks: [{ glow: "#ff1a0a", core: "#fff2ec" }, { glow: "#e0100a", core: "#070002", dark: true }], bolts: 8, flip: false },
 };
 /** How often an Attack on its target whose roll was won shows the red and black. */
 const BLOOD_ODDS = 0.7;
 
 type Struck = {
   name: SpreadName; plan: Spread; born: number; centre: Point; reach: Point;
-  /** This frame's bolts, one path per colour. */
-  paths: string[];
+  /** This frame's bolts, one drawing per colour. */
+  strokes: Strokes[];
   /** This frame's light on the felt, flickering with the bolts. */
   glow: number;
 };
-type Impact = { key: number; symbol: string; corners: Point[]; arcs: string[]; spread: Struck | null };
+type Impact = { key: number; symbol: string; corners: Point[]; arcs: Strokes; spread: Struck | null };
 type Landed = { symbol?: string; onTarget?: boolean; quad?: number[]; chanceCount?: number; attackWon?: boolean };
 
 const between = (low: number, high: number) => low + Math.random() * (high - low);
@@ -90,13 +90,14 @@ function onOutline(corners: Point[], lengths: number[], total: number, at: numbe
 }
 
 /** One showing of the electricity on the card: short jagged runs along the outline, some with a spur. */
-function crackle(corners: Point[], count: number): string[] {
+function crackle(corners: Point[], count: number): Strokes {
+  const strokes = noStrokes();
   const lengths = corners.map((p, index) => {
     const next = corners[(index + 1) % corners.length];
     return Math.hypot(next.x - p.x, next.y - p.y);
   });
   const total = lengths.reduce((sum, value) => sum + value, 0);
-  if (total === 0) return [];
+  if (total === 0) return strokes;
   // The outline may run either way round; find which side of it is outside.
   const cx = corners.reduce((sum, p) => sum + p.x, 0) / corners.length;
   const cy = corners.reduce((sum, p) => sum + p.y, 0) / corners.length;
@@ -104,34 +105,35 @@ function crackle(corners: Point[], count: number): string[] {
   const out = (probe.x - cx) * probe.nx + (probe.y - cy) * probe.ny >= 0 ? 1 : -1;
   // Sized to the card, so it stays in proportion wherever the table is drawn.
   const unit = total / 100;
+  const width = unit * 0.42;
 
-  const paths: string[] = [];
   for (let arc = 0; arc < count; arc += 1) {
     const start = Math.random();
     const run = between(0.07, 0.2);
     const steps = Math.max(4, Math.round((run * total) / (unit * 2.2)));
-    let d = "";
+    const line: Knot[] = [];
     for (let step = 0; step <= steps; step += 1) {
       const p = onOutline(corners, lengths, total, start + (run * step) / steps);
       const off = out * between(-unit * 0.6, unit * 2.4);
-      d += `${step === 0 ? "M" : "L"}${(p.x + p.nx * off).toFixed(1)} ${(p.y + p.ny * off).toFixed(1)}`;
+      line.push({ x: p.x + p.nx * off, y: p.y + p.ny * off, w: between(0.45, 1.4) });
     }
-    paths.push(d);
-    // Now and then a spur snaps outward from the run.
+    addBolt(strokes, line, width, { hairs: Math.random() < 0.5 ? 1 : 0 });
+    // Now and then a spur snaps outward from the run, thinning as it goes.
     if (Math.random() < 0.45) {
       const p = onOutline(corners, lengths, total, start + run * Math.random());
-      let x = p.x;
-      let y = p.y;
-      let spur = `M${x.toFixed(1)} ${y.toFixed(1)}`;
-      for (let step = 0; step < 3; step += 1) {
-        x += out * p.nx * between(unit * 1.2, unit * 3) + between(-unit * 1.6, unit * 1.6);
-        y += out * p.ny * between(unit * 1.2, unit * 3) + between(-unit * 1.6, unit * 1.6);
-        spur += `L${x.toFixed(1)} ${y.toFixed(1)}`;
+      const spur: Knot[] = [{ x: p.x, y: p.y, w: 1 }];
+      for (let step = 1; step <= 3; step += 1) {
+        const last = spur[step - 1];
+        spur.push({
+          x: last.x + out * p.nx * between(unit * 1.2, unit * 3) + between(-unit * 1.6, unit * 1.6),
+          y: last.y + out * p.ny * between(unit * 1.2, unit * 3) + between(-unit * 1.6, unit * 1.6),
+          w: 1 - step * 0.22,
+        });
       }
-      paths.push(spur);
+      addBolt(strokes, spur, width * 0.75, { rooted: true });
     }
   }
-  return paths;
+  return strokes;
 }
 
 /** Arcs on the card itself: more while a spread is leaving it. */
@@ -142,8 +144,22 @@ function frameOf(impact: Impact, now: number): Impact {
   const spec = IMPACT[impact.symbol];
   const arcs = spec && spec.arcs > 0 ? crackle(grown(impact.corners, 1.05), arcCount(spec, impact.spread)) : impact.arcs;
   if (!impact.spread) return { ...impact, arcs };
-  const { paths, level } = drawSpread(impact.spread.plan, now - impact.spread.born, SPREADS[impact.spread.name].inks.length);
-  return { ...impact, arcs, spread: { ...impact.spread, paths, glow: level * between(0.55, 1) } };
+  const { strokes, level } = drawSpread(impact.spread.plan, now - impact.spread.born, SPREADS[impact.spread.name].inks.length);
+  return { ...impact, arcs, spread: { ...impact.spread, strokes, glow: level * between(0.55, 1) } };
+}
+
+/** A drawing of electricity, over the table: its band of colour, the paler band, the white core, the filaments. */
+function Bolts({ strokes, ink, core }: { strokes?: Strokes; ink: string; core: string }) {
+  if (!strokes?.core) return null;
+  return (
+    <g style={{ "--ink": ink, "--core": core } as CSSProperties}>
+      <path d={strokes.edge} className={css.edge} />
+      {strokes.hair && <path d={strokes.hair} className={css.hairEdge} />}
+      <path d={strokes.inner} className={css.inner} />
+      <path d={strokes.core} className={css.core} />
+      {strokes.hair && <path d={strokes.hair} className={css.hairCore} />}
+    </g>
+  );
 }
 
 export default function SlotCardImpact() {
@@ -191,13 +207,13 @@ export default function SlotCardImpact() {
           centre,
           // The light it throws on the felt: most of the table, centred on the card.
           reach: { x: (box.right - box.left) * 0.6, y: (box.bottom - box.top) * 0.75 },
-          paths: [],
+          strokes: [],
           glow: 0,
         };
       }
 
       key += 1;
-      const impact = frameOf({ key, symbol, corners, arcs: [], spread }, performance.now());
+      const impact = frameOf({ key, symbol, corners, arcs: noStrokes(), spread }, performance.now());
       setImpacts((list) => [...list, impact]);
       const timer = window.setTimeout(() => {
         timers.delete(timer);
@@ -244,7 +260,6 @@ export default function SlotCardImpact() {
             {impacts.map((impact) => {
               const spec = IMPACT[impact.symbol];
               if (!spec) return null;
-              const arcs = impact.arcs.join("");
               const spread = impact.spread;
               const inks = spread ? SPREADS[spread.name].inks : [];
               return (
@@ -266,12 +281,8 @@ export default function SlotCardImpact() {
                         fill={`url(#slot-spread-${impact.key})`}
                         style={{ opacity: spread.glow }}
                       />
-                      {inks.map((ink, index) => spread.paths[index] && (
-                        <g key={index} style={{ "--ink": ink.glow, "--core": ink.core } as CSSProperties}>
-                          <path d={spread.paths[index]} className={css.boltGlow} />
-                          {!ink.dark && <path d={spread.paths[index]} className={css.boltMid} />}
-                          {!ink.dark && <path d={spread.paths[index]} className={css.boltCore} />}
-                        </g>
+                      {inks.map((ink, index) => spread.strokes[index]?.halo && (
+                        <path key={index} d={spread.strokes[index].halo} className={css.halo} style={{ "--ink": ink.glow } as CSSProperties} />
                       ))}
                     </g>
                   )}
@@ -279,27 +290,25 @@ export default function SlotCardImpact() {
                     <polygon points={points(grown(impact.corners, 1.07))} className={css.frameGlow} />
                     <polygon points={points(grown(impact.corners, 1.07))} className={css.frameCore} />
                   </g>
-                  {arcs && (
-                    <>
-                      <path d={arcs} className={css.arcGlow} />
-                      <path d={arcs} className={css.arcCore} />
-                    </>
-                  )}
+                  {impact.arcs.halo && <path d={impact.arcs.halo} className={css.halo} style={{ "--ink": spec.colour } as CSSProperties} />}
                 </g>
               );
             })}
           </svg>
-          {/* Over the light: the dark bolts, which cannot be added, only laid on. */}
-          <svg className={css.ink} viewBox={viewBox} aria-hidden="true">
+          {/* Over the light, laid on rather than added, so the colour stays deep: the bolts themselves. */}
+          <svg className={css.bolts} viewBox={viewBox} aria-hidden="true">
             {impacts.map((impact) => {
+              const spec = IMPACT[impact.symbol];
+              if (!spec) return null;
               const spread = impact.spread;
-              if (!spread) return null;
-              return SPREADS[spread.name].inks.map((ink, index) => ink.dark && spread.paths[index] && (
-                <g key={`${impact.key}-${index}`} style={{ "--ink": ink.glow, "--core": ink.core } as CSSProperties}>
-                  <path d={spread.paths[index]} className={css.inkRim} />
-                  <path d={spread.paths[index]} className={css.inkCore} />
+              return (
+                <g key={impact.key}>
+                  {spread && SPREADS[spread.name].inks.map((ink, index) => (
+                    <Bolts key={index} strokes={spread.strokes[index]} ink={ink.glow} core={ink.core} />
+                  ))}
+                  <Bolts strokes={impact.arcs} ink={spec.colour} core="#ffffff" />
                 </g>
-              ));
+              );
             })}
           </svg>
         </>,

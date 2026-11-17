@@ -2,10 +2,10 @@
    electricity crawls round it; the rare ones send it out over the table.
    See SlotCardImpact.tsx. Three drawings over the whole cabinet stage, in the
    stage's own pixels: the colour flip under the light, the light, and the
-   dark bolts over it. Every shape follows the landed card as the table shows it. */
+   bolts over it. Every shape follows the landed card as the table shows it. */
 
 .layer,
-.ink,
+.bolts,
 .invert {
   position: absolute;
   inset: 0;
@@ -21,8 +21,9 @@
   mix-blend-mode: screen;
 }
 
-/* Black cannot be added, only laid on: the dark bolts sit over the light. */
-.ink {
+/* The bolts are laid on, not added: added light washes a deep colour out on
+   the bright felt, and black cannot be added at all. */
+.bolts {
   z-index: 33;
 }
 
@@ -32,9 +33,7 @@
   mix-blend-mode: difference;
 }
 
-.layer path,
-.layer polygon,
-.ink path {
+.layer polygon {
   fill: none;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -70,44 +69,41 @@
   stroke-width: 2.4px;
 }
 
-/* ---- The electricity on the card: thin, thrown afresh every few frames ---- */
+/* ---- Electricity, on the card and over the table --------------------------
+   Filled shapes, in the cabinet's pixels (lightningSpread.ts): the width
+   swells and pinches along each bolt. A sharp core, a narrow band of deep
+   colour hugging it, and only a little soft light beyond. A dark bolt is the
+   same with a black core. */
 
-.arcGlow {
-  stroke: var(--fx);
-  stroke-width: 4.5px;
-  opacity: 0.85;
-  filter: blur(2.2px);
+.halo {
+  fill: var(--ink);
+  opacity: 0.9;
+  filter: blur(3px);
 }
-.arcCore {
-  stroke: #fff;
-  stroke-width: 1.15px;
+.edge {
+  fill: var(--ink);
+}
+.inner {
+  fill: color-mix(in srgb, var(--ink) 45%, var(--core));
+}
+.core {
+  fill: var(--core);
 }
 
-/* ---- The spread over the table ------------------------------------------- */
-
-.boltGlow {
+/* The hair-thin filaments that snap off a bolt. */
+.hairEdge,
+.hairCore {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.hairEdge {
   stroke: var(--ink);
-  stroke-width: 8px;
-  opacity: 0.75;
-  filter: blur(3.5px);
+  stroke-width: 2px;
 }
-.boltMid {
-  stroke: var(--ink);
-  stroke-width: 2.6px;
-}
-.boltCore {
+.hairCore {
   stroke: var(--core);
-  stroke-width: 1.2px;
-}
-
-/* A dark bolt: a red rim, black in the middle. */
-.inkRim {
-  stroke: var(--ink);
-  stroke-width: 3.8px;
-}
-.inkCore {
-  stroke: var(--core);
-  stroke-width: 1.9px;
+  stroke-width: 0.9px;
 }
 
 /* The card's colours, inside out, for an instant. */
@@ -123,5 +119,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .blink, .impact[data-slow="true"] .blink { animation: none; }
-  .arcGlow, .arcCore, .spread, .ink, .flip { display: none; }
+  .halo, .spread, .bolts, .flip { display: none; }
 }
