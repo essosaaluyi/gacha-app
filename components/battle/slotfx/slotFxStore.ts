@@ -86,21 +86,23 @@ export function showSlotAward(points: number) {
 }
 
 /**
- * How much a card's landing is worth marking, so the loud things stay rare.
- * - none: Empty. Nothing at all.
- * - quiet: Coin, Reply. The slot's frame swells once, slowly.
- * - short: Defense. The frame blinks fast for a moment, no electricity.
- * - telling: an Attack off target, a Bar. Blinking frame with electricity, and the cabinet's frame blips.
- * - climax: an Attack on target, a Chance. All of that, a flash over the
+ * How far a card's landing reaches, so the loud things stay rare. How the
+ * slot's own frame answers (slow swell, fast blink, electricity, the spread
+ * over the table) is SlotCardImpact's table; this decides the rest.
+ * - none: Empty, and a Bar outside BAR CHANCE (three seldom line up then). Nothing at all.
+ * - table: Coin, Reply, Defense, a Bar in BAR CHANCE. The slot's frame only;
+ *   BAR CHANCE lights the cabinet for its Bars itself.
+ * - telling: an Attack off target. The cabinet's frame blips as well.
+ * - climax: an Attack on target, a Chance. A strong blip, a flash over the
  *   screen, and the wave the battle's own effects already throw.
  */
-export type LandingTier = "none" | "quiet" | "short" | "telling" | "climax";
+export type LandingTier = "none" | "table" | "telling" | "climax";
 
-export function landingTier(symbol: string, onTarget: boolean): LandingTier {
+export function landingTier(symbol: string, onTarget: boolean, barChance: boolean): LandingTier {
   if (symbol === "Chance" || (symbol === "Attack" && onTarget)) return "climax";
-  if (symbol === "Attack" || symbol === "Bar") return "telling";
-  if (symbol === "Defense") return "short";
-  if (symbol === "Coin" || symbol === "Reply") return "quiet";
+  if (symbol === "Attack") return "telling";
+  if (symbol === "Bar") return barChance ? "table" : "none";
+  if (symbol === "Defense" || symbol === "Coin" || symbol === "Reply") return "table";
   return "none";
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CSSProperties } from "react";
 import { getEvents, subscribeGameEvents } from "@/lib/events/gameEventStore";
+import { getBarChanceState } from "@/lib/battle-pixi/state/barChanceStore";
 import {
   getEnemyDefeatPresentationKey,
   subscribeEnemyDefeatPresentation,
@@ -73,7 +74,7 @@ function useBattleSignals(live: boolean) {
     const onLanded = (event: Event) => {
       const { symbol = "Empty", onTarget = false } = (event as CustomEvent<CardLanded>).detail ?? {};
       order = order >= 3 ? 1 : order + 1;
-      const tier = landingTier(symbol, onTarget);
+      const tier = landingTier(symbol, onTarget, getBarChanceState().phase === "active");
       if (tier === "telling" || tier === "climax") {
         showSlotStop({ order, tone: STOP_TONES[symbol] ?? "plain", strong: tier === "climax" });
       }
@@ -170,7 +171,7 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
       award: showSlotAward,
       telop: (main: string, tone: SlotTone = "fire", size: SlotTelop["size"] = "big") => showSlotTelop({ main, tone, size }),
       stop: (symbol = "Attack", onTarget = true) => {
-        const tier = landingTier(symbol, onTarget);
+        const tier = landingTier(symbol, onTarget, getBarChanceState().phase === "active");
         if (tier === "telling" || tier === "climax") showSlotStop({ order: 3, tone: STOP_TONES[symbol] ?? "plain", strong: tier === "climax" });
       },
       judge: { start: startSlotJudge, pull: pullSlotJudge, result: resolveSlotJudge, clear: () => clearSlotJudge() },

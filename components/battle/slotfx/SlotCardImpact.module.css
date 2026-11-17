@@ -1,21 +1,40 @@
 /* PROVISIONAL — a card set down: its slot's frame blinks fast and thin
-   electricity crawls round it. See SlotCardImpact.tsx. One drawing over the
-   whole cabinet stage, in the stage's own pixels; every shape in it follows
-   the outline of the landed card as the table shows it. */
+   electricity crawls round it; the rare ones send it out over the table.
+   See SlotCardImpact.tsx. Three drawings over the whole cabinet stage, in the
+   stage's own pixels: the colour flip under the light, the light, and the
+   dark bolts over it. Every shape follows the landed card as the table shows it. */
 
-.layer {
+.layer,
+.ink,
+.invert {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 32;
   pointer-events: none;
   overflow: visible;
+}
+
+/* The light, added to whatever is under it. */
+.layer {
+  z-index: 32;
   mix-blend-mode: screen;
 }
 
-.impact path,
-.impact polygon {
+/* Black cannot be added, only laid on: the dark bolts sit over the light. */
+.ink {
+  z-index: 33;
+}
+
+/* White by difference: the colours under it turned inside out. */
+.invert {
+  z-index: 31;
+  mix-blend-mode: difference;
+}
+
+.layer path,
+.layer polygon,
+.ink path {
   fill: none;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -51,7 +70,7 @@
   stroke-width: 2.4px;
 }
 
-/* ---- The electricity: thin, and thrown afresh every few frames ----------- */
+/* ---- The electricity on the card: thin, thrown afresh every few frames ---- */
 
 .arcGlow {
   stroke: var(--fx);
@@ -64,7 +83,45 @@
   stroke-width: 1.15px;
 }
 
+/* ---- The spread over the table ------------------------------------------- */
+
+.boltGlow {
+  stroke: var(--ink);
+  stroke-width: 8px;
+  opacity: 0.75;
+  filter: blur(3.5px);
+}
+.boltMid {
+  stroke: var(--ink);
+  stroke-width: 2.6px;
+}
+.boltCore {
+  stroke: var(--core);
+  stroke-width: 1.2px;
+}
+
+/* A dark bolt: a red rim, black in the middle. */
+.inkRim {
+  stroke: var(--ink);
+  stroke-width: 3.8px;
+}
+.inkCore {
+  stroke: var(--core);
+  stroke-width: 1.9px;
+}
+
+/* The card's colours, inside out, for an instant. */
+.flip {
+  fill: #fff;
+  opacity: 0;
+  animation: slotFlip 120ms steps(1) both;
+}
+@keyframes slotFlip {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .blink, .impact[data-slow="true"] .blink { animation: none; }
-  .arcGlow, .arcCore { display: none; }
+  .arcGlow, .arcCore, .spread, .ink, .flip { display: none; }
 }

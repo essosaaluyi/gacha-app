@@ -1433,6 +1433,9 @@ export default function BattlePixiStage({
       // Payoff game: the struggle is already on screen from the draw click.
       // This is the winner the third flip will name.
       let pendingStruggleWinner: "player" | "enemy" | null = null;
+      // This hand's Attack sits on its target and its roll (made at the draw)
+      // was won. Read only by the landing presentation; decides nothing.
+      let handAttackWon = false;
       let pendingFakeoutDialogue: PendingFakeoutDialogue | null = null;
       let pendingTripleDefenseGrade: DefenseShieldGrade | null = null;
 
@@ -1850,6 +1853,7 @@ export default function BattlePixiStage({
           )
         );
         const fatalModeWasActive = isFatalModeActive();
+        handAttackWon = false;
 
         addBattleLog(
           `Draw / Target Slot: ${currentBattleResult.targetSlot + 1}`,
@@ -2143,6 +2147,7 @@ export default function BattlePixiStage({
             attackRollSource = evaluation.attackOnTarget
               ? "attackCardOnTarget"
               : "attackCardOffTarget";
+            handAttackWon = attackAttemptSuccess && evaluation.attackOnTarget;
           } else if (evaluation.chanceAttack) {
             addBattleLog(
               `Chance Drawn: ${evaluation.chanceAttackRate}% attack chance`,
@@ -3957,6 +3962,10 @@ export default function BattlePixiStage({
               stage: { x: landingOrigin.x, y: landingOrigin.y },
               // The landed card's four corners on the table, for effects drawn on its outline.
               quad: [...cardQuad],
+              // How many Chance cards are down in this hand, this one included.
+              chanceCount: result.cards.filter((card, index) => settledSlots[index] && card === "Chance").length,
+              // An Attack on its target whose roll was won (handAttackWon).
+              attackWon: isAttackOnTarget && handAttackWon,
             } }));
           }
           setCardPhase("placed", `settle-card-${cardIndex + 1}`);
