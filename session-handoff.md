@@ -1,5 +1,9 @@
 # Session Handoff
 
+### 【完了】キャラアニメーション制作資料の転記 ／ Codex ／ 2026-11-17
+- docs/character-animation-sources.md にSR1〜UR3の11体を記載。元リストは outputs/master-pack-roster-audit/MASTER_PACK_ROSTER_AUDIT.md と lib/battle-pixi/config/characterNames.ts。
+- カード目視、待機・フェイスオフの参照、過去プロンプト39件を収録。参照パスの存在を確認。専用の制作順、資料がない攻撃・寸前の進捗は不明。Claudeの計画書は取得不可。
+
 ### 【完了】Enemy 1の待機サイズ ／ Codex ／ 2026-11-16
 - allyPresentation.tsでEnemy 1の初期値を118%に設定。初期値の読み込みを確認。実画面は未確認。
 
