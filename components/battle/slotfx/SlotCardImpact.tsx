@@ -26,19 +26,21 @@ const JUMP_MS = 46;
 
 type Point = { x: number; y: number };
 
-/** Colour, how many arcs crawl at once, and for how long. No arcs: the frame
- *  swells and fades once, slowly. A symbol not listed (Empty) shows nothing. */
-const IMPACT: Record<string, { colour: string; arcs: number; ms: number }> = {
-  Attack: { colour: "#ff4a2a", arcs: 6, ms: 820 },
+/** Colour, how many arcs crawl at once, how long, and whether the frame blinks
+ *  fast or swells once, slowly. Loudest first, after landingTier in
+ *  slotFxStore.ts. A symbol not listed (Empty) shows nothing. */
+const IMPACT: Record<string, { colour: string; arcs: number; ms: number; slow?: boolean }> = {
+  AttackHit: { colour: "#ff4a2a", arcs: 7, ms: 950 },
   Chance: { colour: "#ff6fd0", arcs: 8, ms: 1000 },
-  Bar: { colour: "#ffd24a", arcs: 7, ms: 900 },
-  Defense: { colour: "#4fb8ff", arcs: 4, ms: 620 },
-  Coin: { colour: "#ffc23a", arcs: 0, ms: 1000 },
-  Reply: { colour: "#b77bff", arcs: 0, ms: 1000 },
+  Bar: { colour: "#ffd24a", arcs: 5, ms: 820 },
+  Attack: { colour: "#ff4a2a", arcs: 3, ms: 620 },
+  Defense: { colour: "#4fb8ff", arcs: 0, ms: 420 },
+  Coin: { colour: "#ffc23a", arcs: 0, ms: 1000, slow: true },
+  Reply: { colour: "#b77bff", arcs: 0, ms: 1000, slow: true },
 };
 
 type Impact = { key: number; symbol: string; corners: Point[]; arcs: string[] };
-type Landed = { symbol?: string; quad?: number[] };
+type Landed = { symbol?: string; onTarget?: boolean; quad?: number[] };
 
 const between = (low: number, high: number) => low + Math.random() * (high - low);
 
@@ -116,7 +118,9 @@ export default function SlotCardImpact() {
     let key = 0;
     const timers = new Set<number>();
     const onLanded = (event: Event) => {
-      const { symbol = "Empty", quad } = (event as CustomEvent<Landed>).detail ?? {};
+      const { symbol: card = "Empty", onTarget = false, quad } = (event as CustomEvent<Landed>).detail ?? {};
+      // An Attack that lands on its target is worth more than one that misses.
+      const symbol = card === "Attack" && onTarget ? "AttackHit" : card;
       const mount = document.querySelector<HTMLElement>(".bcab-pixi-mount");
       if (!quad || quad.length < 8 || !mount) return;
       // From the table's own pixels to the cabinet's, by way of the page.
@@ -176,7 +180,7 @@ export default function SlotCardImpact() {
             const frame = grown(impact.corners, 1.07).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
             const arcs = impact.arcs.join("");
             return (
-              <g key={impact.key} className={css.impact} style={{ "--fx": spec.colour } as CSSProperties} data-slow={spec.arcs === 0}>
+              <g key={impact.key} className={css.impact} style={{ "--fx": spec.colour } as CSSProperties} data-slow={spec.slow === true}>
                 <g className={css.blink}>
                   <polygon points={frame} className={css.frameGlow} />
                   <polygon points={frame} className={css.frameCore} />

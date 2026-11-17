@@ -25,12 +25,9 @@ const TELOPS: { main: string; tone: SlotTone; size: "big" | "small" }[] = [
   { main: "FATAL!", tone: "violet", size: "big" },
   { main: "BONUS", tone: "gold", size: "big" },
 ];
-const STOPS: { label: string; tone: SlotTone | "plain" }[] = [
-  { label: "Empty", tone: "plain" },
-  { label: "Attack", tone: "fire" },
-  { label: "Coin", tone: "gold" },
-  { label: "Defense", tone: "ice" },
-  { label: "Reply", tone: "violet" },
+/** Only the biggest landings light the whole screen; the rest show on the table and the cabinet, which this bench has not got. */
+const STOPS: { label: string; tone: SlotTone }[] = [
+  { label: "Attack 的中", tone: "fire" },
   { label: "Chance", tone: "rainbow" },
 ];
 const BAR_TONES: { label: string; tone: BarChanceTone; tier: string }[] = [
@@ -46,7 +43,6 @@ export default function SlotFxPreview() {
   const frameRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
   const [round, setRound] = useState<{ key: number; text: string } | null>(null);
-  const [strong, setStrong] = useState(false);
   const roundRuns = useRef(0);
 
   useLayoutEffect(() => {
@@ -102,14 +98,11 @@ export default function SlotFxPreview() {
         <div className={frame.transport}>
           <strong>カード停止</strong>
           {STOPS.map((stop) => (
-            <button key={stop.label} type="button" className={frame.playButton} data-tier="blue" onClick={() => showSlotStop({ order: strong ? 3 : 1, tone: stop.tone, strong })}>
+            <button key={stop.label} type="button" className={frame.playButton} data-tier="blue" onClick={() => showSlotStop({ order: 3, tone: stop.tone, strong: true })}>
               {stop.label}
             </button>
           ))}
-          <label className={frame.check}>
-            <input type="checkbox" checked={strong} onChange={(event) => setStrong(event.target.checked)} />
-            3枚目（強め）
-          </label>
+          <span className={frame.check}>ほかの札は画面全体を光らせない（テーブルの枠と台の枠だけ。バトル画面で確認）</span>
         </div>
         <div className={frame.transport}>
           <strong>テロップ</strong>

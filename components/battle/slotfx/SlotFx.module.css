@@ -311,32 +311,14 @@
   opacity: 0;
   animation: slotStop 260ms ease-out both;
 }
-.stop[data-strong="true"] .stopFlash { animation-duration: 520ms; }
+.stopFlash { animation-duration: 520ms; }
 
 @keyframes slotStop {
   0% { opacity: var(--stop-peak, 0.4); }
   100% { opacity: 0; }
 }
 
-/* A hard line of light that drops down the screen with the stop. */
-.stopLine {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3cqh;
-  top: 0;
-  background: linear-gradient(180deg, transparent, var(--stop-colour, #fff) 45%, #fff 50%, var(--stop-colour, #fff) 55%, transparent);
-  mix-blend-mode: screen;
-  opacity: 0;
-  animation: slotStopLine 300ms cubic-bezier(0.3, 0, 0.7, 1) both;
-}
-
-@keyframes slotStopLine {
-  0% { opacity: 0.95; top: -3cqh; }
-  100% { opacity: 0; top: 100cqh; }
-}
-
-/* Third stop of a hand that means something: rays from the edges inward. */
+/* The biggest landings only: rays from the edges inward. */
 .stopRays {
   position: absolute;
   inset: -10%;
@@ -417,5 +399,5 @@
 @media (prefers-reduced-motion: reduce) {
   .words, .roundInner, .roundVersus { animation-duration: 1ms; animation-iteration-count: 1; }
   .sway { animation: none; transform: rotateZ(-4deg); }
-  .ring, .flash, .stopFlash, .stopLine, .stopRays, .glyphShine, .glint, .spark { animation: none; }
+  .ring, .flash, .stopFlash, .stopRays, .glyphShine, .glint, .spark { animation: none; }
 }

@@ -12,7 +12,7 @@ export const SLOT_FX = {
   award: true,
   /** Slot-style ROUND title in the round intro. */
   roundTitle: true,
-  /** Screen flash and tint as each table card stops. */
+  /** The landings that tell: a blip of the cabinet's frame, and for the biggest a flash over the screen. See landingTier. */
   stopFlash: true,
   /** Scene telops (ATTACK!, CHANCE, ENEMY DOWN ...). */
   telops: true,
@@ -83,6 +83,25 @@ export function showSlotAward(points: number) {
     countTo: points,
     durationMs: points >= 100 ? 2400 : 1900,
   });
+}
+
+/**
+ * How much a card's landing is worth marking, so the loud things stay rare.
+ * - none: Empty. Nothing at all.
+ * - quiet: Coin, Reply. The slot's frame swells once, slowly.
+ * - short: Defense. The frame blinks fast for a moment, no electricity.
+ * - telling: an Attack off target, a Bar. Blinking frame with electricity, and the cabinet's frame blips.
+ * - climax: an Attack on target, a Chance. All of that, a flash over the
+ *   screen, and the wave the battle's own effects already throw.
+ */
+export type LandingTier = "none" | "quiet" | "short" | "telling" | "climax";
+
+export function landingTier(symbol: string, onTarget: boolean): LandingTier {
+  if (symbol === "Chance" || (symbol === "Attack" && onTarget)) return "climax";
+  if (symbol === "Attack" || symbol === "Bar") return "telling";
+  if (symbol === "Defense") return "short";
+  if (symbol === "Coin" || symbol === "Reply") return "quiet";
+  return "none";
 }
 
 export function showSlotStop(next: Omit<SlotStop, "key">) {

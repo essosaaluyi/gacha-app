@@ -19,6 +19,7 @@ import {
   clearSlotTelop,
   getSlotStop,
   getSlotTelop,
+  landingTier,
   showSlotAward,
   showSlotStop,
   showSlotTelop,
@@ -64,20 +65,20 @@ function useBattleSignals(live: boolean) {
   useEffect(() => {
     if (!live || !SLOT_FX.enabled) return;
 
-    // Card stops. The stage already announces each landing.
+    // Card stops. The stage already announces each landing. Only the landings
+    // that tell reach the screen and the cabinet (landingTier); the slot's own
+    // frame (SlotCardImpact) answers every other one.
     let order = 0;
-    let meaningful = false;
     let idle = 0;
     const onLanded = (event: Event) => {
       const { symbol = "Empty", onTarget = false } = (event as CustomEvent<CardLanded>).detail ?? {};
       order = order >= 3 ? 1 : order + 1;
-      if (order === 1) meaningful = false;
-      const tone = STOP_TONES[symbol] ?? "plain";
-      const attackHit = symbol === "Attack" && onTarget;
-      if (tone !== "plain") meaningful = true;
-      showSlotStop({ order, tone, strong: attackHit || symbol === "Chance" || (order === 3 && meaningful) });
-      if (SLOT_FX.telops && attackHit) showSlotTelop({ main: "ATTACK!", tone: "fire", size: "small", durationMs: 1200 });
-      else if (SLOT_FX.telops && symbol === "Chance") showSlotTelop({ main: "CHANCE!", tone: "rainbow", size: "small", durationMs: 1100 });
+      const tier = landingTier(symbol, onTarget);
+      if (tier === "telling" || tier === "climax") {
+        showSlotStop({ order, tone: STOP_TONES[symbol] ?? "plain", strong: tier === "climax" });
+      }
+      // A Chance says so with its frame and the wave; only a hit gets words.
+      if (SLOT_FX.telops && symbol === "Attack" && onTarget) showSlotTelop({ main: "ATTACK!", tone: "fire", size: "small", durationMs: 1200 });
       // A hand left unfinished must not make the next hand start at stop 2.
       window.clearTimeout(idle);
       idle = window.setTimeout(() => { order = 0; }, 8000);
@@ -161,14 +162,17 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
     return () => window.clearTimeout(timer);
   }, []);
 
-  // Dev console: __slotFx.award(120), __slotFx.telop("ATTACK!", "fire"), __slotFx.stop("Attack", 3),
+  // Dev console: __slotFx.award(120), __slotFx.telop("ATTACK!", "fire"), __slotFx.stop("Attack", true),
   // __slotFx.judge.start() / .pull() / .result(true) / .clear()
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
     (window as Window & { __slotFx?: unknown }).__slotFx = {
       award: showSlotAward,
       telop: (main: string, tone: SlotTone = "fire", size: SlotTelop["size"] = "big") => showSlotTelop({ main, tone, size }),
-      stop: (symbol = "Attack", order = 3) => showSlotStop({ order, tone: STOP_TONES[symbol] ?? "plain", strong: order === 3 }),
+      stop: (symbol = "Attack", onTarget = true) => {
+        const tier = landingTier(symbol, onTarget);
+        if (tier === "telling" || tier === "climax") showSlotStop({ order: 3, tone: STOP_TONES[symbol] ?? "plain", strong: tier === "climax" });
+      },
       judge: { start: startSlotJudge, pull: pullSlotJudge, result: resolveSlotJudge, clear: () => clearSlotJudge() },
     };
   }, []);
@@ -179,11 +183,11 @@ export default function SlotFxLayer({ live = true }: { live?: boolean }) {
 
   return (
     <div className={styles.layer} aria-hidden="true">
-      {stop && (
-        <div key={`stop-${stop.key}`} className={styles.stop} data-tone={stop.tone} data-strong={stop.strong}>
+      {/* Over the whole screen only for the biggest landings; a lesser one blips the cabinet's frame. */}
+      {stop?.strong && (
+        <div key={`stop-${stop.key}`} className={styles.stop} data-tone={stop.tone}>
           <div className={styles.stopFlash} />
-          <div className={styles.stopLine} />
-          {stop.strong && <div className={styles.stopRays} />}
+          <div className={styles.stopRays} />
         </div>
       )}
       {telop && (
