@@ -41,13 +41,16 @@ LOOKS = {
     # Fat Didone, gold rim, deep: the hot telops.
     "classic": dict(
         # Abril Fatface, SIL Open Font License (fonts/OFL.txt): free to use and to ship.
-        font="AbrilFatface-Regular.ttf", version="v2", prefix="slot-glyphs",
+        font="AbrilFatface-Regular.ttf", version="v3", prefix="slot-glyphs",
         sets={
             "digits": dict(chars="0123456789+", cols=6, cap_px=300),
             "letters": dict(chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ!", cols=9, cap_px=210),
         },
         styles=["gold", "blood", "violet", "rainbow"],
         rim=0.06, extrude=0.2, line=0.016, shear=(0.28, 0.46), metal="gold",
+        # The face stands proud of the rim, with a polished shoulder round it:
+        # a face set below the rim behind a dark line read as dented in.
+        raised=True,
     ),
     # Upright Roman capitals in polished steel, shallow: lettering that must
     # promise nothing (the judge). No gold, no red.
@@ -101,6 +104,9 @@ FACES = {
     "silver": [(0.0, (0.95, 0.97, 1.0)), (0.3, (0.42, 0.49, 0.6)), (0.46, (0.03, 0.045, 0.09)),
                (0.54, (0.82, 0.87, 0.95)), (0.8, (0.4, 0.46, 0.57)), (1.0, (0.12, 0.15, 0.23))],
 }
+# The shoulder round a raised face: a pale polish of the face's own colour.
+SHOULDERS = {"gold": (1.0, 0.84, 0.46), "blood": (1.0, 0.5, 0.36), "violet": (0.86, 0.7, 1.0), "rainbow": (1.0, 0.96, 0.9)}
+RAISED = LOOK.get("raised", False)
 INSETS = {"gold": (0.14, 0.0, 0.0), "blood": (0.0, 0.0, 0.0), "violet": (0.02, 0.0, 0.05), "rainbow": (0.04, 0.0, 0.08), "silver": (0.0, 0.004, 0.012)}
 
 
@@ -257,6 +263,10 @@ def rim_material(front):
 def inset_material(colour):
     mat, _, bsdf = new_material("inset")
     bsdf.inputs["Base Color"].default_value = (*colour, 1)
+    if RAISED:
+        bsdf.inputs["Roughness"].default_value = 0.16
+        bsdf.inputs["Metallic"].default_value = 1.0
+        return mat
     bsdf.inputs["Roughness"].default_value = 1.0
     bsdf.inputs["Specular IOR Level"].default_value = 0.0
     bsdf.inputs["Metallic"].default_value = 0.0
@@ -445,7 +455,7 @@ def render_set(set_name, spec, font_path, atlas):
     bpy.data.meshes.remove(cap_mesh)
     rim_r, extrude, line_r = RIM_K * cap, EXTRUDE_K * cap, LINE_K * cap
     front = extrude + rim_r
-    face_z = extrude + rim_r * 0.8
+    face_z = front + 0.014 * cap if RAISED else extrude + rim_r * 0.8
     depth = front * 2
     shapes.update({char: make(cap) for char, make in CUSTOM.items()})
 
@@ -508,14 +518,14 @@ def render_set(set_name, spec, font_path, atlas):
         finish(walls, 0.0, 50)
         place("walls-" + char, walls, origin)
 
-        face = text_mesh(char, 0.004 * cap, 0.012 * cap, 2)
+        face = text_mesh(char, 0.004 * cap, (0.026 if RAISED else 0.012) * cap, 3 if RAISED else 2)
         face.materials.append(faces[STYLES[0]])
         finish(face, face_z, 25)
         face_objects.append(place("face-" + char, face, origin))
 
-        line = outline_mesh(char, 0.0, line_r, 4, boxes[char])
+        line = outline_mesh(char, 0.0, line_r * (1.5 if RAISED else 1.0), 4, boxes[char])
         line.materials.append(inset)
-        finish(line, face_z + 0.02 * cap, 50)
+        finish(line, face_z - 0.012 * cap if RAISED else face_z + 0.02 * cap, 50)
         place("line-" + char, line, origin)
 
     cam_data = bpy.data.cameras.new("cam")
@@ -534,7 +544,7 @@ def render_set(set_name, spec, font_path, atlas):
         files[style] = name
         if ONLY and f"{set_name}:{style}" not in ONLY:
             continue
-        inset.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*INSETS[style], 1)
+        inset.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*(SHOULDERS if RAISED else INSETS)[style], 1)
         for obj in face_objects:
             obj.data.materials[0] = faces[style]
         scene.render.filepath = os.path.join(IMAGE_DIR, name)

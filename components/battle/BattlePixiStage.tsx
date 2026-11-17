@@ -3955,6 +3955,8 @@ export default function BattlePixiStage({
             window.dispatchEvent(new CustomEvent("battle:vfx-card-landed", { detail: {
               symbol: result.cards[cardIndex], onTarget: cardIndex === result.targetSlot,
               stage: { x: landingOrigin.x, y: landingOrigin.y },
+              // The landed card's four corners on the table, for effects drawn on its outline.
+              quad: [...cardQuad],
             } }));
           }
           setCardPhase("placed", `settle-card-${cardIndex + 1}`);

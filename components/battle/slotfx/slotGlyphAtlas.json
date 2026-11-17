@@ -1,5 +1,5 @@
 {
-  "version": "v2",
+  "version": "v3",
   "font": "AbrilFatface-Regular.ttf",
   "sets": {
     "digits": {
@@ -11,10 +11,10 @@
       "padY": 0.22,
       "capHeight": 0.5189,
       "files": {
-        "gold": "slot-glyphs-digits-gold.v2.webp",
-        "blood": "slot-glyphs-digits-blood.v2.webp",
-        "violet": "slot-glyphs-digits-violet.v2.webp",
-        "rainbow": "slot-glyphs-digits-rainbow.v2.webp"
+        "gold": "slot-glyphs-digits-gold.v3.webp",
+        "blood": "slot-glyphs-digits-blood.v3.webp",
+        "violet": "slot-glyphs-digits-violet.v3.webp",
+        "rainbow": "slot-glyphs-digits-rainbow.v3.webp"
       },
       "glyphs": {
         "0": {
@@ -83,10 +83,10 @@
       "padY": 0.38,
       "capHeight": 0.5189,
       "files": {
-        "gold": "slot-glyphs-letters-gold.v2.webp",
-        "blood": "slot-glyphs-letters-blood.v2.webp",
-        "violet": "slot-glyphs-letters-violet.v2.webp",
-        "rainbow": "slot-glyphs-letters-rainbow.v2.webp"
+        "gold": "slot-glyphs-letters-gold.v3.webp",
+        "blood": "slot-glyphs-letters-blood.v3.webp",
+        "violet": "slot-glyphs-letters-violet.v3.webp",
+        "rainbow": "slot-glyphs-letters-rainbow.v3.webp"
       },
       "glyphs": {
         "A": {
