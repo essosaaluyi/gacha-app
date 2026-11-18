@@ -5,22 +5,22 @@ export const cards = [
   {
     "name": "R1",
     "rarity": "R",
-    "image": "/images/cards/player/R1/card.webp"
+    "image": "/images/cards/player/R1/card.v2.webp"
   },
   {
     "name": "R2",
     "rarity": "R",
-    "image": "/images/cards/player/R2/card.webp"
+    "image": "/images/cards/player/R2/card.v2.webp"
   },
   {
     "name": "R3",
     "rarity": "R",
-    "image": "/images/cards/player/R3/card.webp"
+    "image": "/images/cards/player/R3/card.v2.webp"
   },
   {
     "name": "R4",
     "rarity": "R",
-    "image": "/images/cards/player/R4/card.webp"
+    "image": "/images/cards/player/R4/card.v2.webp"
   },
   {
     "name": "SR1",
@@ -30,17 +30,17 @@ export const cards = [
   {
     "name": "SR2",
     "rarity": "SR",
-    "image": "/images/cards/player/SR2/card.webp"
+    "image": "/images/cards/player/SR2/card.v2.webp"
   },
   {
     "name": "SR3",
     "rarity": "SR",
-    "image": "/images/cards/player/SR3/card.webp"
+    "image": "/images/cards/player/SR3/card.v2.webp"
   },
   {
     "name": "SR4",
     "rarity": "SR",
-    "image": "/images/cards/player/SR4/card.webp"
+    "image": "/images/cards/player/SR4/card.v2.webp"
   },
   {
     "name": "SSR1",
@@ -50,17 +50,17 @@ export const cards = [
   {
     "name": "SSR2",
     "rarity": "SSR",
-    "image": "/images/cards/player/SSR2/card.webp"
+    "image": "/images/cards/player/SSR2/card.v2.webp"
   },
   {
     "name": "SSR3",
     "rarity": "SSR",
-    "image": "/images/cards/player/SSR3/card.webp"
+    "image": "/images/cards/player/SSR3/card.v2.webp"
   },
   {
     "name": "SSR4",
     "rarity": "SSR",
-    "image": "/images/cards/player/SSR4/card.webp"
+    "image": "/images/cards/player/SSR4/card.v2.webp"
   },
   {
     "name": "UR1",
@@ -70,12 +70,12 @@ export const cards = [
   {
     "name": "UR2",
     "rarity": "UR",
-    "image": "/images/cards/player/UR2/card.webp"
+    "image": "/images/cards/player/UR2/card.v2.webp"
   },
   {
     "name": "UR3",
     "rarity": "UR",
-    "image": "/images/cards/player/UR3/card.webp"
+    "image": "/images/cards/player/UR3/card.v2.webp"
   }
 ] as const;
 

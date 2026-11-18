@@ -134,7 +134,7 @@ export const DEFAULT_FATAL_FX: FatalFxSettings = {
     dim: 0.45,
     flash: 0.85,
     edgeWidth: 6,
-    imageSrc: "/images/cards/player/R1/card.webp",
+    imageSrc: "/images/cards/player/R1/card.v2.webp",
     imageZoom: 1.6,
     imageOffsetX: 0,
     imageOffsetY: 20.5,

@@ -1,4 +1,5 @@
 import { getCardDisplayCrop, getCardDisplayFrame } from "@/components/gacha/pack-reveal/cardDisplayCrop";
+import { currentPlayerCardImage } from "@/lib/cards/cardAssets";
 
 type Props = {
   src: string;
@@ -27,7 +28,7 @@ export default function CroppedCardImage({ src, alt, inspection = false }: Props
       }}
     >
       <img
-        src={src}
+        src={currentPlayerCardImage(src)}
         alt={alt}
         draggable={false}
         style={{

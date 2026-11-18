@@ -60,7 +60,7 @@ function harness({ reduced = false } = {}) {
     if (id === "react") return react;
     if (id === "./pack-reveal/cardDisplayCrop") return cropExports;
     if (id.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, key) => key }) };
-    if (id === "@/lib/cards/cardAssets") return { resolvePlayerCardBack: image => image || "/existing-back.png" };
+    if (id === "@/lib/cards/cardAssets") return { resolvePlayerCardBack: image => image || "/existing-back.png", currentPlayerCardImage: image => image };
     if (id === "./pack-reveal/scene") return { __esModule: true, createRevealScene(...args) {
       build = args;
       return new Promise((resolve, reject) => { resolveBuild = () => { host.attached = true; resolve(scene); }; rejectBuild = reject; });

@@ -21,7 +21,7 @@ import { getCurrentPlayerBattleCard } from "@/lib/battle-pixi/state/playerBattle
 // `default` is only the last resort: the cut-in normally shows the card the
 // player is actually fighting with, so it matches the summoned character.
 export const BATTLE_INTERRUPT_CUT_IN_ASSETS: Record<string, string | null> = {
-  default: "/images/cards/player/R1/card.webp",
+  default: "/images/cards/player/R1/card.v2.webp",
 };
 
 // Must match --bicut-dur on .battle-interrupt-cut-in in globals.css: this is

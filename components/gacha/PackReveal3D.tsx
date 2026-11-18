@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import { resolvePlayerCardBack } from "@/lib/cards/cardAssets";
+import { currentPlayerCardImage, resolvePlayerCardBack } from "@/lib/cards/cardAssets";
 import type { RevealCard, RevealScene } from "./pack-reveal/types";
 import { getCardDisplayCrop } from "./pack-reveal/cardDisplayCrop";
 import styles from "./PackReveal3D.module.css";
@@ -143,7 +143,7 @@ export default function PackReveal3D({ cards, onComplete, packImage = "/images/p
           <div className={styles.fallbackEdge} />
           <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", borderRadius: 10 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={missingImage ? resolvePlayerCardBack(card.backImage) : card.image} alt="" onError={() => setMissingImage(true)} draggable={false} style={crop ? { position: "absolute", maxWidth: "none", objectFit: "fill", width: `${100 / (1 - crop.left - crop.right)}%`, height: `${100 / (1 - crop.top - crop.bottom)}%`, left: `${-100 * crop.left / (1 - crop.left - crop.right)}%`, top: `${-100 * crop.top / (1 - crop.top - crop.bottom)}%` } : undefined} />
+          <img src={missingImage ? resolvePlayerCardBack(card.backImage) : currentPlayerCardImage(card.image)} alt="" onError={() => setMissingImage(true)} draggable={false} style={crop ? { position: "absolute", maxWidth: "none", objectFit: "fill", width: `${100 / (1 - crop.left - crop.right)}%`, height: `${100 / (1 - crop.top - crop.bottom)}%`, left: `${-100 * crop.left / (1 - crop.left - crop.right)}%`, top: `${-100 * crop.top / (1 - crop.top - crop.bottom)}%` } : undefined} />
           </div>
           {missingImage && <strong>{card.rarity} · {card.name}</strong>}
         </div>}

@@ -1,17 +1,21 @@
 import type { Card } from "@/lib/gacha/pullLogic";
+import { currentPlayerCardImage, playerCardFrontImage } from "@/lib/cards/cardAssets";
 
 const TEST_BATTLE_CARDS: Card[] = [
-  { name: "R4", rarity: "R", image: "/images/cards/player/R4/card.webp" },
-  { name: "R3", rarity: "R", image: "/images/cards/player/R3/card.webp" },
-  { name: "R2", rarity: "R", image: "/images/cards/player/R2/card.webp" },
+  { name: "R4", rarity: "R", image: playerCardFrontImage("R4") },
+  { name: "R3", rarity: "R", image: playerCardFrontImage("R3") },
+  { name: "R2", rarity: "R", image: playerCardFrontImage("R2") },
 ];
+
+/** A saved deck or hand names the front it was made with; show the current one. */
+const withCurrentFront = (card: Card): Card => ({ ...card, image: currentPlayerCardImage(card.image) });
 
 // Trial lock (2026-11-16): while the presentation is being worked out on one
 // pairing, every card in a new run's deck is this one. The deck keeps its
 // size, so lives are unchanged. Set to null to play the real deck again.
 // The opponent has its own lock: FIXED_TEST_ENEMY_ID in currentEnemyStore.
 const FIXED_TEST_PLAYER_CARD: Card | null =
-  { name: "R1", rarity: "R", image: "/images/cards/player/R1/card.webp" };
+  { name: "R1", rarity: "R", image: playerCardFrontImage("R1") };
 
 let playerBattleCards: Card[] = [];
 let currentIndex: number | null = null;
@@ -44,7 +48,7 @@ export function initializePlayerBattleCards() {
   } else try {
     const saved = localStorage.getItem("battle_player_cards");
     const parsed: unknown = saved ? JSON.parse(saved) : null;
-    playerBattleCards = isBattleDeck(parsed) ? parsed : TEST_BATTLE_CARDS;
+    playerBattleCards = isBattleDeck(parsed) ? parsed.map(withCurrentFront) : TEST_BATTLE_CARDS;
   } catch {
     playerBattleCards = TEST_BATTLE_CARDS;
   }
@@ -116,7 +120,7 @@ export function restorePlayerBattleHand(snapshot: PlayerBattleHandSnapshot | und
     setPlayerBattleCardIndex(legacyIndex);
     return;
   }
-  playerBattleCards = snapshot.cards.map((card) => ({ ...card }));
+  playerBattleCards = snapshot.cards.map(withCurrentFront);
   const validIndex = (index: unknown): index is number =>
     typeof index === "number" && Number.isInteger(index) && index >= 0 && index < playerBattleCards.length;
   summonedIndices = new Set(snapshot.summonedIndices.filter(validIndex));

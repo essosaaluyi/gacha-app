@@ -14,8 +14,10 @@ const PROFILES: Record<string, Profile> = {
   UR1: { ...METAL, left: 23, right: 23, top: 13, bottom: 12 }, UR2: LARGE, UR3: LARGE,
 };
 
+// The v2 fronts (lib/cards/cardAssets.ts) clear the ground round the card but
+// leave the card where it was on the canvas, so the same bounds hold for them.
 function profile(image: string) {
-  const id = image.match(/\/images\/cards\/player\/(R[1-4]|SR[1-4]|SSR[1-4]|UR[1-3])\/card\.(?:webp|png)(?:[?#].*)?$/)?.[1];
+  const id = image.match(/\/images\/cards\/player\/(R[1-4]|SR[1-4]|SSR[1-4]|UR[1-3])\/card(?:\.v\d+)?\.(?:webp|png)(?:[?#].*)?$/)?.[1];
   return id ? PROFILES[id] : undefined;
 }
 

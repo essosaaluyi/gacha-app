@@ -14,7 +14,7 @@ import SlotFxLayer from "@/components/battle/slotfx/SlotFxLayer";
 import { getFatalPresentation, subscribeFatalPresentation, isFatalPresentationResolving } from "@/lib/battle-pixi/state/fatalPresentationStore";
 import { parseFatalPreview } from "@/lib/battle-pixi/core/enemyFatalRoll";
 import { getEnemyCharacterName, getPlayerCharacterName } from "@/lib/battle-pixi/config/characterNames";
-import { PLAYER_CARD_BACK_IMAGE } from "@/lib/cards/cardAssets";
+import { PLAYER_CARD_BACK_IMAGE, playerCardFrontImage } from "@/lib/cards/cardAssets";
 import BattleBackground from "@/components/battle/BattleBackground";
 import BattleGameCounter from "@/components/battle/BattleGameCounter";
 import BattleBetPayout from "@/components/battle/BattleBetPayout";
@@ -663,7 +663,7 @@ export default function BattleScreen() {
         const ally = searchParams.get("ally")?.toUpperCase();
         const names = ally && /^[A-Z]+\d+$/.test(ally) ? [ally, ...["R1", "R2", "R3"].filter((name) => name !== ally)] : ["R1", "R2", "R3"];
         restorePlayerBattleHand({
-          cards: names.map((name) => ({ name, rarity: name.replace(/\d+$/, ""), image: `/images/cards/player/${name}/card.webp` })),
+          cards: names.map((name) => ({ name, rarity: name.replace(/\d+$/, ""), image: playerCardFrontImage(name) })),
           summonedIndices: [], activeIndex: null, selectedIndex: null,
         });
         const enemyId = Number(searchParams.get("enemy")) as EnemyId;

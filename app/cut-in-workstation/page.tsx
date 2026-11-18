@@ -10,7 +10,7 @@ import {
 import BattleInterruptCutIn from "@/components/battle/BattleInterruptCutIn";
 import { playSfx, unlockSfx } from "@/lib/audio/sfxStore";
 
-const DEFAULT_ASSET = "/images/cards/player/R1/card.webp";
+const DEFAULT_ASSET = "/images/cards/player/R1/card.v2.webp";
 
 // The battle cabinet screen these overlays actually render into.
 const STAGE_W = 1250;

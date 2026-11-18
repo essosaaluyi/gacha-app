@@ -7,6 +7,8 @@ import ts from "typescript";
 
 const nodeRequire = createRequire(import.meta.url);
 const emptyComponent = () => null;
+/** The fronts redrawn as v2 (lib/cards/cardAssets.ts): a stored path to one is shown as the v2 file. */
+const currentFront = image => image.replace(/\/(R[1-4]|SR[2-4]|SSR[2-4]|UR[23])\/card\.webp$/, "/$1/card.v2.webp");
 
 function deferred() {
   let resolve;
@@ -190,7 +192,8 @@ test("all 15 fronts share cropped image/root/contour geometry and retain native 
   const before = JSON.stringify(results);
   const tree = page.grid({ results, setSelectedImage() {} });
   const images = visitElements(tree, el => el.type === "img");
-  assert.deepEqual(images.map(image => image.props.src), results.map(card => card.image));
+  // A stored path is shown as the card's current front (the v2 fronts lost their white ground, 2026-11-18).
+  assert.deepEqual(images.map(image => image.props.src), results.map(card => currentFront(card.image)));
   assert.ok(parseFloat(images[0].props.style.width) > 100);
   assert.ok(parseFloat(images[1].props.style.width) > 100);
   assert.ok(images.every(image => parseFloat(image.props.style.width) > 100));
@@ -233,7 +236,7 @@ for (const preview of [false, true]) test(`${preview ? "preview" : "real gacha"}
     grid.props.setSelectedImage(src);
     page.render();
     const image = visitElements(page.render(), el => el.type === "img" && ["Full card", "Enlarged card"].includes(el.props.alt))[0];
-    assert.equal(image.props.src, src);
+    assert.equal(image.props.src, currentFront(src));
     assert.equal(image.props.draggable, false);
     if (name === "OTHER") {
       assert.equal(image.props.style.width, "100%");

@@ -11,11 +11,11 @@ const PackReveal3D = dynamic(() => import("@/components/gacha/PackReveal3D"), {
   loading: () => <p role="status">Loading pack...</p>,
 });
 const FIXTURE_CARDS = [
-  { name: "R1", rarity: "R", image: "/images/cards/player/R1/card.webp" },
+  { name: "R1", rarity: "R", image: "/images/cards/player/R1/card.v2.webp" },
   { name: "SR1", rarity: "SR", image: "/images/cards/player/SR1/card.webp" },
   { name: "SSR1", rarity: "SSR", image: "/images/cards/player/SSR1/card.webp" },
   { name: "UR1", rarity: "UR", image: "/images/cards/player/UR1/card.webp" },
-  { name: "R2", rarity: "R", image: "/images/cards/player/R2/card.webp" },
+  { name: "R2", rarity: "R", image: "/images/cards/player/R2/card.v2.webp" },
 ] as const;
 const SINGLE_CARD = FIXTURE_CARDS.slice(0, 1);
 
