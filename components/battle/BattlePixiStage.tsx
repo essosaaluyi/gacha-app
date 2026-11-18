@@ -3876,6 +3876,37 @@ export default function BattlePixiStage({
         hoverFloatTickers.set(cardIndex, ticker);
       };
 
+      // The cabinet's waiting backs float (owner, 2026-11-18): each rises a
+      // little off its shadow and drifts slowly up and down, on its own beat
+      // so the three never move as one. Stage pixels and milliseconds.
+      const CABINET_FLOAT = { lift: 7, swing: 6, periodMs: 2600, easeInMs: 700 };
+      /** How far above where it was dealt a waiting back stands, `elapsed` after it arrived. */
+      const cabinetFloatHeight = (elapsed: number, cardIndex: number) => {
+        const { lift, swing, periodMs, easeInMs } = CABINET_FLOAT;
+        // From rest, so the hand-over from the deal does not jump.
+        const t = Math.min(1, elapsed / easeInMs);
+        const rise = t * t * (3 - 2 * t);
+        return rise * (lift + swing * Math.sin((elapsed / periodMs) * Math.PI * 2 + cardIndex * 2.1));
+      };
+      const startCabinetFloat = (cardIndex: number) => {
+        stopHoverFloat(cardIndex);
+        hoverShadows[cardIndex].visible = true;
+        if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+        const gen = handGeneration;
+        const card = drawCards[cardIndex];
+        const baseY = hoverTargets[cardIndex].y;
+        const startTime = performance.now();
+        const ticker = () => {
+          if (cancelled || gen !== handGeneration) {
+            stopHoverFloat(cardIndex);
+            return;
+          }
+          card.y = baseY - cabinetFloatHeight(performance.now() - startTime, cardIndex);
+        };
+        pixiApp.ticker.add(ticker);
+        hoverFloatTickers.set(cardIndex, ticker);
+      };
+
       const placeCardFromHover = (cardIndex: number) => {
         if (isCardOverviewOpen()) return;
         const card = drawCards[cardIndex];
@@ -4107,6 +4138,13 @@ export default function BattlePixiStage({
             const { verticalProjection, clipTop } = revealFrame();
             stage.addChild(card);
             let finished = false, cancel = () => {};
+            // It was clicked mid-float: the turn starts from where it hung and
+            // lets that height go over its first moments, rather than snapping
+            // to where it was dealt.
+            // Anything outside the float's own range is not a float (a hand
+            // restored from storage, say) and is left alone.
+            const hung = hoverTargets[cardIndex].y - card.y, clickedAt = presentationClock.now();
+            const floatAtClick = hung > 0 && hung <= CABINET_FLOAT.lift + CABINET_FLOAT.swing + 0.5 ? hung : 0;
             // The card is already waiting out in front, so this is only the
             // second half of the old motion: turn, then come down. fromPresent
             // leads the turn, which is what the reference clip does.
@@ -4115,7 +4153,10 @@ export default function BattlePixiStage({
               schedule: callback => window.requestAnimationFrame(callback), cancelFrame: id => window.cancelAnimationFrame(id),
               onFrame: sample => {
                 card.x = landingOrigin.x; card.y = landingOrigin.y; card.rotation = 0; card.scale.set(L.CARD_SCALE);
-                setMeshQuad(card, toLocalQuad([...sample.quad] as Quad, landingOrigin.x, landingOrigin.y, L.CARD_SCALE));
+                const settle = Math.min(1, (presentationClock.now() - clickedAt) / 240);
+                const up = floatAtClick * (1 - settle * settle * (3 - 2 * settle));
+                const quad = sample.quad.map((value, i) => (i % 2 ? value - up : value)) as Quad;
+                setMeshQuad(card, toLocalQuad(quad, landingOrigin.x, landingOrigin.y, L.CARD_SCALE));
                 hoverShadows[cardIndex].visible = sample.raised > 0.001;
                 hoverShadows[cardIndex].alpha = sample.raised * 0.55;
               },
@@ -4216,8 +4257,8 @@ export default function BattlePixiStage({
             cardHitProxies[index].hitArea=new Rectangle(Math.min(...xs)-14,Math.min(...ys)-14,Math.max(...xs)-Math.min(...xs)+28,Math.max(...ys)-Math.min(...ys)+28);
             card.parent?.removeChild(card);stage.addChild(card);card.x=hoverTargets[index].x;card.y=hoverTargets[index].y;card.rotation=0;card.scale.set(L.CARD_SCALE);card.alpha=1;card.visible=true;
             if(card instanceof PerspectiveMesh)setMeshQuad(card,toLocalQuad(q,card.x,card.y,L.CARD_SCALE));
-            hoverShadows[index].visible = true;
             hoverShadows[index].alpha = 0.55;
+            startCabinetFloat(index);
             handTimeout(()=>{card.eventMode="static";setCardPickable(index,true);},getChanceWaitRemaining());
           });cardGroup.visible=false;attachPlacementHandlers();setCardPhase("hovering","physical3d-landed");
           if(currentBattleResult.result==="Reply")runReplyFrameSparks();return;

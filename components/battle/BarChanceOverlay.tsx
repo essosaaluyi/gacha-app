@@ -13,6 +13,7 @@ import {
   setBgmVolume,
 } from "@/lib/audio/bgmStore";
 import { playSfx } from "@/lib/audio/sfxStore";
+import { battleSymbolImage } from "@/lib/battle-pixi/presentation/battleSymbolImages";
 import { setBattlePresentationPhase } from "@/lib/battle-pixi/state/battlePresentationFlowStore";
 import { beginSuperMaxBlackout } from "@/lib/battle-pixi/state/cabinetSignalStore";
 import { warmSlotBackdrops } from "@/components/battle/slotfx/SlotBackdrop";
@@ -145,9 +146,14 @@ export default function BarChanceOverlay() {
         </div>
       )}
 
+      {/* PROVISIONAL (owner, 2026-11-18: the BAR presentation is not yet
+          directed). The face the table cards wear, not the old square art,
+          whose black ground showed as a box round the card. That face is
+          upright, so it is sized by the screen's height (a definite row lets
+          the percentage resolve) or its foot would run off the screen. */}
       {successVisible && (
-        <div className="bar-chance-success-mark">
-          <img src="/images/battle-symbols/bar.webp" alt="" />
+        <div className="bar-chance-success-mark" style={{ gridTemplateRows: "100%" }}>
+          <img src={battleSymbolImage("Bar")} alt="" style={{ width: "auto", height: "84%", maxHeight: "none" }} />
         </div>
       )}
 
