@@ -31,7 +31,7 @@ import {
 import { STAGE, UI } from "@/lib/battle-pixi/config";
 import { PresentationContext } from "@/lib/battle-pixi/presentation/presentationContext";
 import { drawBattleResult } from "@/lib/battle-pixi/core/resultLottery";
-import { battleSymbolImage } from "@/lib/battle-pixi/presentation/battleSymbolImages";
+import { FACE_FRAME_RADIUS, battleSymbolFaceRim, battleSymbolImage } from "@/lib/battle-pixi/presentation/battleSymbolImages";
 import { arrangeBarChanceCards } from "@/lib/battle-pixi/core/barChanceReveal";
 import { rollDrawTell } from "@/lib/battle-pixi/presentation/drawTell";
 import { recordDrawOutcome } from "@/lib/battle-pixi/state/drawCostStore";
@@ -838,8 +838,29 @@ export default function BattlePixiStage({
       });
       backComposite.destroy({ children: true });
 
+      // The faces lose their black rim (owner, 2026-11-18): each is baked from
+      // its silver frame in, the corners rounded to that frame, the same way
+      // the back is baked above. The card's quad stays the same, so the face
+      // fills it a few percent wider than the art, which does not show.
+      const faceWithoutRim = (texture: Texture, symbol: string) => {
+        const rim = battleSymbolFaceRim(symbol);
+        if (!rim) return texture;
+        const width = texture.width - rim.left - rim.right;
+        const height = texture.height - rim.top - rim.bottom;
+        const art = new Sprite(texture);
+        art.x = -rim.left;
+        art.y = -rim.top;
+        const mask = new Graphics().roundRect(0, 0, width, height, FACE_FRAME_RADIUS).fill(0xffffff);
+        art.mask = mask;
+        const composite = new Container();
+        composite.addChild(art, mask);
+        const face = pixiApp.renderer.generateTexture({ target: composite, frame: new Rectangle(0, 0, width, height) });
+        composite.destroy({ children: true });
+        return face;
+      };
+
       const symbolTextures = Object.fromEntries(
-        symbolNames.map((name, index) => [name, symbolList[index]])
+        symbolNames.map((name, index) => [name, cabinetMode ? faceWithoutRim(symbolList[index], name) : symbolList[index]])
       ) as Record<(typeof symbolNames)[number], Texture>;
 
       // Target indicator.

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { keepClearOfTableCards } from "@/components/battle/tableCards";
+import { keepBehindTable, keepClearOfTableCards } from "@/components/battle/tableCards";
 import { getBarChanceState, subscribeBarChance } from "@/lib/battle-pixi/state/barChanceStore";
 import { isFatalModeActive, subscribeFatalMode } from "@/lib/battle-pixi/state/fatalModeStore";
 import { getSlotJudge, subscribeSlotJudge, type SlotJudge } from "./slotJudgeStore";
@@ -147,7 +147,7 @@ export default function SlotCabinetLights() {
       <span ref={anchor} hidden />
       {place && frame && createPortal(
         <>
-          {/* Both layers lie over the card table but never over its cards. */}
+          {/* The shade lies over the card table but never over its cards. */}
           <div ref={keepClearOfTableCards} className={css.dimLayer} aria-hidden="true">
             {dimmed && (
               <i
@@ -163,7 +163,10 @@ export default function SlotCabinetLights() {
               />
             )}
           </div>
-          <div ref={keepClearOfTableCards} className={css.lampLayer} aria-hidden="true">
+          {/* The lamps belong to the screen's frame, and the table stands in
+              front of the screen: their light goes behind the table and the
+              deck, never over them (owner, 2026-11-18). */}
+          <div ref={keepBehindTable} className={css.lampLayer} aria-hidden="true">
             {lit && (
               <div
                 key={lit.id}
