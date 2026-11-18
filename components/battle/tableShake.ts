@@ -13,6 +13,9 @@
  * of whatever transform an element already wears, so it is in the cabinet's
  * own pixels for all of them (the table's own transform stretches it), and
  * that transform is put back when the shake ends.
+ *
+ * Layers that do not ride the table but keep out of the cards' way
+ * (tableCards.ts) watch the jolt, so the cards stay clear while it moves.
  */
 
 const TABLE = ".bcab-table-space";
@@ -29,15 +32,26 @@ let startedAt = 0;
 let reach = 0;
 let offset = { x: 0, y: 0 };
 
+const watchers = new Set<() => void>();
+
 /** How far the table stands from rest right now, in cabinet pixels. */
 export function tableShakeOffset() {
   return offset;
+}
+
+/** Called each time the table moves, and once more when it comes to rest. */
+export function watchTableShake(watcher: () => void) {
+  watchers.add(watcher);
+  return () => {
+    watchers.delete(watcher);
+  };
 }
 
 function write() {
   for (const { element, base } of held) {
     element.style.transform = `translate(${offset.x.toFixed(2)}px, ${offset.y.toFixed(2)}px) ${base}`.trim();
   }
+  watchers.forEach((watcher) => watcher());
 }
 
 function settle() {
@@ -46,6 +60,7 @@ function settle() {
   offset = { x: 0, y: 0 };
   for (const { element, base } of held) element.style.transform = base;
   held = [];
+  watchers.forEach((watcher) => watcher());
 }
 
 function tick(now: number) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { keepClearOfTableCards } from "@/components/battle/tableCards";
 import { getBarChanceState, subscribeBarChance } from "@/lib/battle-pixi/state/barChanceStore";
 import { isFatalModeActive, subscribeFatalMode } from "@/lib/battle-pixi/state/fatalModeStore";
 import { getSlotJudge, subscribeSlotJudge, type SlotJudge } from "./slotJudgeStore";
@@ -146,7 +147,8 @@ export default function SlotCabinetLights() {
       <span ref={anchor} hidden />
       {place && frame && createPortal(
         <>
-          <div className={css.dimLayer} aria-hidden="true">
+          {/* Both layers lie over the card table but never over its cards. */}
+          <div ref={keepClearOfTableCards} className={css.dimLayer} aria-hidden="true">
             {dimmed && (
               <i
                 key={dimmed.id}
@@ -161,7 +163,7 @@ export default function SlotCabinetLights() {
               />
             )}
           </div>
-          <div className={css.lampLayer} aria-hidden="true">
+          <div ref={keepClearOfTableCards} className={css.lampLayer} aria-hidden="true">
             {lit && (
               <div
                 key={lit.id}

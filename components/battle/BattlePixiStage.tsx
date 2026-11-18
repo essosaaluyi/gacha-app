@@ -168,6 +168,7 @@ import {
 import { rollChancePointsGain } from "@/lib/battle-pixi/state/chancePointsRevealStore";
 
 import { resetBattleCardsToGroup } from "@/lib/battle-pixi/stage/resetBattleCardsToGroup";
+import { clearTableCards, setTableCard } from "@/components/battle/tableCards";
 import { handleBattleEnemyDefeated } from "@/lib/battle-pixi/stage/handleBattleEnemyDefeated";
 import { handleDrawButtonPress } from "@/lib/battle-pixi/stage/handleDrawButtonPress";
 import { resolveNestedBonusGame } from "@/lib/battle-pixi/stage/handleNestedBonusDraw";
@@ -1289,6 +1290,32 @@ export default function BattlePixiStage({
       const card3 = createCard();
       const drawCards = [card1, card2, card3];
 
+      // A card on the table is always in front (owner, 2026-11-18): the
+      // lights, frames, waves and flashes the stage throws round a card go
+      // under every card on the table, never over one. The layers over the
+      // cabinet keep clear of the cards the same way (tableCards.ts).
+      const addUnderCards = (child: Container) => {
+        // getChildIndex throws for a non-child, and a card is only parented
+        // to the stage once it has landed.
+        const lowest = drawCards.reduce(
+          (low, card) => (card.parent === stage ? Math.min(low, stage.getChildIndex(card)) : low),
+          stage.children.length
+        );
+        stage.addChildAt(child, lowest);
+      };
+      /** A layer under the cards for the light of an effect whose figure stands over them. */
+      const layerUnderCards = () => {
+        const under = new Container();
+        under.eventMode = "none";
+        addUnderCards(under);
+        return under;
+      };
+      const dropLayer = (layer: Container) => {
+        if (layer.destroyed) return;
+        if (layer.parent === stage) stage.removeChild(layer);
+        layer.destroy({ children: true });
+      };
+
       drawCards.forEach((card) => {
         if (card instanceof Sprite) card.anchor.set(0.5);
         card.scale.set(L.CARD_SCALE);
@@ -1412,6 +1439,7 @@ export default function BattlePixiStage({
       }
 
       const resetCardsToGroup = () => {
+        clearTableCards();
         if (cardsReleased) playCardExit();
 
         // Centralized per-hand cleanup (requirement 7): bump the hand id,
@@ -2412,7 +2440,7 @@ export default function BattlePixiStage({
         const electricity = new Graphics();
         electricity.blendMode = "add";
         electricity.eventMode = "none";
-        stage.addChild(electricity);
+        addUnderCards(electricity);
         const electricityStart = performance.now();
         let lastRedraw = -1;
         const corners = [
@@ -2490,7 +2518,7 @@ export default function BattlePixiStage({
             const wave = new Graphics();
             wave.blendMode = "add";
             wave.eventMode = "none";
-            stage.addChild(wave);
+            addUnderCards(wave);
 
             const waveStart = performance.now();
             const waveDuration = 1000;
@@ -2572,11 +2600,7 @@ export default function BattlePixiStage({
         const socketGlow = new Graphics();
         socketGlow.blendMode = "add";
         persistentGlowLayer.addChild(socketHalo, socketGlow);
-        stage.addChild(persistentGlowLayer);
-        stage.setChildIndex(
-          persistentGlowLayer,
-          stage.children.length - 1
-        );
+        addUnderCards(persistentGlowLayer);
         attackTargetGlowLayer = persistentGlowLayer;
 
         const expandedQuad = (scale: number): Quad => {
@@ -2651,7 +2675,10 @@ export default function BattlePixiStage({
         const embers = additive();
         const flash = additive(12);
         const flashCore = additive();
-        layer.addChild(rings, pillar);
+        // The blade and its embers stand over the card; its light, the flash
+        // and the rings running out over the table, lie under the cards.
+        const under = layerUnderCards();
+        under.addChild(rings, pillar);
 
         // The blade lands on the near half of the card, which leaves it the
         // most headroom, and it may not rise past the far edge of the felt:
@@ -2679,7 +2706,8 @@ export default function BattlePixiStage({
         const glint = additive();
         sword.addChild(swordGlow, swordBody, glint);
         sword.x = strike.x;
-        layer.addChild(sword, embers, flash, flashCore);
+        layer.addChild(sword, embers);
+        under.addChild(flash, flashCore);
 
         const BLADE_TOP = -118;
         const bladeOutline = [0, 0, -6, -18, -7, BLADE_TOP, 7, BLADE_TOP, 6, -18];
@@ -2860,8 +2888,8 @@ export default function BattlePixiStage({
 
           if (progress >= 1 || !alive()) {
             pixiApp.ticker.remove(interactionTicker);
-            if (layer.parent === stage) stage.removeChild(layer);
-            layer.destroy({ children: true });
+            dropLayer(layer);
+            dropLayer(under);
           }
         };
 
@@ -2870,10 +2898,8 @@ export default function BattlePixiStage({
           interactionTicker();
           pixiApp.render();
           window.setTimeout(() => {
-            if (!layer.destroyed) {
-              if (layer.parent === stage) stage.removeChild(layer);
-              layer.destroy({ children: true });
-            }
+            dropLayer(layer);
+            dropLayer(under);
             if (attackTargetGlowLayer === persistentGlowLayer) clearAttackTargetGlow();
           }, 5000);
           return;
@@ -2920,9 +2946,12 @@ export default function BattlePixiStage({
         stage.addChild(layer);
         stage.setChildIndex(layer, stage.children.length - 1);
 
+        // The shield stands over the table; the light it throws on the felt
+        // lies under the cards.
+        const under = layerUnderCards();
         const groundLight = new Graphics();
         groundLight.blendMode = "add";
-        layer.addChild(groundLight);
+        under.addChild(groundLight);
 
         const bloom = new Graphics();
         bloom.blendMode = "add";
@@ -3008,8 +3037,8 @@ export default function BattlePixiStage({
 
           if (progress >= 1 || !alive()) {
             pixiApp.ticker.remove(ticker);
-            if (layer.parent === stage) stage.removeChild(layer);
-            layer.destroy({ children: true });
+            dropLayer(layer);
+            dropLayer(under);
           }
         };
 
@@ -3053,8 +3082,7 @@ export default function BattlePixiStage({
         const graphics = new Graphics();
         graphics.blendMode = "add";
         graphics.eventMode = "none";
-        stage.addChild(graphics);
-        stage.setChildIndex(graphics, stage.children.length - 1);
+        addUnderCards(graphics);
 
         let redrawFrame = -1;
         const ticker = () => {
@@ -3135,8 +3163,7 @@ export default function BattlePixiStage({
         const durationMs = 1000;
         const layer = new Container();
         layer.eventMode = "none";
-        stage.addChild(layer);
-        stage.setChildIndex(layer, stage.children.length - 1);
+        addUnderCards(layer);
 
         const frameGlow = new Graphics();
         frameGlow.blendMode = "add";
@@ -3301,7 +3328,7 @@ export default function BattlePixiStage({
             const wave = new Graphics();
             wave.blendMode = "add";
             wave.eventMode = "none";
-            stage.addChild(wave);
+            addUnderCards(wave);
 
             const startedAt = performance.now();
             const duration = success ? 610 : 500;
@@ -3965,6 +3992,9 @@ export default function BattlePixiStage({
             if (!(barChanceActive && symbol === "Empty")) playSfx("cardPlaced");
             if (result.cards[cardIndex] === "Chance") playSfx("chanceCardLand");
             if (isAttackOnTarget) runAttackTargetInteraction(cardIndex);
+            // Before the landing is announced, so the effects it sets off
+            // already keep clear of this card.
+            setTableCard(cardIndex, cardQuad);
             window.dispatchEvent(new CustomEvent("battle:vfx-card-landed", { detail: {
               symbol: result.cards[cardIndex], onTarget: cardIndex === result.targetSlot,
               stage: { x: landingOrigin.x, y: landingOrigin.y },
@@ -4699,6 +4729,7 @@ const globalY = cardGroup.y + card.y;
 
     return () => {
       cancelled = true;
+      clearTableCards();
       removeFatalContext?.();
       removeVisibilityClock?.();
       if (flightFrame !== null) window.cancelAnimationFrame(flightFrame);

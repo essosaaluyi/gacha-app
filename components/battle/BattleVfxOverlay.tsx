@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { keepClearOfTableCards } from "@/components/battle/tableCards";
 import { shakeTable, stopTableShake } from "@/components/battle/tableShake";
 
 /** The Pixi stage's own coordinate space, from the generated layout config. */
@@ -208,6 +209,8 @@ export default function BattleVfxOverlay() {
       if (jolt > 0) shakeTable(jolt);
     };
     window.addEventListener("battle:vfx-card-landed", onLanded);
+    // Over the whole page, but never over a card lying on the table.
+    const releaseCards = keepClearOfTableCards(canvasRef.current);
 
     (async () => {
       try {
@@ -245,6 +248,7 @@ export default function BattleVfxOverlay() {
       window.removeEventListener("battle:cabinet-pile", onPile);
       window.removeEventListener("battle:vfx-tell", onTell);
       window.removeEventListener("battle:vfx-card-landed", onLanded);
+      releaseCards?.();
       stopTableShake();
       probeRef.current?.remove();
       probeRef.current = null;

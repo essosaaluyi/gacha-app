@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { getBarChanceState } from "@/lib/battle-pixi/state/barChanceStore";
+import { keepClearOfTableCards } from "@/components/battle/tableCards";
 import { tableShakeOffset } from "@/components/battle/tableShake";
 import { addBolt, drawSpread, noStrokes, planSpread, type Box, type Knot, type Point, type Spread, type Strokes } from "./lightningSpread";
 import { useCabinetPlace } from "./SlotCabinetLights";
@@ -24,8 +25,11 @@ import css from "./SlotCardImpact.module.css";
 //
 // It is drawn on the card's own outline as the table shows it (the stage sends
 // the four corners of the landed card), so it lies on the table with the card
-// rather than standing in front of it. Decoration only: it reads the landing
-// the stage already announces and changes nothing.
+// rather than standing in front of it. The light and the bolts stop at the edge
+// of every card on the table (tableCards.ts): a card is always in front. Only
+// the instant of inverted colour is drawn on the card, being the card itself.
+// Decoration only: it reads the landing the stage already announces and
+// changes nothing.
 
 /** The Pixi stage the table cards are drawn on. */
 const STAGE_W = 1200;
@@ -254,8 +258,8 @@ export default function SlotCardImpact() {
               <polygon key={impact.key} points={points(impact.corners)} className={css.flip} />
             ))}
           </svg>
-          {/* The light: added to the table. */}
-          <svg className={css.layer} viewBox={viewBox} aria-hidden="true" data-table-fx="">
+          {/* The light: added to the table, round the cards but never over one. */}
+          <svg ref={keepClearOfTableCards} className={css.layer} viewBox={viewBox} aria-hidden="true" data-table-fx="">
             {impacts.map((impact) => {
               const spec = IMPACT[impact.symbol];
               if (!spec) return null;
@@ -280,7 +284,7 @@ export default function SlotCardImpact() {
             })}
           </svg>
           {/* Over the light, laid on rather than added, so the colour stays deep: the bolts themselves. */}
-          <svg className={css.bolts} viewBox={viewBox} aria-hidden="true" data-table-fx="">
+          <svg ref={keepClearOfTableCards} className={css.bolts} viewBox={viewBox} aria-hidden="true" data-table-fx="">
             {impacts.map((impact) => {
               const spec = IMPACT[impact.symbol];
               if (!spec) return null;

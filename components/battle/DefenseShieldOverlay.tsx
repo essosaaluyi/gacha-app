@@ -6,6 +6,7 @@ import {
   settleDefenseShield,
   subscribeDefenseShield,
 } from "@/lib/battle-pixi/state/defenseShieldStore";
+import { keepClearOfTableCards } from "@/components/battle/tableCards";
 import styles from "./DefenseShieldOverlay.module.css";
 
 const TRANSFER_MS = 620;
@@ -34,6 +35,9 @@ export default function DefenseShieldOverlay() {
 
   return (
     <div
+      // The shield's trail leaves from the middle card, from under it: a card
+      // on the table is always in front.
+      ref={keepClearOfTableCards}
       className={`defense-shield-overlay defense-shield-${shield.grade}`}
       data-phase={shield.phase}
       aria-label={`${shield.grade} defense shield stored`}
