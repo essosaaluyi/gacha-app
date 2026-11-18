@@ -24,11 +24,26 @@ export const CABINET_PRESENT_REVEAL_MS = PRESENT_FLIP_END_MS + DEFAULT_LANDING.f
 
 const ease = (value:number) => {const t=Math.max(0,Math.min(1,value));return t*t*(3-2*t);};
 
+/** How wide each waiting back stands, on the stage. 197 when they stood further back. */
+const PRESENT_WIDTH = 217;
 /**
- * All three backs hover at the same size above their respective bays.
+ * How far into its bay, far edge 0 to near edge 1, each back stands: on its
+ * shadow (hoverShadows in BattlePixiStage lies at 0.94).
+ */
+const PRESENT_FOOT_V = 0.94;
+
+/**
+ * All three backs stand at the same size, each on the near part of its bay
+ * (owner, 2026-11-18: brought forward, so they read larger, as nearer things
+ * do). The deal lands them here and a reveal starts from here, so both move
+ * with these numbers.
  */
 export function cabinetPresentQuad(rest:CardQuad,verticalProjection=1,clipTop=0):CardQuad {
-  return raisedQuad(rest, verticalProjection, clipTop, 197, 64);
+  const width=PRESENT_WIDTH,height=width*1.5/verticalProjection;
+  const far=(rest[1]+rest[3])/2,near=(rest[5]+rest[7])/2;
+  const foot=far+(near-far)*PRESENT_FOOT_V;
+  const cx=cardQuadCenter(rest).x,cy=Math.max(foot-height/2,clipTop+height/2+6);
+  return [cx-width/2,cy-height/2,cx+width/2,cy-height/2,cx+width/2,cy+height/2,cx-width/2,cy+height/2];
 }
 
 function raisedQuad(rest:CardQuad,verticalProjection:number,clipTop:number,width:number,lift:number):CardQuad {

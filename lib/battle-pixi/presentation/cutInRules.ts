@@ -90,23 +90,23 @@ export function showSymbolCutIn(symbol: BattleCardSymbol) {
   }
 }
 
-function getResultCutIn(result: BattleOutcome) {
-  // No words for a Double or Triple Chance either (owner, 2026-11-17): the
-  // second and third Chance already send their lightning over the whole
-  // table as they land (SlotCardImpact), and the text only covered the scene.
-
-  if (result === "Bar") {
-    return {
-      title: "BAR ALIGN",
-      subtitle: "Bonus pressure",
-      tone: "bonus" as const,
-      durationMs: 1200,
-    };
-  }
-
-  // No cut-in for an Attack result: the fakeout presentation that follows is
-  // the beat, and the old red "ATTACK RESULT" box only got in front of it.
-
+/**
+ * No result is announced in words over the scene. A real slot machine says
+ * nothing of the kind, and the text only covered what the table already shows.
+ *
+ * - Double and Triple Chance (owner, 2026-11-17): the second and third Chance
+ *   send their lightning over the table as they land (SlotCardImpact).
+ * - BAR ALIGN (owner, 2026-11-18, after seeing it): three BARs on the table
+ *   and the BAR CHANCE presentation already say it.
+ * - Attack: the fakeout presentation that follows is the beat, and the old
+ *   red "ATTACK RESULT" box only got in front of it.
+ *
+ * Kept as the one place a result cut-in would be chosen, should one return.
+ */
+function getResultCutIn(
+  result: BattleOutcome
+): { title: string; subtitle: string; tone: BattleCutInTone; durationMs: number } | null {
+  void result;
   return null;
 }
 
